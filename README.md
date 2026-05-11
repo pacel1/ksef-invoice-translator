@@ -1,82 +1,292 @@
 # KSeF Invoice Translator
 
-Production-oriented MVP for transforming Polish KSeF FA(3) XML invoices into human-readable multilingual invoice previews and PDF exports for international contractors.
+KSeF Invoice Translator to MVP aplikacji SaaS dla polskich firm, ktore chca szybko zamieniac faktury KSeF FA(3) XML oraz wygenerowane PDF-y faktur na czytelne, profesjonalne tlumaczenia dla zagranicznych kontrahentow.
 
-This is not accounting, ERP, bookkeeping, invoicing, or KSeF integration software. It only parses, translates free text, renders, and exports.
+Aplikacja nie jest systemem ksiegowym, ERP ani narzedziem do wystawiania faktur. Nie laczy sie z KSeF, nie loguje uzytkownika do Ministerstwa Finansow i nie modyfikuje faktur. Jej zakres to:
 
-## Features
+- parsowanie faktury,
+- normalizacja danych do wewnetrznego modelu,
+- tlumaczenie etykiet i tresci opisowych,
+- podglad faktury,
+- eksport profesjonalnego PDF.
 
-- Upload KSeF FA(3) XML invoices.
-- Upload rendered KSeF invoice PDFs and extract invoice text, payment data, orders, footer, and KSeF verification links when present in PDF text.
-- Normalize XML into an internal `Invoice` model before rendering.
-- Parse invoice number, dates, currency, parties, VAT IDs, addresses, line items, totals, payment details, bank accounts, orders, footer, verification link, and notes.
-- Translate fixed labels from static dictionaries.
-- Translate only free text with OpenAI: item descriptions and notes.
-- Preserve invoice numbers, VAT IDs, dates, currencies, IBAN/SWIFT, amounts, and VAT rates.
-- Preview invoices in a clean responsive layout.
-- Generate professional PDF exports with bilingual mode and KSeF verification QR blocks when a verification link is available.
-- Support European language configuration in `lib/translation/languages.ts`.
+## Status Projektu
 
-## Tech Stack
+Aktualna wersja jest produkcyjnym MVP:
 
-- Next.js 15 App Router
-- TypeScript
-- TailwindCSS
-- shadcn-style local UI primitives
+- Next.js 15 App Router,
+- TypeScript,
+- TailwindCSS,
+- lokalne komponenty UI w stylu shadcn/ui,
+- parser KSeF FA(3) XML,
+- podstawowy parser PDF faktur KSeF,
+- eksport PDF przez `pdfmake`,
+- tlumaczenia statyczne + OpenAI dla wolnego tekstu,
+- deploy gotowy pod Vercel.
+
+Produkcja:
+
+```text
+https://ksef-invoice-translator.vercel.app
+```
+
+## Najwazniejsze Funkcje
+
+- Upload faktur KSeF FA(3) XML.
+- Upload PDF faktury KSeF i ekstrakcja tekstu, danych platnosci, zamowien, stopki oraz linku weryfikacyjnego, jezeli link jest obecny w tekscie PDF.
+- Normalizacja danych do wspolnego modelu `Invoice`.
+- Obsluga danych sprzedawcy, nabywcy, numeru faktury, dat, waluty, pozycji, stawek VAT, podsumowan, rachunkow bankowych, platnosci, zamowien, stopki, notatek i linku KSeF.
+- Podglad faktury w interfejsie webowym.
+- Eksport PDF jednojezyczny lub dwujezyczny.
+- Kod QR i blok weryfikacyjny w PDF, jezeli faktura zawiera link do strony Ministerstwa Finansow.
+- Tlumaczenie etykiet z lokalnych slownikow.
+- Tlumaczenie OpenAI tylko dla opisow pozycji, notatek i wolnego tekstu.
+
+## Zasady Tlumaczen
+
+Nie wolno tlumaczyc ani zmieniac:
+
+- numerow faktur,
+- NIP/VAT ID,
+- numerow rejestrowych,
+- IBAN,
+- SWIFT,
+- numerow kont bankowych,
+- walut,
+- dat,
+- kwot,
+- stawek VAT,
+- procentow podatku.
+
+Tlumaczeniu podlegaja:
+
+- stale etykiety,
+- naglowki tabel,
+- nazwy sekcji,
+- opisy towarow i uslug,
+- notatki,
+- stopki,
+- instrukcje platnosci,
+- jednostki miary, jezeli sa traktowane jako wolny tekst.
+
+## Stack Technologiczny
+
+- `Next.js 15`
+- `TypeScript`
+- `TailwindCSS`
 - `fast-xml-parser`
 - `zod`
 - `lucide-react`
 - `pdfmake`
-- OpenAI API
+- `qrcode`
+- `pdf-parse`
+- `OpenAI API`
+- `Vercel`
 
-## Project Structure
+## Struktura Projektu
 
 ```text
 app/
-  api/parse-pdf/route.ts
-  api/pdf/route.ts
-  api/translate/route.ts
-  page.tsx
+  api/
+    parse-pdf/route.ts     # parsowanie PDF po stronie server route
+    pdf/route.ts           # generowanie PDF
+    translate/route.ts     # tlumaczenia OpenAI
+  globals.css
+  layout.tsx
+  page.tsx                 # glowny interfejs aplikacji
+
 components/
+  invoice-preview.tsx      # podglad faktury
+  ui/                      # lokalne komponenty UI
+
 lib/
   invoice/
+    format.ts
+    schema.ts              # walidacja i model domenowy
   pdf/
+    invoice-pdfmake.ts     # generator PDF
+    parser.ts              # ekstrakcja danych z PDF
   translation/
+    dictionaries.ts        # statyczne slowniki etykiet
+    engine.ts              # logika tlumaczen AI
+    languages.ts           # konfiguracja jezykow
   xml/
+    parser.ts              # mapper KSeF FA(3) XML -> Invoice
+
 types/
+  invoice.ts               # typy domenowe
+
 sample-data/
+  sample-fa3-invoice.xml   # bezpieczna probka do testow
 ```
 
-## Local Development
+## Uruchomienie Lokalne
+
+Wymagania:
+
+- Node.js `20.19+` albo nowszy,
+- npm,
+- klucz OpenAI, jezeli maja dzialac tlumaczenia wolnego tekstu.
+
+Instalacja:
 
 ```bash
 npm install
+```
+
+Konfiguracja env:
+
+```bash
 cp .env.example .env.local
+```
+
+W `.env.local` ustaw:
+
+```env
+OPENAI_API_KEY=<your-openai-api-key>
+OPENAI_TRANSLATION_MODEL=gpt-4.1-mini
+```
+
+Start lokalny:
+
+```bash
 npm run dev
 ```
 
-Open `http://localhost:3000` and upload `sample-data/sample-fa3-invoice.xml`.
+Aplikacja bedzie dostepna pod:
 
-OpenAI is optional for local demos. Without `OPENAI_API_KEY`, fixed labels still translate and item descriptions remain unchanged.
+```text
+http://localhost:3000
+```
 
-## Deployment
+Do szybkiego testu mozna uzyc:
 
-1. Push the repository to GitHub.
-2. Import the project into Vercel.
-3. Set `OPENAI_API_KEY` and optionally `OPENAI_TRANSLATION_MODEL`.
-4. Deploy.
+```text
+sample-data/sample-fa3-invoice.xml
+```
 
-Use Node `20.19+` or `22.13+` for the cleanest dependency engine compatibility.
+## Komendy Developerskie
 
-## Extension Points
+```bash
+npm run dev
+npm run typecheck
+npm run build
+```
 
-- Add or refine static label translations in `lib/translation/dictionaries.ts`.
-- Add languages in `lib/translation/languages.ts` and the `LanguageCode` union.
-- Improve FA(3) field mappings in `lib/xml/parser.ts`.
-- Improve PDF extraction in `lib/pdf/parser.ts`; bitmap-only QR codes still require image QR decoding if the verification URL is not embedded as text.
+Przed commitem warto uruchomic:
+
+```bash
+npm run typecheck
+npm run build
+```
+
+## Deploy na Vercel
+
+Projekt jest gotowy do deploya na Vercel.
+
+W Vercel trzeba ustawic zmienne srodowiskowe:
+
+```env
+OPENAI_API_KEY=...
+OPENAI_TRANSLATION_MODEL=gpt-4.1-mini
+```
+
+`OPENAI_API_KEY` powinien byc ustawiony jako sekret produkcyjny. Nie nalezy commitowac `.env.local`.
+
+Deploy przez CLI:
+
+```bash
+npx vercel deploy --prod
+```
+
+## Co Przekazac Drugiemu Developerowi
+
+Najlepsza konfiguracja do wspolpracy:
+
+- dostep do repozytorium GitHub,
+- link do projektu na Vercel,
+- dostep do projektu Vercel jako czlonek zespolu,
+- osobny klucz OpenAI albo dostep do sekretow przez Vercel,
+- opis aktualnego zakresu MVP,
+- przykladowe, zanonimizowane faktury XML/PDF do testow,
+- informacja, ze prawdziwe faktury klientow nie powinny trafic do repo.
+
+Minimalny pakiet dla developera:
+
+```text
+1. URL repozytorium GitHub
+2. Instrukcja z README.md
+3. .env.example
+4. Dostep do Vercel lub lista wymaganych env variables
+5. Zanonimizowane pliki testowe XML/PDF
+6. Informacja, ktore obszary ma rozwijac
+```
+
+## Czego Nie Udostepniac
+
+Nie wysylaj developerowi w mailu, na Slacku ani w repo:
+
+- `.env.local`,
+- prawdziwego `OPENAI_API_KEY`,
+- prywatnych faktur klientow,
+- niezanonimizowanych PDF/XML,
+- katalogu `.vercel`,
+- katalogu `.next`,
+- `node_modules`,
+- logow lokalnych,
+- danych bankowych kontrahentow z realnych faktur,
+- numerow NIP/IBAN z realnych dokumentow, jezeli nie sa potrzebne do testow.
+
+Jezeli developer potrzebuje testow na prawdziwych strukturach, przygotuj pliki z podstawionymi danymi:
+
+- fikcyjny NIP,
+- fikcyjny IBAN,
+- fikcyjne dane firm,
+- fikcyjne kwoty,
+- realna struktura XML bez realnych danych biznesowych.
+
+## Obszary Do Rozwoju
+
+Najwazniejsze miejsca w kodzie:
+
+- XML FA(3): `lib/xml/parser.ts`
+- PDF parsing: `lib/pdf/parser.ts`
+- Model faktury: `types/invoice.ts`
+- Walidacja: `lib/invoice/schema.ts`
+- Slowniki etykiet: `lib/translation/dictionaries.ts`
+- Lista jezykow: `lib/translation/languages.ts`
+- Tlumaczenie AI: `lib/translation/engine.ts`
+- Generator PDF: `lib/pdf/invoice-pdfmake.ts`
+- UI aplikacji: `app/page.tsx`
+- Podglad faktury: `components/invoice-preview.tsx`
+
+## Priorytety Techniczne
+
+Przy dalszym rozwoju trzymamy sie tych zasad:
+
+- najpierw normalizacja danych do `Invoice`, potem render,
+- nie renderujemy bezposrednio z XML,
+- nie uzywamy AI do kwot, numerow, dat ani identyfikatorow,
+- parser XML ma byc tolerancyjny na pola opcjonalne,
+- PDF parsing traktujemy jako best effort,
+- najwazniejszym formatem zrodlowym pozostaje XML FA(3),
+- UI jest po polsku domyslnie, z opcja EN,
+- faktura moze byc eksportowana jednojezycznie albo dwujezycznie.
+
+## Znane Ograniczenia
+
+- PDF parsing jest mniej deterministyczny niz XML, bo zalezy od tego, jak tekst zostal osadzony w pliku PDF.
+- Bitmapowe kody QR wymagaja dodatkowego dekodowania obrazu, jezeli link nie wystepuje w warstwie tekstowej PDF.
+- Nie wszystkie branzowe warianty FA(3) sa jeszcze pokryte testami.
+- Aplikacja nie przechowuje faktur i nie ma bazy danych.
+- Brak logowania, billingow i kont uzytkownikow zgodnie z zakresem MVP.
 
 ## Third-Party References
 
-The PDF export layout and section coverage are informed by the public
-[`CIRFMF/ksef-pdf-generator`](https://github.com/CIRFMF/ksef-pdf-generator)
-project, which is published under the MIT License.
+Eksport PDF i zakres sekcji byly inspirowane publicznym projektem Ministerstwa Finansow:
+
+```text
+https://github.com/CIRFMF/ksef-pdf-generator
+```
+
+Projekt `CIRFMF/ksef-pdf-generator` jest opublikowany na licencji MIT. Szczegoly sa w `THIRD_PARTY_NOTICES.md`.
