@@ -1,0 +1,11 @@
+.env
+.env.local
+.env.*.local
+.next
+node_modules
+next-dev.log
+next-dev.err.log
+tsconfig.tsbuildinfo
+tmp-*.pdf
+przykłady
+broszura-informacyjna-dotyczaca-struktury-logicznej-fa-3-04032026.pdf

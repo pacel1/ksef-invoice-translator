@@ -1,0 +1,12 @@
+.next
+node_modules
+out
+dist
+.env
+.env*.local
+*.log
+*.tsbuildinfo
+coverage
+.vercel
+przykłady/
+broszura-informacyjna-dotyczaca-struktury-logicznej-fa-3-04032026.pdf

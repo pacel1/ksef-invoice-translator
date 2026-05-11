@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+  <Naglowek>
+    <KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</KodFormularza>
+    <WariantFormularza>3</WariantFormularza>
+    <DataWytworzeniaFa>2026-05-11T08:30:00Z</DataWytworzeniaFa>
+  </Naglowek>
+  <Podmiot1>
+    <DaneIdentyfikacyjne>
+      <NIP>5250000000</NIP>
+      <Nazwa>Demo Software Sp. z o.o.</Nazwa>
+    </DaneIdentyfikacyjne>
+    <Adres>
+      <KodKraju>PL</KodKraju>
+      <AdresL1>ul. Prosta 1</AdresL1>
+      <AdresL2>00-001 Warszawa</AdresL2>
+    </Adres>
+  </Podmiot1>
+  <Podmiot2>
+    <DaneIdentyfikacyjne>
+      <NIP>DE123456789</NIP>
+      <Nazwa>Example GmbH</Nazwa>
+    </DaneIdentyfikacyjne>
+    <Adres>
+      <KodKraju>DE</KodKraju>
+      <AdresL1>Alexanderplatz 7</AdresL1>
+      <AdresL2>10178 Berlin</AdresL2>
+    </Adres>
+  </Podmiot2>
+  <Fa>
+    <KodWaluty>EUR</KodWaluty>
+    <P_1>2026-05-11</P_1>
+    <P_2>FV/2026/05/001</P_2>
+    <P_6>2026-05-10</P_6>
+    <P_13_1>1800.00</P_13_1>
+    <P_14_1>414.00</P_14_1>
+    <P_15>2214.00</P_15>
+    <FaWiersz>
+      <P_7>Usługa konsultacji wdrożeniowej KSeF</P_7>
+      <P_8A>h</P_8A>
+      <P_8B>10</P_8B>
+      <P_9A>120.00</P_9A>
+      <P_11>1200.00</P_11>
+      <P_12>23</P_12>
+    </FaWiersz>
+    <FaWiersz>
+      <P_7>Przygotowanie dokumentacji technicznej dla kontrahenta</P_7>
+      <P_8A>szt.</P_8A>
+      <P_8B>1</P_8B>
+      <P_9A>600.00</P_9A>
+      <P_11>600.00</P_11>
+      <P_12>23</P_12>
+    </FaWiersz>
+  </Fa>
+  <Platnosc>
+    <TerminPlatnosci>2026-05-25</TerminPlatnosci>
+    <FormaPlatnosci>przelew bankowy</FormaPlatnosci>
+    <NrRB>PL61109010140000071219812874</NrRB>
+  </Platnosc>
+  <DodatkowyOpis>Prosimy o podanie numeru faktury w tytule przelewu.</DodatkowyOpis>
+</Faktura>
