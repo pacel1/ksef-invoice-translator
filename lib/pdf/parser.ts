@@ -1,7 +1,7 @@
+import pdfParse from "pdf-parse";
 import { invoiceSchema } from "@/lib/invoice/schema";
 import type { BankAccount, Invoice, InvoiceItem, OrderInfo, TaxBreakdownLine } from "@/types/invoice";
 
-type PdfParse = (buffer: Buffer) => Promise<{ text: string }>;
 type Registry = NonNullable<NonNullable<Invoice["footer"]>["registry"]>;
 
 type PdfParseResult =
@@ -26,7 +26,7 @@ const sectionNames = [
 
 export async function parseKsefPdf(buffer: Buffer): Promise<PdfParseResult> {
   try {
-    const parsed = await loadPdfParse()(buffer);
+    const parsed = await pdfParse(buffer);
     const rawText = normalizePdfText(parsed.text);
     const rawBytesText = buffer.toString("latin1");
     const warnings = [
@@ -85,11 +85,6 @@ export async function parseKsefPdf(buffer: Buffer): Promise<PdfParseResult> {
       error: error instanceof Error ? error.message : "Unable to parse KSeF PDF."
     };
   }
-}
-
-function loadPdfParse(): PdfParse {
-  const nodeRequire = eval("require") as NodeRequire;
-  return nodeRequire("pdf-parse/lib/pdf-parse.js") as PdfParse;
 }
 
 function parseParty(block: string) {
