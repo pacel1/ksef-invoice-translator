@@ -1,4 +1,5 @@
 import type { LanguageCode, TranslationLabels } from "@/types/invoice";
+import { localizedLabels } from "@/lib/translation/localized-labels";
 
 const en: TranslationLabels = {
   appName: "KSeF Invoice Translator",
@@ -153,6 +154,11 @@ const pl: TranslationLabels = {
 const overrides: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
   de: {
     invoice: "Rechnung",
+    invoiceType: "Rechnungsart",
+    invoiceTypeBasic: "Basisrechnung",
+    invoiceTypeAdvance: "Anzahlungsrechnung",
+    invoiceTypeFinal: "Schlussrechnung",
+    invoiceTypeCorrection: "Korrekturrechnung",
     invoiceNumber: "Rechnungsnummer",
     issueDate: "Ausstellungsdatum",
     saleDate: "Verkaufsdatum",
@@ -161,7 +167,6 @@ const overrides: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
     vatId: "USt-IdNr.",
     address: "Adresse",
     description: "Beschreibung",
-    index: "Index",
     quantity: "Menge",
     unit: "Einheit",
     unitPrice: "Einzelpreis",
@@ -172,7 +177,14 @@ const overrides: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
     vatTotal: "MwSt. gesamt",
     grossTotal: "Brutto gesamt",
     payment: "Zahlung",
+    paymentTerms: "Zahlungsbedingungen",
+    partialPayments: "Teilzahlungen",
+    paid: "Bezahlt",
+    paidDate: "Zahlungsdatum",
+    amount: "Betrag",
+    taxSummary: "Steuerübersicht",
     bankAccounts: "Bankkonten",
+    factorBankAccounts: "Factoring-Bankkonten",
     bankName: "Bankname",
     accountNumber: "Kontonummer",
     accountDescription: "Kontobeschreibung",
@@ -180,12 +192,33 @@ const overrides: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
     method: "Methode",
     bankAccount: "Bankkonto",
     notes: "Anmerkungen",
+    additionalInformation: "Zusätzliche Informationen",
+    value: "Wert",
+    thirdParties: "Weitere Parteien",
+    authorizedParty: "Bevollmächtigte Partei",
+    settlements: "Abrechnungen",
+    charges: "Zuschläge",
+    deductions: "Abzüge",
+    reason: "Grund",
+    amountToSettle: "Zu verrechnender Betrag",
+    transactionTerms: "Transaktionsbedingungen",
+    orders: "Bestellungen",
+    orderNumber: "Bestellnummer",
+    contractNumber: "Vertragsnummer",
+    totalValue: "Gesamtwert",
+    verification: "KSeF-Verifizierung",
+    ksefNumber: "KSeF-Nummer",
+    verificationLink: "Verifizierungslink",
     footer: "Fußzeile",
     registry: "Registerdaten",
-    translated: "Übersetzt"
+    translatedRepresentation:
+      "Dieses Dokument ist eine übersetzte, menschenlesbare Darstellung einer polnischen strukturierten KSeF-Rechnung.",
+    originalPolish: "Polnisches Original",
+    translated: "Übersetzung"
   },
   fr: {
     invoice: "Facture",
+    invoiceType: "Type de facture",
     invoiceNumber: "Numéro de facture",
     issueDate: "Date d'émission",
     saleDate: "Date de vente",
@@ -194,18 +227,24 @@ const overrides: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
     vatId: "Numéro de TVA",
     address: "Adresse",
     description: "Description",
-    index: "Index",
     quantity: "Quantité",
     unit: "Unité",
     unitPrice: "Prix unitaire",
     vatRate: "Taux de TVA",
-    netValue: "Total net",
-    grossValue: "Total brut",
+    netValue: "Montant net",
+    grossValue: "Montant brut",
     netTotal: "Total net",
     vatTotal: "TVA totale",
     grossTotal: "Total brut",
     payment: "Paiement",
+    paymentTerms: "Conditions de paiement",
+    partialPayments: "Paiements partiels",
+    paid: "Payé",
+    paidDate: "Date de paiement",
+    amount: "Montant",
+    taxSummary: "Résumé de la TVA",
     bankAccounts: "Comptes bancaires",
+    factorBankAccounts: "Comptes bancaires du factor",
     bankName: "Nom de la banque",
     accountNumber: "Numéro de compte",
     accountDescription: "Description du compte",
@@ -213,12 +252,30 @@ const overrides: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
     method: "Méthode",
     bankAccount: "Compte bancaire",
     notes: "Notes",
+    additionalInformation: "Informations supplémentaires",
+    thirdParties: "Parties supplémentaires",
+    authorizedParty: "Partie autorisée",
+    settlements: "Règlements",
+    charges: "Frais",
+    deductions: "Déductions",
+    reason: "Motif",
+    orders: "Commandes",
+    orderNumber: "Numéro de commande",
+    contractNumber: "Numéro de contrat",
+    totalValue: "Valeur totale",
+    verification: "Vérification KSeF",
+    ksefNumber: "Numéro KSeF",
+    verificationLink: "Lien de vérification",
     footer: "Pied de page",
     registry: "Données d'enregistrement",
-    translated: "Traduit"
+    translatedRepresentation:
+      "Ce document est une représentation traduite et lisible d'une facture structurée polonaise KSeF.",
+    originalPolish: "Original polonais",
+    translated: "Traduction"
   },
   es: {
     invoice: "Factura",
+    invoiceType: "Tipo de factura",
     invoiceNumber: "Número de factura",
     issueDate: "Fecha de emisión",
     saleDate: "Fecha de venta",
@@ -238,7 +295,14 @@ const overrides: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
     vatTotal: "IVA total",
     grossTotal: "Total bruto",
     payment: "Pago",
+    paymentTerms: "Condiciones de pago",
+    partialPayments: "Pagos parciales",
+    paid: "Pagado",
+    paidDate: "Fecha de pago",
+    amount: "Importe",
+    taxSummary: "Resumen de IVA",
     bankAccounts: "Cuentas bancarias",
+    factorBankAccounts: "Cuentas bancarias del factor",
     bankName: "Nombre del banco",
     accountNumber: "Número de cuenta",
     accountDescription: "Descripción de la cuenta",
@@ -246,12 +310,30 @@ const overrides: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
     method: "Método",
     bankAccount: "Cuenta bancaria",
     notes: "Notas",
+    additionalInformation: "Información adicional",
+    thirdParties: "Partes adicionales",
+    authorizedParty: "Parte autorizada",
+    settlements: "Liquidaciones",
+    charges: "Cargos",
+    deductions: "Deducciones",
+    reason: "Motivo",
+    orders: "Pedidos",
+    orderNumber: "Número de pedido",
+    contractNumber: "Número de contrato",
+    totalValue: "Valor total",
+    verification: "Verificación KSeF",
+    ksefNumber: "Número KSeF",
+    verificationLink: "Enlace de verificación",
     footer: "Pie de página",
     registry: "Datos registrales",
-    translated: "Traducido"
+    translatedRepresentation:
+      "Este documento es una representación traducida y legible de una factura estructurada polaca KSeF.",
+    originalPolish: "Original polaco",
+    translated: "Traducción"
   },
   it: {
     invoice: "Fattura",
+    invoiceType: "Tipo di fattura",
     invoiceNumber: "Numero fattura",
     issueDate: "Data di emissione",
     saleDate: "Data di vendita",
@@ -271,7 +353,14 @@ const overrides: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
     vatTotal: "IVA totale",
     grossTotal: "Totale lordo",
     payment: "Pagamento",
+    paymentTerms: "Termini di pagamento",
+    partialPayments: "Pagamenti parziali",
+    paid: "Pagato",
+    paidDate: "Data di pagamento",
+    amount: "Importo",
+    taxSummary: "Riepilogo IVA",
     bankAccounts: "Conti bancari",
+    factorBankAccounts: "Conti bancari del factor",
     bankName: "Nome banca",
     accountNumber: "Numero conto",
     accountDescription: "Descrizione conto",
@@ -279,9 +368,26 @@ const overrides: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
     method: "Metodo",
     bankAccount: "Conto bancario",
     notes: "Note",
+    additionalInformation: "Informazioni aggiuntive",
+    thirdParties: "Parti aggiuntive",
+    authorizedParty: "Parte autorizzata",
+    settlements: "Regolazioni",
+    charges: "Addebiti",
+    deductions: "Detrazioni",
+    reason: "Motivo",
+    orders: "Ordini",
+    orderNumber: "Numero ordine",
+    contractNumber: "Numero contratto",
+    totalValue: "Valore totale",
+    verification: "Verifica KSeF",
+    ksefNumber: "Numero KSeF",
+    verificationLink: "Link di verifica",
     footer: "Piè di pagina",
     registry: "Dati di registrazione",
-    translated: "Tradotto"
+    translatedRepresentation:
+      "Questo documento è una rappresentazione tradotta e leggibile di una fattura strutturata polacca KSeF.",
+    originalPolish: "Originale polacco",
+    translated: "Traduzione"
   }
 };
 
@@ -305,9 +411,32 @@ const genericNames: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = 
   el: { invoice: "Τιμολόγιο", seller: "Πωλητής", buyer: "Αγοραστής", notes: "Σημειώσεις" }
 };
 
+const requiredLabelFixes: Partial<Record<LanguageCode, Partial<TranslationLabels>>> = {
+  de: { line: "Zeile", key: "Schlüssel" },
+  fr: { line: "Ligne", key: "Clé", value: "Valeur", transactionTerms: "Conditions de transaction", invoiceTypeBasic: "Facture de base" },
+  es: { line: "Línea", key: "Clave", value: "Valor", transactionTerms: "Condiciones de la transacción", invoiceTypeBasic: "Factura básica" },
+  it: { line: "Riga", key: "Chiave", value: "Valore", transactionTerms: "Termini della transazione", invoiceTypeBasic: "Fattura base" },
+  hr: { line: "Redak", key: "Ključ", value: "Vrijednost", transactionTerms: "Uvjeti transakcije", verificationLink: "Poveznica za provjeru", ksefNumber: "KSeF broj", invoiceTypeBasic: "Osnovni račun" },
+  sl: { line: "Vrstica", key: "Ključ", value: "Vrednost", transactionTerms: "Pogoji transakcije", verificationLink: "Povezava za preverjanje", ksefNumber: "Številka KSeF", invoiceTypeBasic: "Osnovni račun" },
+  lt: { line: "Eilutė", key: "Raktas", value: "Vertė", transactionTerms: "Sandorio sąlygos", verificationLink: "Patikros nuoroda", ksefNumber: "KSeF numeris", invoiceTypeBasic: "Pagrindinė sąskaita" },
+  lv: { line: "Rinda", key: "Atslēga", value: "Vērtība", transactionTerms: "Darījuma noteikumi", verificationLink: "Pārbaudes saite", ksefNumber: "KSeF numurs", invoiceTypeBasic: "Pamata rēķins" },
+  et: { line: "Rida", key: "Võti", value: "Väärtus", transactionTerms: "Tehingu tingimused", verificationLink: "Kontrollilink", ksefNumber: "KSeF-i number", invoiceTypeBasic: "Põhiarve" },
+  da: { line: "Linje", key: "Nøgle", value: "Værdi", transactionTerms: "Transaktionsbetingelser", verificationLink: "Verifikationslink", ksefNumber: "KSeF-nummer", invoiceTypeBasic: "Basisfaktura" },
+  sv: { line: "Rad", key: "Nyckel", value: "Värde", transactionTerms: "Transaktionsvillkor", verificationLink: "Verifieringslänk", ksefNumber: "KSeF-nummer", invoiceTypeBasic: "Basfaktura" },
+  fi: { line: "Rivi", key: "Avain", value: "Arvo", transactionTerms: "Tapahtuman ehdot", verificationLink: "Varmennuslinkki", ksefNumber: "KSeF-numero", invoiceTypeBasic: "Peruslasku" },
+  no: { line: "Linje", key: "Nøkkel", value: "Verdi", transactionTerms: "Transaksjonsvilkår", verificationLink: "Verifiseringslenke", ksefNumber: "KSeF-nummer", invoiceTypeBasic: "Grunnfaktura" },
+  el: { line: "Γραμμή", key: "Κλειδί", value: "Τιμή", transactionTerms: "Όροι συναλλαγής", verificationLink: "Σύνδεσμος επαλήθευσης", ksefNumber: "Αριθμός KSeF", invoiceTypeBasic: "Βασικό τιμολόγιο" }
+};
+
 export function getLabels(language: LanguageCode): TranslationLabels {
   const labels: TranslationLabels = { ...en };
-  Object.assign(labels, genericNames[language] ?? {}, overrides[language] ?? {});
+  Object.assign(
+    labels,
+    genericNames[language] ?? {},
+    localizedLabels[language] ?? {},
+    requiredLabelFixes[language] ?? {},
+    overrides[language] ?? {}
+  );
   return labels;
 }
 
@@ -316,7 +445,8 @@ export function getBilingualLabels(language: LanguageCode): TranslationLabels {
   const labels: TranslationLabels = {};
 
   for (const key of Object.keys(pl)) {
-    labels[key] = target[key] && target[key] !== pl[key] ? `${target[key]} / ${pl[key]}` : pl[key];
+    const polishLabel = key === "vatId" ? "NIP" : pl[key];
+    labels[key] = target[key] && target[key] !== polishLabel ? `${target[key]} / ${polishLabel}` : polishLabel;
   }
 
   return labels;

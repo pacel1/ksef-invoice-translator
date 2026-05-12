@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { InvoicePreview } from "@/components/invoice-preview";
 import { parseKsefXml } from "@/lib/xml/parser";
-import { languageOptions } from "@/lib/translation/languages";
+import { getLanguageOptions } from "@/lib/translation/languages";
 import type { Invoice, LanguageCode } from "@/types/invoice";
 
 type UiLanguage = "pl" | "en";
@@ -175,9 +175,10 @@ export default function Home() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const t = copy[uiLanguage];
+  const languageOptions = useMemo(() => getLanguageOptions(uiLanguage), [uiLanguage]);
   const selectedLanguage = useMemo(
-    () => languageOptions.find((option) => option.code === language)?.label ?? "English",
-    [language]
+    () => languageOptions.find((option) => option.code === language)?.label ?? language,
+    [language, languageOptions]
   );
 
   async function handleFile(file?: File) {

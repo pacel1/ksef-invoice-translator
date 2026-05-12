@@ -1,12 +1,12 @@
 import OpenAI from "openai";
 import type { Invoice, LanguageCode, TranslatedInvoice } from "@/types/invoice";
-import { supportedLanguages } from "@/lib/translation/languages";
+import { translationTargets } from "@/lib/translation/languages";
 
 export async function translateInvoiceFreeText(
   invoice: Invoice,
   language: LanguageCode
 ): Promise<TranslatedInvoice> {
-  const targetLanguage = supportedLanguages[language];
+  const targetLanguage = translationTargets[language];
   const orderLines = invoice.orders?.flatMap((order) => order.lines ?? []) ?? [];
   const units = Array.from(
     new Set([...invoice.items.map((item) => item.unit), ...orderLines.map((line) => line.unit)].filter(Boolean))
@@ -58,11 +58,11 @@ export async function translateInvoiceFreeText(
       {
         role: "system",
         content:
-          "Translate only invoice free text and units of measure. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, or registry numbers. Return strict JSON with keys items:string[], orderLines:string[], units:object, additionalDescriptions:{key:string,value:string}[], settlementReasons:string[], notes:string, and footer:string. The units object must map each original unit string exactly to its translation."
+          "Translate only invoice free text and units of measure into the requested target language. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, or registry numbers. Preserve the order and array lengths exactly. Return strict JSON with keys items:string[], orderLines:string[], units:object, additionalDescriptions:{key:string,value:string}[], settlementReasons:string[], notes:string, and footer:string. The units object must map each original unit string exactly to its translation."
       },
       {
         role: "user",
-        content: JSON.stringify({ targetLanguage, fields })
+        content: JSON.stringify({ sourceLanguage: "Polish", targetLanguage, targetLanguageCode: language, fields })
       }
     ]
   });
@@ -83,7 +83,7 @@ export async function translateInvoiceFreeText(
     language,
     items: invoice.items.map((item, index) => ({
       ...item,
-      translatedName: translated.items?.[index] || item.name,
+      translatedName: textAt(translated.items, index, item.name),
       translatedUnit: item.unit ? translated.units?.[item.unit] || item.unit : undefined
     })),
     additionalDescriptions: invoice.additionalDescriptions?.map((entry, index) => ({
@@ -96,11 +96,11 @@ export async function translateInvoiceFreeText(
           ...invoice.settlements,
           charges: invoice.settlements.charges?.map((line) => ({
             ...line,
-            translatedReason: translated.settlementReasons?.[settlementIndex++] || line.reason
+            translatedReason: textAt(translated.settlementReasons, settlementIndex++, line.reason)
           })),
           deductions: invoice.settlements.deductions?.map((line) => ({
             ...line,
-            translatedReason: translated.settlementReasons?.[settlementIndex++] || line.reason
+            translatedReason: textAt(translated.settlementReasons, settlementIndex++, line.reason)
           }))
         }
       : undefined,
@@ -110,16 +110,16 @@ export async function translateInvoiceFreeText(
         const index = orderLines.indexOf(line);
         return {
           ...line,
-          translatedName: index >= 0 ? translated.orderLines?.[index] || line.name : line.name,
+          translatedName: index >= 0 ? textAt(translated.orderLines, index, line.name) : line.name,
           translatedUnit: line.unit ? translated.units?.[line.unit] || line.unit : undefined
         };
       })
     })),
-    translatedNotes: translated.notes || invoice.notes,
+    translatedNotes: textValue(translated.notes, invoice.notes),
     footer: invoice.footer
       ? {
           ...invoice.footer,
-          translatedText: translated.footer || invoice.footer.text
+          translatedText: textValue(translated.footer, invoice.footer.text)
         }
       : undefined
   };
@@ -131,4 +131,12 @@ function safeJson(value: string) {
   } catch {
     return {};
   }
+}
+
+function textAt(values: unknown[] | undefined, index: number, fallback?: string) {
+  return textValue(values?.[index], fallback);
+}
+
+function textValue(value: unknown, fallback?: string) {
+  return typeof value === "string" && value.trim() ? value : fallback;
 }
