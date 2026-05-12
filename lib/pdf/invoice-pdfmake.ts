@@ -1,5 +1,6 @@
 import pdfMake from "pdfmake";
 import QRCode from "qrcode";
+import path from "node:path";
 import type {
   Content,
   ContentTable,
@@ -27,13 +28,14 @@ type PdfMakeWithPolicies = typeof pdfMake & {
 };
 
 const fontDirectory = "node_modules/pdfmake/fonts/Roboto";
+const resolvedFontDirectory = path.join(process.cwd(), fontDirectory);
 
 const fonts = {
   Roboto: {
-    normal: `${fontDirectory}/Roboto-Regular.ttf`,
-    bold: `${fontDirectory}/Roboto-Medium.ttf`,
-    italics: `${fontDirectory}/Roboto-Italic.ttf`,
-    bolditalics: `${fontDirectory}/Roboto-MediumItalic.ttf`
+    normal: path.join(resolvedFontDirectory, "Roboto-Regular.ttf"),
+    bold: path.join(resolvedFontDirectory, "Roboto-Medium.ttf"),
+    italics: path.join(resolvedFontDirectory, "Roboto-Italic.ttf"),
+    bolditalics: path.join(resolvedFontDirectory, "Roboto-MediumItalic.ttf")
   }
 };
 
@@ -51,7 +53,7 @@ const styles: StyleDictionary = {
 
 export async function renderInvoicePdfMake(invoice: Invoice, language: LanguageCode, bilingual = true) {
   const pdfMakeServer = pdfMake as PdfMakeWithPolicies;
-  pdfMakeServer.setLocalAccessPolicy?.((path) => path.replaceAll("\\", "/").includes(fontDirectory));
+  pdfMakeServer.setLocalAccessPolicy?.((filePath) => filePath.replaceAll("\\", "/").includes(fontDirectory));
   pdfMakeServer.setUrlAccessPolicy?.(() => false);
   pdfMake.setFonts(fonts);
   const verificationQr = invoice.verification?.qrLink
