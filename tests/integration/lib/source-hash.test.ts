@@ -20,4 +20,10 @@ describe("sha256Hex", () => {
     const b = await sha256Hex(buf);
     expect(a).toBe(b);
   });
+
+  it("hashes a bare Uint8Array correctly", async () => {
+    const u8 = new Uint8Array(Buffer.from("hello", "utf8"));
+    const hex = await sha256Hex(u8);
+    expect(hex).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+  });
 });

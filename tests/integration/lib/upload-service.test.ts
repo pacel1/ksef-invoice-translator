@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
@@ -13,11 +13,22 @@ const admin = createClient(
 
 const samplePath = path.resolve(process.cwd(), "sample-data/sample-fa3-invoice.xml");
 
+const createdUserIds: string[] = [];
+
 async function newUser(label: string) {
   const email = `upload-${label}-${Date.now()}@example.test`;
   const { data } = await admin.auth.admin.createUser({ email, email_confirm: true });
-  return data.user!.id;
+  const id = data.user!.id;
+  createdUserIds.push(id);
+  return id;
 }
+
+afterEach(async () => {
+  while (createdUserIds.length > 0) {
+    const id = createdUserIds.pop()!;
+    await admin.auth.admin.deleteUser(id).catch(() => {});
+  }
+});
 
 describe("uploadInvoiceForUser (PDF)", () => {
   // The repo does not ship a real KSeF PDF fixture (sample-data is XML-only) and
@@ -47,8 +58,6 @@ describe("uploadInvoiceForUser (PDF)", () => {
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId);
     expect(count).toBe(0);
-
-    await admin.auth.admin.deleteUser(userId);
   });
 
   it("dedupes PDF uploads via source_hash before parsing", async () => {
@@ -77,8 +86,6 @@ describe("uploadInvoiceForUser (PDF)", () => {
 
     expect(result.isNew).toBe(false);
     expect(result.invoiceId).toBe(seeded.data!.id);
-
-    await admin.auth.admin.deleteUser(userId);
   });
 });
 
@@ -104,8 +111,6 @@ describe("uploadInvoiceForUser (XML)", () => {
     expect(row?.source_hash).toHaveLength(64);
     expect(row?.source_size).toBe(bytes.length);
     expect(row?.invoice_number).toBe(result.invoice.invoiceNumber);
-
-    await admin.auth.admin.deleteUser(userId);
   });
 
   it("returns the existing row when the same bytes are re-uploaded by the same user", async () => {
@@ -126,7 +131,5 @@ describe("uploadInvoiceForUser (XML)", () => {
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId);
     expect(count).toBe(1);
-
-    await admin.auth.admin.deleteUser(userId);
   });
 });

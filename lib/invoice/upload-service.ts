@@ -32,10 +32,7 @@ export async function uploadInvoiceForUser({ userId, file, supabase }: UploadOpt
   if (sourceType === "xml") {
     return uploadXml({ userId, supabase, bytes, hash });
   }
-  if (sourceType === "pdf") {
-    return uploadPdf({ userId, supabase, bytes, hash });
-  }
-  throw new UploadError(`Unsupported source type: ${sourceType}`, 415);
+  return uploadPdf({ userId, supabase, bytes, hash });
 }
 
 async function uploadXml(opts: {
@@ -51,6 +48,11 @@ async function uploadXml(opts: {
     .eq("source_hash", opts.hash)
     .is("deleted_at", null)
     .maybeSingle();
+
+  if (existing.error) {
+    console.error("[upload] dedupe lookup failed:", existing.error);
+    throw new UploadError("Failed to check for existing invoice", 500);
+  }
 
   if (existing.data) {
     return {
@@ -84,8 +86,30 @@ async function uploadXml(opts: {
     .select("id")
     .single();
 
-  if (insert.error || !insert.data) {
-    throw new UploadError(insert.error?.message ?? "Failed to persist invoice", 500);
+  if (insert.error) {
+    if (insert.error.code === "23505") {
+      const winner = await opts.supabase
+        .from("invoices")
+        .select("id, source_data, warnings")
+        .eq("user_id", opts.userId)
+        .eq("source_hash", opts.hash)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (winner.data) {
+        return {
+          invoice: winner.data.source_data as unknown as Invoice,
+          invoiceId: winner.data.id,
+          isNew: false,
+          warnings: winner.data.warnings ?? []
+        };
+      }
+    }
+    console.error("[upload] failed to insert invoice:", insert.error);
+    throw new UploadError("Failed to persist invoice", 500);
+  }
+
+  if (!insert.data) {
+    throw new UploadError("Failed to persist invoice", 500);
   }
 
   return {
@@ -109,6 +133,11 @@ async function uploadPdf(opts: {
     .eq("source_hash", opts.hash)
     .is("deleted_at", null)
     .maybeSingle();
+
+  if (existing.error) {
+    console.error("[upload] dedupe lookup failed:", existing.error);
+    throw new UploadError("Failed to check for existing invoice", 500);
+  }
 
   if (existing.data) {
     return {
@@ -142,8 +171,30 @@ async function uploadPdf(opts: {
     .select("id")
     .single();
 
-  if (insert.error || !insert.data) {
-    throw new UploadError(insert.error?.message ?? "Failed to persist invoice", 500);
+  if (insert.error) {
+    if (insert.error.code === "23505") {
+      const winner = await opts.supabase
+        .from("invoices")
+        .select("id, source_data, warnings")
+        .eq("user_id", opts.userId)
+        .eq("source_hash", opts.hash)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (winner.data) {
+        return {
+          invoice: winner.data.source_data as unknown as Invoice,
+          invoiceId: winner.data.id,
+          isNew: false,
+          warnings: winner.data.warnings ?? []
+        };
+      }
+    }
+    console.error("[upload] failed to insert invoice:", insert.error);
+    throw new UploadError("Failed to persist invoice", 500);
+  }
+
+  if (!insert.data) {
+    throw new UploadError("Failed to persist invoice", 500);
   }
 
   return {
@@ -157,5 +208,12 @@ async function uploadPdf(opts: {
 function detectSourceType(file: File): "xml" | "pdf" {
   const name = file.name.toLowerCase();
   if (file.type === "application/pdf" || name.endsWith(".pdf")) return "pdf";
-  return "xml";
+  if (
+    file.type === "application/xml" ||
+    file.type === "text/xml" ||
+    name.endsWith(".xml")
+  ) {
+    return "xml";
+  }
+  throw new UploadError(`Unsupported file type: ${file.type || file.name}`, 415);
 }
