@@ -43,4 +43,26 @@ describe("uploadInvoiceForUser (XML)", () => {
 
     await admin.auth.admin.deleteUser(userId);
   });
+
+  it("returns the existing row when the same bytes are re-uploaded by the same user", async () => {
+    const userId = await newUser("xml-dupe");
+    const bytes = readFileSync(samplePath);
+    const file1 = new File([bytes], "sample.xml", { type: "application/xml" });
+    const file2 = new File([bytes], "sample-renamed.xml", { type: "application/xml" });
+
+    const first = await uploadInvoiceForUser({ userId, file: file1, supabase: admin });
+    const second = await uploadInvoiceForUser({ userId, file: file2, supabase: admin });
+
+    expect(second.invoiceId).toBe(first.invoiceId);
+    expect(second.isNew).toBe(false);
+    expect(second.invoice.invoiceNumber).toBe(first.invoice.invoiceNumber);
+
+    const { count } = await admin
+      .from("invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    expect(count).toBe(1);
+
+    await admin.auth.admin.deleteUser(userId);
+  });
 });

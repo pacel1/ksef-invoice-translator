@@ -41,6 +41,23 @@ async function uploadXml(opts: {
   bytes: Buffer;
   hash: string;
 }): Promise<UploadResult> {
+  const existing = await opts.supabase
+    .from("invoices")
+    .select("id, source_data, warnings")
+    .eq("user_id", opts.userId)
+    .eq("source_hash", opts.hash)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (existing.data) {
+    return {
+      invoice: existing.data.source_data as unknown as Invoice,
+      invoiceId: existing.data.id,
+      isNew: false,
+      warnings: existing.data.warnings ?? []
+    };
+  }
+
   const xml = new TextDecoder().decode(opts.bytes);
   const parsed = parseKsefXml(xml);
   if (!parsed.ok) {
