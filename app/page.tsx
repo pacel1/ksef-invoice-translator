@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -10,215 +10,17 @@ import {
   Download,
   FileText,
   Languages,
-  Loader2,
   LockKeyhole,
-  ScanLine,
   ShieldCheck,
   UploadCloud
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { InvoicePreview } from "@/components/invoice-preview";
-import { parseKsefXml } from "@/lib/xml/parser";
-import { buildKsefXmlVerificationLink } from "@/lib/xml/verification";
-import { getLanguageOptions } from "@/lib/translation/languages";
-import type { Invoice, LanguageCode } from "@/types/invoice";
 import { copy, type UiLanguage } from "@/lib/workspace/copy";
 
-const ksefVerificationMessages = {
-  confirmed: "Faktura została odnaleziona w KSeF. Numer KSeF został dodany do wygenerowanej faktury.",
-  notConfirmed:
-    "Nie udało się potwierdzić faktury w KSeF na podstawie publicznego linku weryfikacyjnego. Blok QR/link/numer KSeF nie został dodany do faktury."
-};
-
 export default function Home() {
-  const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [language, setLanguage] = useState<LanguageCode>("en");
   const [uiLanguage, setUiLanguage] = useState<UiLanguage>("pl");
-  const [messages, setMessages] = useState<string[]>([]);
-  const [bilingual, setBilingual] = useState(true);
-  const [isParsing, setIsParsing] = useState(false);
-  const [isTranslating, setIsTranslating] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const t = copy[uiLanguage];
-  const languageOptions = useMemo(() => getLanguageOptions(uiLanguage), [uiLanguage]);
-  const selectedLanguage = useMemo(
-    () => languageOptions.find((option) => option.code === language)?.label ?? language,
-    [language, languageOptions]
-  );
-
-  async function handleFile(file?: File) {
-    if (!file) return;
-    setMessages([]);
-    setInvoice(null);
-
-    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-      setIsParsing(true);
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const response = await fetch("/api/parse-pdf", {
-          method: "POST",
-          body: formData
-        });
-        const payload = await response.json();
-
-        if (!response.ok) {
-          setInvoice(null);
-          setMessages([payload.error ?? String(t.parsePdfFailed)]);
-          return;
-        }
-
-        setInvoice(payload.invoice);
-        setMessages(payload.warnings ?? []);
-        if (payload.invoice?.verification?.qrLink) {
-          void verifyKsefForPreview(payload.invoice.verification.qrLink);
-        }
-      } catch (error) {
-        setInvoice(null);
-        setMessages([error instanceof Error ? error.message : String(t.parsePdfFailed)]);
-      } finally {
-        setIsParsing(false);
-      }
-      return;
-    }
-
-    const xmlBytes = await file.arrayBuffer();
-    const xml = new TextDecoder().decode(xmlBytes);
-    const parsed = parseKsefXml(xml);
-    if (!parsed.ok) {
-      setInvoice(null);
-      setMessages([parsed.error]);
-      return;
-    }
-
-    const qrLink = await buildKsefXmlVerificationLink(
-      xmlBytes,
-      parsed.invoice.issueDate,
-      parsed.invoice.seller.vatId
-    );
-    const invoiceWithVerification: Invoice = qrLink
-      ? {
-          ...parsed.invoice,
-          verification: {
-            ...parsed.invoice.verification,
-            qrLink
-          }
-        }
-      : parsed.invoice;
-
-    setInvoice(invoiceWithVerification);
-    setMessages(qrLink ? parsed.warnings : [...parsed.warnings, "Unable to build KSeF XML verification link: missing seller NIP or issue date."]);
-    if (qrLink) {
-      void verifyKsefForPreview(qrLink);
-    }
-  }
-
-  async function verifyKsefForPreview(verificationUrl: string) {
-    try {
-      const response = await fetch("/api/verify-ksef", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ verificationUrl })
-      });
-      const result = await response.json();
-
-      if (result.confirmed && result.ksefNumber) {
-        setInvoice((currentInvoice) =>
-          currentInvoice?.verification?.qrLink === verificationUrl
-            ? {
-                ...currentInvoice,
-                verification: {
-                  ...currentInvoice.verification,
-                  ksefNumber: result.ksefNumber
-                }
-              }
-            : currentInvoice
-        );
-        setMessages((currentMessages) => [...currentMessages, ksefVerificationMessages.confirmed]);
-        return;
-      }
-
-      setMessages((currentMessages) => [
-        ...currentMessages,
-        [ksefVerificationMessages.notConfirmed, result.statusCode ? `Status HTTP: ${result.statusCode}.` : "", result.error].filter(Boolean).join(" ")
-      ]);
-    } catch {
-      setMessages((currentMessages) => [
-        ...currentMessages,
-        "Nie udało się sprawdzić publicznego linku KSeF dla podglądu faktury."
-      ]);
-    }
-  }
-
-  async function translate() {
-    if (!invoice) return;
-    setIsTranslating(true);
-    setMessages([]);
-    try {
-      const response = await fetch("/api/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoice, language })
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? String(t.translationFailed));
-      setInvoice(payload.invoice);
-      if (!payload.usedAi) setMessages([String(t.noAi)]);
-    } catch (error) {
-      setMessages([error instanceof Error ? error.message : String(t.translationFailed)]);
-    } finally {
-      setIsTranslating(false);
-    }
-  }
-
-  async function downloadPdf() {
-    if (!invoice) return;
-    setIsGeneratingPdf(true);
-    try {
-      const response = await fetch("/api/pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoice, language, bilingual })
-      });
-      if (!response.ok) throw new Error(String(t.pdfFailed));
-      const ksefConfirmed = response.headers.get("X-KSeF-Verification-Confirmed") === "true";
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `ksef-invoice-${invoice.invoiceNumber}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
-      const ksefStatus = response.headers.get("X-KSeF-Verification-Status");
-      const ksefError = response.headers.get("X-KSeF-Verification-Error");
-      const ksefNumber = response.headers.get("X-KSeF-Number");
-      const decodedKsefError = ksefError ? decodeURIComponent(ksefError) : "";
-      const decodedKsefNumber = ksefNumber ? decodeURIComponent(ksefNumber) : "";
-      if (ksefConfirmed && decodedKsefNumber) {
-        setInvoice((currentInvoice) =>
-          currentInvoice
-            ? {
-                ...currentInvoice,
-                verification: {
-                  ...currentInvoice.verification,
-                  ksefNumber: decodedKsefNumber
-                }
-              }
-            : currentInvoice
-        );
-      }
-      setMessages([
-        ksefConfirmed
-          ? ksefVerificationMessages.confirmed
-          : [ksefVerificationMessages.notConfirmed, ksefStatus ? `Status HTTP: ${ksefStatus}.` : "", decodedKsefError].filter(Boolean).join(" ")
-      ]);
-    } catch (error) {
-      setMessages([error instanceof Error ? error.message : String(t.pdfFailed)]);
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  }
 
   return (
     <main className="min-h-screen bg-white text-slate-950">
@@ -271,12 +73,12 @@ export default function Home() {
             </h1>
             <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">{String(t.subheadline)}</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <a href="#workspace">
+              <Link href="/login">
                 <Button>
                   <UploadCloud className="h-4 w-4" />
                   {String(t.ctaUpload)}
                 </Button>
-              </a>
+              </Link>
               <a href="#how">
                 <Button variant="outline">
                   {String(t.ctaHow)}
@@ -303,8 +105,19 @@ export default function Home() {
                 </div>
                 <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-xs text-emerald-200">Ready</div>
               </div>
-              <div className="rounded-lg bg-white p-2 text-slate-950">
-                <DropZone onFile={handleFile} title={String(t.uploadTitle)} help={String(t.uploadHelp)} compact />
+              <div className="rounded-lg bg-white p-4 text-slate-950 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700 mx-auto">
+                  <UploadCloud className="h-6 w-6" />
+                </div>
+                <p className="mt-3 text-sm font-semibold text-slate-950">
+                  {uiLanguage === "pl" ? "Zaloguj się, aby zacząć" : "Sign in to get started"}
+                </p>
+                <Link
+                  href="/login"
+                  className="mt-3 inline-flex h-9 items-center rounded-md bg-slate-950 px-4 text-xs font-semibold text-white hover:bg-slate-800"
+                >
+                  {uiLanguage === "pl" ? "Zaloguj się" : "Sign in"}
+                </Link>
               </div>
               <div className="mt-3 grid gap-2 text-sm text-slate-200">
                 <FeaturePill icon={FileText} label={String(t.parserFeature)} />
@@ -322,73 +135,24 @@ export default function Home() {
       </section>
 
       <section id="workspace" className="mx-auto max-w-7xl px-5 py-12 md:px-8">
-        <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div className="max-w-3xl">
-          <h2 className="text-2xl font-semibold text-slate-950">{String(t.workspaceTitle)}</h2>
-          <p className="mt-2 text-slate-600">{String(t.workspaceLead)}</p>
-          </div>
-          <div className="flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-900">
-            <ShieldCheck className="h-4 w-4" />
-            Data-safe translation scope
-          </div>
-        </div>
-
-        <div className="mb-5 flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-soft md:flex-row md:items-center md:justify-between">
-          <div className="grid gap-2 sm:grid-cols-[220px_auto] sm:items-center">
-            <label htmlFor="language" className="text-sm font-medium text-slate-700">
-              {String(t.targetLanguage)}
-            </label>
-            <select
-              id="language"
-              value={language}
-              onChange={(event) => setLanguage(event.target.value as LanguageCode)}
-              className="h-10 rounded-md border border-input bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-8 py-16 text-center shadow-soft">
+          <h2 className="text-2xl font-semibold text-slate-950 md:text-3xl">
+            {uiLanguage === "pl" ? "Zacznij od zalogowania" : "Sign in to get started"}
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-slate-600">
+            {uiLanguage === "pl"
+              ? "Wgraj swoją pierwszą fakturę KSeF FA(3) lub PDF po zalogowaniu. Pierwsza faktura w miesiącu jest bezpłatna."
+              : "Upload your first KSeF FA(3) or PDF invoice after signing in. The first invoice each month is free."}
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Link
+              href="/login"
+              className="inline-flex h-11 items-center rounded-md bg-slate-950 px-6 text-sm font-semibold text-white shadow-sm hover:bg-slate-900"
             >
-              {languageOptions.map((option) => (
-                <option key={option.code} value={option.code}>{option.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <label className="flex h-10 items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 text-sm font-medium text-cyan-900">
-              <input
-                type="checkbox"
-                checked={bilingual}
-                onChange={(event) => setBilingual(event.target.checked)}
-                className="h-4 w-4 rounded border-cyan-300 text-cyan-700 focus:ring-cyan-700"
-              />
-              {String(t.bilingual)}
-            </label>
-            <Button onClick={translate} disabled={!invoice || isTranslating} variant="outline">
-              {isTranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
-              {String(t.translate)}
-            </Button>
-            <Button onClick={downloadPdf} disabled={!invoice || isGeneratingPdf}>
-              {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              {String(t.download)}
-            </Button>
+              {uiLanguage === "pl" ? "Zaloguj się" : "Sign in"}
+            </Link>
           </div>
         </div>
-
-        {messages.length ? (
-          <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm">
-            {messages.map((message) => <p key={message}>{message}</p>)}
-          </div>
-        ) : null}
-
-        {isParsing ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center text-slate-600">
-            <Loader2 className="mx-auto mb-3 h-5 w-5 animate-spin text-cyan-700" />
-            {String(t.parsing)}
-          </div>
-        ) : invoice ? (
-          <InvoicePreview invoice={invoice} language={language} bilingual={bilingual} />
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center text-slate-600">
-            <ScanLine className="mx-auto mb-3 h-8 w-8 text-cyan-700" />
-            {String(t.empty)} {selectedLanguage}.
-          </div>
-        )}
       </section>
 
       <ProcessSection t={t} />
@@ -403,41 +167,6 @@ export default function Home() {
         </div>
       </section>
     </main>
-  );
-}
-
-function DropZone({
-  onFile,
-  title,
-  help,
-  compact = false
-}: {
-  onFile: (file?: File) => void;
-  title: string;
-  help: string;
-  compact?: boolean;
-}) {
-  return (
-    <label
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event) => {
-        event.preventDefault();
-        onFile(event.dataTransfer.files[0]);
-      }}
-      className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white text-center transition-colors hover:border-cyan-700 hover:bg-cyan-50/40 ${compact ? "min-h-48 p-5" : "min-h-56 p-6"}`}
-    >
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
-        <UploadCloud className="h-6 w-6" />
-      </div>
-      <span className="mt-4 text-base font-semibold text-slate-950">{title}</span>
-      <span className="mt-2 text-sm text-slate-500">{help}</span>
-      <input
-        type="file"
-        accept=".xml,application/xml,text/xml,.pdf,application/pdf"
-        className="sr-only"
-        onChange={(event) => onFile(event.target.files?.[0])}
-      />
-    </label>
   );
 }
 
