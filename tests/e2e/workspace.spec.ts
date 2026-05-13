@@ -28,26 +28,38 @@ test("authenticated user can upload, translate, and download an invoice", async 
   await admin.auth.admin.createUser({ email, email_confirm: true });
   await signInViaTokenHash(page, email);
 
+  // Trigger the upload and wait for the network response — deterministic, no text-match races.
   const fileChooserPromise = page.waitForEvent("filechooser");
   await page.getByText(/Wgraj KSeF FA\(3\) XML lub PDF/i).click();
   const chooser = await fileChooserPromise;
-  await chooser.setFiles(samplePath);
+  const [uploadResponse] = await Promise.all([
+    page.waitForResponse((r) => r.url().includes("/api/upload") && r.request().method() === "POST", { timeout: 30_000 }),
+    chooser.setFiles(samplePath)
+  ]);
+  expect(uploadResponse.status()).toBe(200);
 
-  await expect(page.getByText(/Faktura|Invoice/)).toBeVisible({ timeout: 20_000 });
-  // Source-of-truth check: the row should exist for this user.
+  // Source-of-truth check: the row should exist FOR THIS user (scoped, not "the 5 newest").
+  const { data: createdUser } = await admin.auth.admin.listUsers();
+  const userId = createdUser.users.find((u) => u.email === email)?.id;
+  expect(userId).toBeTruthy();
   const { data: invoiceRows } = await admin
     .from("invoices")
     .select("id, source_type")
-    .order("created_at", { ascending: false })
-    .limit(5);
-  expect(invoiceRows?.[0]?.source_type).toBe("xml");
+    .eq("user_id", userId!);
+  expect(invoiceRows).toHaveLength(1);
+  expect(invoiceRows![0].source_type).toBe("xml");
 
-  // Translate.
-  await page.getByRole("button", { name: /Tłumacz opisy|Translate descriptions/i }).click();
+  // Translate — wait for the translate response before clicking the PDF button so
+  // OpenAI latency doesn't bleed into the PDF response timeout.
+  const [translateResponse] = await Promise.all([
+    page.waitForResponse((r) => r.url().includes("/api/translate") && r.request().method() === "POST"),
+    page.getByRole("button", { name: /Tłumacz opisy|Translate descriptions/i }).click()
+  ]);
+  expect(translateResponse.status()).toBe(200);
 
   // Download PDF — assert the network response.
   const [downloadResponse] = await Promise.all([
-    page.waitForResponse((r) => r.url().includes("/api/pdf") && r.request().method() === "POST"),
+    page.waitForResponse((r) => r.url().includes("/api/pdf") && r.request().method() === "POST", { timeout: 60_000 }),
     page.getByRole("button", { name: /Pobierz PDF|Download PDF/i }).click()
   ]);
   expect(downloadResponse.status()).toBe(200);
