@@ -340,3 +340,16 @@ npm run test:e2e            # Playwright E2E (boots Next dev server automaticall
 ```
 
 Note: the integration tests at `tests/integration/sql/` and the E2E auth spec require `SUPABASE_SERVICE_ROLE_KEY` in `.env.test`.
+
+## Workspace flow (Phase 2)
+
+After signing in, the translator workspace lives at `/app`. The flow:
+
+1. Upload an XML or PDF KSeF invoice. The server computes a SHA-256 hash; if the same bytes were uploaded before by the same user, the existing row is reused (no duplicate persistence).
+2. Parsing happens server-side (`lib/invoice/upload-service.ts`). The parsed invoice is stored in `invoices.source_data`.
+3. Translation goes through `/api/translate` with `{ invoiceId, language, bilingual }`. The first request triggers `translateInvoiceFreeText`; subsequent identical requests are served from `translations` (cached forever).
+4. PDF generation goes through `/api/pdf` with `{ invoiceId, language, bilingual }`. It uses the cached translation if present.
+
+Anonymous callers can still use `/api/translate` and `/api/pdf` with `{ invoice }` (inline mode) — credits are not consumed yet (Phase 3 wires that up).
+
+The public landing page at `/` is marketing only; the "Sign in" CTA is the only entry point to the workspace.
