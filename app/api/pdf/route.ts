@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { invoiceSchema } from "@/lib/invoice/schema";
 import { verifyPublicKsefQrUrl } from "@/lib/ksef/public-verification";
+import { renderOfficialFa3Pdf } from "@/lib/mf-fa3/official-renderer";
 import { renderInvoicePdfMake } from "@/lib/pdf/invoice-pdfmake";
 import { supportedLanguages } from "@/lib/translation/languages";
 import type { Invoice, LanguageCode } from "@/types/invoice";
@@ -12,7 +13,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const invoice = invoiceSchema.parse(body.invoice);
     const language = body.language as LanguageCode;
-    const bilingual = body.bilingual !== false;
+    const translated = body.translated !== false;
+    const bilingual = translated && body.bilingual !== false;
+    const sourceXml = typeof body.sourceXml === "string" ? body.sourceXml : undefined;
 
     if (!(language in supportedLanguages)) {
       return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
@@ -23,7 +26,9 @@ export async function POST(request: Request) {
       ? await verifyPublicKsefQrUrl(verificationUrl)
       : { confirmed: false as const };
     const invoiceForPdf = invoiceWithConfirmedKsefVerification(invoice, verificationUrl, verificationResult);
-    const pdf = await renderInvoicePdfMake(invoiceForPdf, language, bilingual);
+    const pdf = sourceXml
+      ? await renderPdfWithOfficialFallback(sourceXml, invoiceForPdf, language, bilingual, translated)
+      : await renderInvoicePdfMake(invoiceForPdf, language, bilingual);
 
     return new Response(new Uint8Array(pdf), {
       headers: {
@@ -40,6 +45,21 @@ export async function POST(request: Request) {
       { error: error instanceof Error ? error.message : "PDF generation failed." },
       { status: 500 }
     );
+  }
+}
+
+async function renderPdfWithOfficialFallback(
+  sourceXml: string,
+  invoice: Invoice,
+  language: LanguageCode,
+  bilingual: boolean,
+  translated: boolean
+) {
+  try {
+    return await renderOfficialFa3Pdf({ sourceXml, invoice, language, bilingual, translated });
+  } catch (error) {
+    console.warn("Official MF FA(3) renderer failed, falling back to custom renderer.", error);
+    return renderInvoicePdfMake(invoice, language, bilingual);
   }
 }
 

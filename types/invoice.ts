@@ -7,16 +7,33 @@ export type InvoiceParty = {
 };
 
 export type InvoiceItem = {
+  lineNumber?: string;
   index?: string;
+  uniqueRowNumber?: string;
   name: string;
   translatedName?: string;
   quantity: number;
   unit?: string;
   translatedUnit?: string;
   unitPrice: number;
+  grossUnitPrice?: number;
+  discount?: number;
   netValue: number;
   vatRate: string;
   grossValue: number;
+  vatValue?: number;
+  ossVatRate?: string;
+  productMarker?: string;
+  currencyRate?: string;
+  stateBefore?: string;
+  gtin?: string;
+  pkwiu?: string;
+  cn?: string;
+  pkob?: string;
+  exciseTaxAmount?: number;
+  gtu?: string;
+  procedure?: string;
+  receiptDate?: string;
 };
 
 export type BankAccount = {
@@ -49,6 +66,7 @@ export type TaxBreakdownLine = {
   label: string;
   net?: number;
   vat?: number;
+  gross?: number;
   vatInPln?: number;
 };
 
@@ -69,6 +87,7 @@ export type SettlementLine = {
 
 export type OrderLine = {
   lineNumber?: string;
+  uniqueRowNumber?: string;
   index?: string;
   name?: string;
   translatedName?: string;
@@ -79,13 +98,121 @@ export type OrderLine = {
   netValue?: number;
   vatValue?: number;
   vatRate?: string;
+  ossVatRate?: string;
+  productMarker?: string;
+  gtin?: string;
+  pkwiu?: string;
+  cn?: string;
+  pkob?: string;
+  exciseTaxAmount?: number;
+  gtu?: string;
+  procedure?: string;
+  stateBefore?: string;
 };
 
 export type OrderInfo = {
   orderNumber?: string;
   contractNumber?: string;
+  orderDate?: string;
+  contractDate?: string;
   totalValue?: number;
   lines?: OrderLine[];
+};
+
+export type InvoiceDetails = {
+  issuePlace?: string;
+  discountPeriod?: string;
+  serviceDate?: string;
+  serviceDateKind?: "paymentReceived" | "deliveryOrService";
+  serviceDateFrom?: string;
+  serviceDateTo?: string;
+  currencyCode?: string;
+  commonCurrencyRate?: string;
+  commonCurrencyRateApplies?: boolean;
+  hasOssProcedure?: boolean;
+  partialAdvances?: {
+    date?: string;
+    amount?: number;
+    currencyRate?: string;
+  }[];
+  advanceInvoices?: {
+    number?: string;
+    ksefNumber?: string;
+  }[];
+};
+
+export type CorrectedInvoiceReference = {
+  issueDate?: string;
+  invoiceNumber?: string;
+  ksefNumber?: string;
+};
+
+export type InvoiceCorrection = {
+  correctedInvoiceNumber?: string;
+  reason?: string;
+  type?: string;
+  period?: string;
+  isCollectiveDiscount?: boolean;
+  references?: CorrectedInvoiceReference[];
+};
+
+export type InvoiceAnnotations = {
+  splitPayment?: boolean;
+  cashAccounting?: boolean;
+  reverseCharge?: boolean;
+  selfBilling?: boolean;
+  simplifiedTriangularProcedure?: boolean;
+  relatedParty?: boolean;
+  fiscalReceipt?: boolean;
+  exciseTaxRefund?: boolean;
+  exemption?: {
+    enabled?: boolean;
+    legalBasis?: string;
+    directiveBasis?: string;
+    otherBasis?: string;
+  };
+  marginProcedure?: string;
+  newTransportMeans?: {
+    vatDocumentRequired?: string;
+    lines?: {
+      rowNumber?: string;
+      firstUseDate?: string;
+      description?: string;
+      identifier?: string;
+    }[];
+  };
+};
+
+export type TransactionTerms = {
+  contracts?: {
+    date?: string;
+    number?: string;
+  }[];
+  orders?: {
+    date?: string;
+    number?: string;
+  }[];
+  contractualCurrency?: string;
+  contractualRate?: string;
+  batchNumbers?: string[];
+  deliveryTerms?: string;
+  intermediaryDelivery?: boolean;
+  transports?: {
+    type?: string;
+    otherTypeDescription?: string;
+    orderNumber?: string;
+    cargoDescription?: string;
+    otherCargoDescription?: string;
+    packageUnit?: string;
+    startDateTime?: string;
+    endDateTime?: string;
+    carrier?: string;
+    vehicleNumber?: string;
+    description?: string;
+    shipFrom?: string;
+    shipTo?: string;
+    shipThrough?: string[];
+  }[];
 };
 
 export type InvoiceFooter = {
@@ -99,6 +226,17 @@ export type InvoiceFooter = {
   };
 };
 
+export type InvoiceAttachment = {
+  fileName?: string;
+  description?: string;
+  hash?: string;
+};
+
+export type WarehouseDocument = {
+  number?: string;
+  date?: string;
+};
+
 export type Invoice = {
   invoiceNumber: string;
   invoiceType?: string;
@@ -106,6 +244,8 @@ export type Invoice = {
   issueDate: string;
   saleDate?: string;
   currency: string;
+  details?: InvoiceDetails;
+  correction?: InvoiceCorrection;
   seller: InvoiceParty;
   buyer: InvoiceParty;
   items: InvoiceItem[];
@@ -119,6 +259,7 @@ export type Invoice = {
     method?: string;
     methodLabel?: string;
     isPaid?: string;
+    status?: "paid" | "unpaid" | "paidInPart" | "paidAllInParts";
     paidDate?: string;
     otherMethodDescription?: string;
     bankAccount?: string;
@@ -131,6 +272,7 @@ export type Invoice = {
     ipKsef?: string;
   };
   taxBreakdown?: TaxBreakdownLine[];
+  annotations?: InvoiceAnnotations;
   additionalDescriptions?: AdditionalDescription[];
   thirdParties?: InvoiceParty[];
   authorizedParty?: InvoiceParty;
@@ -139,9 +281,13 @@ export type Invoice = {
     deductions?: SettlementLine[];
     totalCharges?: number;
     totalDeductions?: number;
+    amountToPay?: number;
     amountToSettle?: number;
   };
   orders?: OrderInfo[];
+  transactionTerms?: TransactionTerms;
+  warehouseDocuments?: WarehouseDocument[];
+  attachments?: InvoiceAttachment[];
   verification?: {
     ksefNumber?: string;
     qrLink?: string;

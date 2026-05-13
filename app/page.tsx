@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -173,25 +174,78 @@ const copy = {
 
 export default function Home() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [sourceXml, setSourceXml] = useState<string | null>(null);
   const [language, setLanguage] = useState<LanguageCode>("en");
+  const [translationEnabled, setTranslationEnabled] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<UiLanguage>("pl");
   const [messages, setMessages] = useState<string[]>([]);
   const [bilingual, setBilingual] = useState(true);
   const [isParsing, setIsParsing] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  const [isPreparingPdfPreview, setIsPreparingPdfPreview] = useState(false);
 
   const t = copy[uiLanguage];
   const languageOptions = useMemo(() => getLanguageOptions(uiLanguage), [uiLanguage]);
   const selectedLanguage = useMemo(
-    () => languageOptions.find((option) => option.code === language)?.label ?? language,
-    [language, languageOptions]
+    () => translationEnabled ? languageOptions.find((option) => option.code === language)?.label ?? language : "PL",
+    [language, languageOptions, translationEnabled]
   );
+  const originalPolishOption = uiLanguage === "pl" ? "Oryginał PL" : "Original PL";
+
+  useEffect(() => {
+    if (!invoice || !sourceXml) {
+      setPreviewPdfUrl((currentUrl) => {
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        return null;
+      });
+      setIsPreparingPdfPreview(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    let nextUrl: string | null = null;
+    setIsPreparingPdfPreview(true);
+
+    fetch("/api/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoice, language, bilingual: translationEnabled && bilingual, translated: translationEnabled, sourceXml }),
+      signal: controller.signal
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(String(t.pdfFailed));
+        const blob = await response.blob();
+        nextUrl = URL.createObjectURL(blob);
+        setPreviewPdfUrl((currentUrl) => {
+          if (currentUrl) URL.revokeObjectURL(currentUrl);
+          return nextUrl;
+        });
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPreviewPdfUrl((currentUrl) => {
+          if (currentUrl) URL.revokeObjectURL(currentUrl);
+          return null;
+        });
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsPreparingPdfPreview(false);
+      });
+
+    return () => {
+      controller.abort();
+      if (nextUrl) URL.revokeObjectURL(nextUrl);
+    };
+  }, [invoice, sourceXml, language, bilingual, translationEnabled, t.pdfFailed]);
 
   async function handleFile(file?: File) {
     if (!file) return;
     setMessages([]);
     setInvoice(null);
+    setSourceXml(null);
+    setTranslationEnabled(false);
 
     if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
       setIsParsing(true);
@@ -211,6 +265,7 @@ export default function Home() {
         }
 
         setInvoice(payload.invoice);
+        setSourceXml(null);
         setMessages(payload.warnings ?? []);
         if (payload.invoice?.verification?.qrLink) {
           void verifyKsefForPreview(payload.invoice.verification.qrLink);
@@ -249,6 +304,7 @@ export default function Home() {
       : parsed.invoice;
 
     setInvoice(invoiceWithVerification);
+    setSourceXml(xml);
     setMessages(qrLink ? parsed.warnings : [...parsed.warnings, "Unable to build KSeF XML verification link: missing seller NIP or issue date."]);
     if (qrLink) {
       void verifyKsefForPreview(qrLink);
@@ -292,15 +348,17 @@ export default function Home() {
     }
   }
 
-  async function translate() {
+  async function translate(targetLanguage = language) {
     if (!invoice) return;
+    setTranslationEnabled(true);
+    setLanguage(targetLanguage);
     setIsTranslating(true);
     setMessages([]);
     try {
       const response = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoice, language })
+        body: JSON.stringify({ invoice, language: targetLanguage })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? String(t.translationFailed));
@@ -320,7 +378,7 @@ export default function Home() {
       const response = await fetch("/api/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoice, language, bilingual })
+        body: JSON.stringify({ invoice, language, bilingual: translationEnabled && bilingual, translated: translationEnabled, sourceXml })
       });
       if (!response.ok) throw new Error(String(t.pdfFailed));
       const ksefConfirmed = response.headers.get("X-KSeF-Verification-Confirmed") === "true";
@@ -475,10 +533,18 @@ export default function Home() {
             </label>
             <select
               id="language"
-              value={language}
-              onChange={(event) => setLanguage(event.target.value as LanguageCode)}
+              value={translationEnabled ? language : "pl"}
+              onChange={(event) => {
+                if (event.target.value === "pl") {
+                  setTranslationEnabled(false);
+                  return;
+                }
+
+                void translate(event.target.value as LanguageCode);
+              }}
               className="h-10 rounded-md border border-input bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
             >
+              <option value="pl">{originalPolishOption}</option>
               {languageOptions.map((option) => (
                 <option key={option.code} value={option.code}>{option.label}</option>
               ))}
@@ -489,12 +555,15 @@ export default function Home() {
               <input
                 type="checkbox"
                 checked={bilingual}
-                onChange={(event) => setBilingual(event.target.checked)}
+                onChange={(event) => {
+                  setBilingual(event.target.checked);
+                  if (event.target.checked) setTranslationEnabled(true);
+                }}
                 className="h-4 w-4 rounded border-cyan-300 text-cyan-700 focus:ring-cyan-700"
               />
               {String(t.bilingual)}
             </label>
-            <Button onClick={translate} disabled={!invoice || isTranslating} variant="outline">
+            <Button onClick={() => void translate()} disabled={!invoice || isTranslating} variant="outline">
               {isTranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
               {String(t.translate)}
             </Button>
@@ -517,7 +586,15 @@ export default function Home() {
             {String(t.parsing)}
           </div>
         ) : invoice ? (
-          <InvoicePreview invoice={invoice} language={language} bilingual={bilingual} />
+          sourceXml ? (
+            <OfficialPdfPreview
+              pdfUrl={previewPdfUrl}
+              isLoading={isPreparingPdfPreview}
+              fallback={<InvoicePreview invoice={invoice} language={language} bilingual={bilingual} translated={translationEnabled} />}
+            />
+          ) : (
+            <InvoicePreview invoice={invoice} language={language} bilingual={bilingual} translated={translationEnabled} />
+          )
         ) : (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center text-slate-600">
             <ScanLine className="mx-auto mb-3 h-8 w-8 text-cyan-700" />
@@ -644,6 +721,39 @@ function ValueSection({ t }: { t: typeof copy.pl }) {
       </div>
     </section>
   );
+}
+
+function OfficialPdfPreview({
+  pdfUrl,
+  isLoading,
+  fallback
+}: {
+  pdfUrl: string | null;
+  isLoading: boolean;
+  fallback: ReactNode;
+}) {
+  if (pdfUrl) {
+    return (
+      <div className="overflow-x-auto pb-4">
+        <iframe
+          title="Podgląd faktury PDF"
+          src={pdfUrl}
+          className="mx-auto h-[1123px] w-[794px] max-w-full border border-slate-300 bg-white shadow-soft"
+        />
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center text-slate-600">
+        <Loader2 className="mx-auto mb-3 h-5 w-5 animate-spin text-cyan-700" />
+        Przygotowuję podgląd PDF zgodny z generatorem MF...
+      </div>
+    );
+  }
+
+  return <>{fallback}</>;
 }
 
 function PricingSection({ t }: { t: typeof copy.pl }) {

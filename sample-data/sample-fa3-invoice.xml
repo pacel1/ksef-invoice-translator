@@ -29,8 +29,10 @@
   </Podmiot2>
   <Fa>
     <KodWaluty>EUR</KodWaluty>
+    <KursWalutyZ>4.321000</KursWalutyZ>
     <P_1>2026-05-11</P_1>
     <P_2>FV/2026/05/001</P_2>
+    <RodzajFaktury>VAT</RodzajFaktury>
     <P_6>2026-05-10</P_6>
     <P_13_1>1800.00</P_13_1>
     <P_14_1>414.00</P_14_1>

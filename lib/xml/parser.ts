@@ -2,14 +2,18 @@ import { XMLParser, XMLValidator } from "fast-xml-parser";
 import type {
   AdditionalDescription,
   BankAccount,
+  CorrectedInvoiceReference,
   Invoice,
+  InvoiceAnnotations,
+  InvoiceDetails,
   InvoiceFooter,
   InvoiceItem,
   OrderInfo,
   OrderLine,
   PaymentTerm,
   SettlementLine,
-  TaxBreakdownLine
+  TaxBreakdownLine,
+  TransactionTerms
 } from "@/types/invoice";
 import { invoiceSchema } from "@/lib/invoice/schema";
 
@@ -64,6 +68,8 @@ export function parseKsefXml(xml: string): ParseResult {
       issueDate: text(firstDefined(getPath(fa, ["P_1"]), findValue(root, "P_1"))) || "",
       saleDate: text(firstDefined(getPath(fa, ["P_6"]), findValue(root, "P_6"))) || undefined,
       currency: text(firstDefined(getPath(fa, ["KodWaluty"]), findValue(root, "KodWaluty"))) || "PLN",
+      details: detailsFromNode(fa, items),
+      correction: correctionFromNode(fa),
       seller: partyFromNode(podmiot1),
       buyer: partyFromNode(podmiot2),
       items,
@@ -74,11 +80,15 @@ export function parseKsefXml(xml: string): ParseResult {
       },
       payment,
       taxBreakdown,
+      annotations: annotationsFromNode(fa),
       additionalDescriptions,
       thirdParties: findAllObjects(root, "Podmiot3").map(partyFromNode),
       authorizedParty: partyOrUndefined(pickObject(root, ["PodmiotUpowazniony"])),
       settlements: settlementsFromNode(pickObject(fa, ["Rozliczenie"])),
       orders,
+      transactionTerms: transactionTermsFromNode(pickObject(fa, ["WarunkiTransakcji"])),
+      warehouseDocuments: warehouseDocumentsFromNode(root),
+      attachments: attachmentsFromNode(root),
       notes: notes || text(findValue(root, "Uwagi")) || undefined,
       footer: footerFromNode(stopka)
     };
@@ -130,16 +140,234 @@ function normalizeItems(nodes: XmlNode[]): InvoiceItem[] {
     const gross = numberFrom(findValue(node, "P_11Vat"), Number.isFinite(rate) ? net * (1 + rate / 100) : net);
 
     return {
-      index: text(firstDefined(findValue(node, "Indeks"), findValue(node, "GTIN"), findValue(node, "PKWiU"), findValue(node, "CN"))) || undefined,
+      lineNumber: text(findValue(node, "NrWierszaFa")) || undefined,
+      uniqueRowNumber: text(findValue(node, "UU_ID")) || undefined,
+      index: text(findValue(node, "Indeks")) || undefined,
       name: text(firstDefined(findValue(node, "P_7"), findValue(node, "Nazwa"))) || `Invoice item ${index + 1}`,
       quantity: numberFrom(firstDefined(findValue(node, "P_8B"), findValue(node, "Ilosc")), 1),
       unit: text(firstDefined(findValue(node, "P_8A"), findValue(node, "JM"))) || undefined,
       unitPrice: numberFrom(firstDefined(findValue(node, "P_9A"), findValue(node, "CenaJednostkowa")), net),
+      grossUnitPrice: optionalNumber(findValue(node, "P_9B")),
+      discount: optionalNumber(findValue(node, "P_10")),
       netValue: net,
       vatRate,
-      grossValue: gross
+      grossValue: gross,
+      vatValue: optionalNumber(findValue(node, "P_11Vat")),
+      ossVatRate: text(findValue(node, "P_12_XII")) || undefined,
+      productMarker: text(findValue(node, "P_12_Zal_15")) || undefined,
+      currencyRate: text(findValue(node, "KursWaluty")) || undefined,
+      stateBefore: text(findValue(node, "StanPrzed")) || undefined,
+      gtin: text(findValue(node, "GTIN")) || undefined,
+      pkwiu: text(findValue(node, "PKWiU")) || undefined,
+      cn: text(findValue(node, "CN")) || undefined,
+      pkob: text(findValue(node, "PKOB")) || undefined,
+      exciseTaxAmount: optionalNumber(findValue(node, "KwotaAkcyzy")),
+      gtu: text(findValue(node, "GTU")) || undefined,
+      procedure: text(findValue(node, "Procedura")) || undefined,
+      receiptDate: text(findValue(node, "P_6A")) || undefined
     };
   });
+}
+
+function detailsFromNode(fa: XmlNode, items: InvoiceItem[]): InvoiceDetails | undefined {
+  const currency = text(findValue(fa, "KodWaluty")) || undefined;
+  const explicitCommonRate = text(findValue(fa, "KursWalutyZ")) || undefined;
+  const rowRates = Array.from(new Set(items.map((item) => item.currencyRate).filter(Boolean))) as string[];
+  const commonCurrencyRate = currency && currency !== "PLN" ? explicitCommonRate || (rowRates.length === 1 ? rowRates[0] : undefined) : undefined;
+  const invoiceType = text(findValue(fa, "RodzajFaktury")) || undefined;
+  const serviceDateKind = invoiceType === "ZAL" || invoiceType === "KOR_ZAL" ? "paymentReceived" : "deliveryOrService";
+  const orderRowsHaveOss = findAllObjects(fa, "ZamowienieWiersz").some((node) => text(findValue(node, "P_12_XII")));
+  const partialAdvances = findAllObjects(fa, "ZaliczkaCzesciowa")
+    .map((node) => ({
+      date: text(findValue(node, "P_6Z")) || undefined,
+      amount: optionalNumber(findValue(node, "P_15Z")),
+      currencyRate: text(findValue(node, "KursWalutyZW")) || undefined
+    }))
+    .filter((entry) => entry.date || entry.amount !== undefined || entry.currencyRate);
+  const advanceInvoices = findAllObjects(fa, "FakturaZaliczkowa")
+    .map((node) => ({
+      number: text(findValue(node, "NrFaZaliczkowej")) || undefined,
+      ksefNumber: text(findValue(node, "NrKSeFFaZaliczkowej")) || undefined
+    }))
+    .filter((entry) => entry.number || entry.ksefNumber);
+  const details: InvoiceDetails = {
+    issuePlace: text(findValue(fa, "P_1M")) || undefined,
+    discountPeriod: text(findValue(fa, "OkresFaKorygowanej")) || undefined,
+    serviceDate: text(findValue(fa, "P_6")) || undefined,
+    serviceDateKind,
+    serviceDateFrom: text(getPath(fa, ["OkresFa", "P_6_Od"])) || undefined,
+    serviceDateTo: text(getPath(fa, ["OkresFa", "P_6_Do"])) || undefined,
+    currencyCode: currency,
+    commonCurrencyRate,
+    commonCurrencyRateApplies: Boolean(commonCurrencyRate),
+    hasOssProcedure: items.some((item) => item.ossVatRate) || orderRowsHaveOss,
+    partialAdvances,
+    advanceInvoices
+  };
+  return hasAnyValue(details) ? details : undefined;
+}
+
+function correctionFromNode(fa: XmlNode): Invoice["correction"] | undefined {
+  const references = findAllObjects(fa, "DaneFaKorygowanej")
+    .map((node): CorrectedInvoiceReference => ({
+      issueDate: text(findValue(node, "DataWystFaKorygowanej")) || undefined,
+      invoiceNumber: text(findValue(node, "NrFaKorygowanej")) || undefined,
+      ksefNumber: text(findValue(node, "NrKSeFFaKorygowanej")) || undefined
+    }))
+    .filter((entry) => entry.issueDate || entry.invoiceNumber || entry.ksefNumber);
+  const period = text(findValue(fa, "OkresFaKorygowanej")) || undefined;
+  const correction = {
+    correctedInvoiceNumber: text(findValue(fa, "NrFaKorygowany")) || undefined,
+    reason: text(findValue(fa, "PrzyczynaKorekty")) || undefined,
+    type: text(findValue(fa, "TypKorekty")) || undefined,
+    period,
+    isCollectiveDiscount: text(findValue(fa, "RodzajFaktury")) === "KOR" && Boolean(period),
+    references
+  };
+  return hasAnyValue(correction) ? correction : undefined;
+}
+
+function annotationsFromNode(fa: XmlNode): InvoiceAnnotations | undefined {
+  const adnotacje = pickObject(fa, ["Adnotacje"]) ?? {};
+  const zwolnienie = pickObject(adnotacje, ["Zwolnienie"]) ?? {};
+  const pMarzy = pickObject(adnotacje, ["PMarzy"]) ?? {};
+  const noweSrodkiTransportu = pickObject(adnotacje, ["NoweSrodkiTransportu"]);
+  const marginProcedure =
+    flag(pMarzy, "P_PMarzy_3_1") ? "towary używane" :
+    flag(pMarzy, "P_PMarzy_3_2") ? "dzieła sztuki" :
+    flag(pMarzy, "P_PMarzy_2") ? "biura podróży" :
+    flag(pMarzy, "P_PMarzy_3_3") ? "przedmioty kolekcjonerskie i antyki" :
+    flag(pMarzy, "P_PMarzy") ? "procedura marży" :
+    undefined;
+  const annotations: InvoiceAnnotations = {
+    splitPayment: flag(adnotacje, "P_18A") || undefined,
+    cashAccounting: flag(adnotacje, "P_16") || undefined,
+    reverseCharge: flag(adnotacje, "P_18") || undefined,
+    selfBilling: flag(adnotacje, "P_17") || undefined,
+    simplifiedTriangularProcedure: flag(adnotacje, "P_23") || undefined,
+    relatedParty: flag(fa, "TP") || undefined,
+    fiscalReceipt: flag(fa, "FP") || undefined,
+    exciseTaxRefund: flag(fa, "ZwrotAkcyzy") || undefined,
+    exemption: flag(zwolnienie, "P_19")
+      ? {
+          enabled: true,
+          legalBasis: text(findValue(zwolnienie, "P_19A")) || undefined,
+          directiveBasis: text(findValue(zwolnienie, "P_19B")) || undefined,
+          otherBasis: text(findValue(zwolnienie, "P_19C")) || undefined
+        }
+      : undefined,
+    marginProcedure,
+    newTransportMeans: noweSrodkiTransportu
+      ? {
+          vatDocumentRequired: newTransportVat22Text(text(findValue(noweSrodkiTransportu, "P_42_5"))) || undefined,
+          lines: findAllObjects(noweSrodkiTransportu, "NowySrodekTransportu")
+            .map((node) => ({
+              rowNumber: text(findValue(node, "P_NrWierszaNST")) || undefined,
+              firstUseDate: text(findValue(node, "P_22A")) || undefined,
+              description: newTransportDescription(node),
+              identifier: joinCompact([
+                text(findValue(node, "P_22B1")),
+                text(findValue(node, "P_22B2")),
+                text(findValue(node, "P_22B3")),
+                text(findValue(node, "P_22B4")),
+                text(findValue(node, "P_22C1")),
+                text(findValue(node, "P_22D1"))
+              ]) || undefined
+            }))
+            .filter((entry) => entry.rowNumber || entry.firstUseDate || entry.description || entry.identifier)
+        }
+      : undefined
+  };
+  return hasAnyValue(annotations) ? annotations : undefined;
+}
+
+function newTransportVat22Text(value: string) {
+  if (value === "1") return "Istnieje obowiązek wystawienia dokumentu VAT-22";
+  if (value === "2") return "Nie istnieje obowiązek wystawienia dokumentu VAT-22";
+  return value;
+}
+
+function newTransportDescription(node: XmlNode) {
+  const type =
+    text(firstDefined(findValue(node, "P_22B"), findValue(node, "P_22BT"), findValue(node, "P_22B1"), findValue(node, "P_22B2"), findValue(node, "P_22B3"), findValue(node, "P_22B4")))
+      ? "Dostawa dotyczy pojazdów lądowych, o których mowa w art. 2 pkt 10 lit. a ustawy"
+      : text(firstDefined(findValue(node, "P_22C"), findValue(node, "P_22C1")))
+        ? "Dostawa dotyczy jednostek pływających, o których mowa w art. 2 pkt 10 lit. b ustawy"
+        : text(firstDefined(findValue(node, "P_22D"), findValue(node, "P_22D1")))
+          ? "Dostawa dotyczy statków powietrznych, o których mowa w art. 2 pkt 10 lit. c ustawy"
+          : undefined;
+  return joinCompact([
+    type,
+    text(findValue(node, "DetailsString")),
+    text(findValue(node, "P_22BT")),
+    text(findValue(node, "P_22B")),
+    text(findValue(node, "P_22C")),
+    text(findValue(node, "P_22D"))
+  ], "\n") || undefined;
+}
+
+function transactionTermsFromNode(node: XmlNode | undefined): TransactionTerms | undefined {
+  if (!node) return undefined;
+  const terms: TransactionTerms = {
+    contracts: findAllObjects(node, "Umowy")
+      .map((entry) => ({
+        date: text(findValue(entry, "DataUmowy")) || undefined,
+        number: text(findValue(entry, "NrUmowy")) || undefined
+      }))
+      .filter((entry) => entry.date || entry.number),
+    orders: findAllObjects(node, "Zamowienia")
+      .map((entry) => ({
+        date: text(findValue(entry, "DataZamowienia")) || undefined,
+        number: text(findValue(entry, "NrZamowienia")) || undefined
+      }))
+      .filter((entry) => entry.date || entry.number),
+    contractualCurrency: text(findValue(node, "WalutaUmowna")) || undefined,
+    contractualRate: text(findValue(node, "KursUmowny")) || undefined,
+    batchNumbers: findAllObjects(node, "NrPartiiTowaru").map((entry) => text(getPrimitive(entry) ?? findValue(entry, "NrPartiiTowaru"))).filter(Boolean),
+    deliveryTerms: text(findValue(node, "WarunkiDostawy")) || undefined,
+    intermediaryDelivery: flag(node, "PodmiotPosredniczacy") || undefined,
+    transports: findAllObjects(node, "Transport")
+      .map((entry) => ({
+        type: text(findValue(entry, "RodzajTransportu")) || (flag(entry, "TransportInny") ? "inny" : undefined),
+        otherTypeDescription: text(findValue(entry, "OpisInnegoTransportu")) || undefined,
+        orderNumber: text(findValue(entry, "NrZleceniaTransportu")) || undefined,
+        cargoDescription: text(findValue(entry, "OpisLadunku")) || undefined,
+        otherCargoDescription: text(findValue(entry, "OpisInnegoLadunku")) || undefined,
+        packageUnit: text(findValue(entry, "JednostkaOpakowania")) || undefined,
+        startDateTime: text(findValue(entry, "DataGodzRozpTransportu")) || undefined,
+        endDateTime: text(findValue(entry, "DataGodzZakTransportu")) || undefined,
+        carrier: carrierFromTransport(entry),
+        vehicleNumber: text(firstDefined(findValue(entry, "NrRejestracyjny"), findValue(entry, "NrSrodkaTransportu"))) || undefined,
+        description: text(firstDefined(findValue(entry, "OpisTransportu"), findValue(entry, "Opis"))) || undefined,
+        shipFrom: shipmentAddressFromNode(pickObject(entry, ["WysylkaZ"])),
+        shipTo: shipmentAddressFromNode(pickObject(entry, ["WysylkaDo"])),
+        shipThrough: findAllObjects(entry, "WysylkaPrzez").map(shipmentAddressFromNode).filter((value): value is string => Boolean(value))
+      }))
+      .filter((entry) => hasAnyValue(entry))
+  };
+  return hasAnyValue(terms) ? terms : undefined;
+}
+
+function carrierFromTransport(node: XmlNode) {
+  const carrier = pickObject(node, ["Przewoznik"]);
+  if (carrier) {
+    return joinCompact([
+      text(findValue(carrier, "Nazwa")),
+      text(findValue(carrier, "NIP")),
+      text(findValue(carrier, "NrID"))
+    ], " ");
+  }
+  return text(findValue(node, "Przewoznik")) || undefined;
+}
+
+function shipmentAddressFromNode(node: XmlNode | undefined) {
+  if (!node) return undefined;
+  return joinCompact([
+    text(findValue(node, "AdresL1")),
+    text(findValue(node, "AdresL2")),
+    text(findValue(node, "KodKraju")),
+    text(findValue(node, "GLN")) ? `GLN: ${text(findValue(node, "GLN"))}` : undefined
+  ], "\n") || undefined;
 }
 
 function paymentFromNode(node: unknown): Invoice["payment"] | undefined {
@@ -159,12 +387,15 @@ function paymentFromNode(node: unknown): Invoice["payment"] | undefined {
   }));
   const methodCode = text(findValue(node, "FormaPlatnosci"));
   const firstTerm = paymentTerms[0];
+  const paidMarker = text(findValue(node, "Zaplacono"));
+  const partialPaymentMarker = text(findValue(node, "ZnacznikZaplatyCzesciowej"));
 
   const payment = {
     dueDate: firstTerm?.dueDate,
     method: methodCode || undefined,
     methodLabel: paymentMethodLabel(methodCode) || undefined,
-    isPaid: text(findValue(node, "Zaplacono")) || undefined,
+    isPaid: paidMarker || undefined,
+    status: paymentStatus(paidMarker, partialPaymentMarker),
     paidDate: text(findValue(node, "DataZaplaty")) || undefined,
     otherMethodDescription: text(findValue(node, "OpisPlatnosci")) || undefined,
     bankAccount: bankAccounts[0]?.accountNumber,
@@ -180,6 +411,13 @@ function paymentFromNode(node: unknown): Invoice["payment"] | undefined {
   return Object.values(payment).some((value) => (Array.isArray(value) ? value.length > 0 : Boolean(value)))
     ? payment
     : undefined;
+}
+
+function paymentStatus(paidMarker: string, partialPaymentMarker: string): NonNullable<Invoice["payment"]>["status"] {
+  if (paidMarker === "1") return "paid";
+  if (partialPaymentMarker === "1") return "paidInPart";
+  if (partialPaymentMarker === "2") return "paidAllInParts";
+  return "unpaid";
 }
 
 function paymentTermsFromNode(node: XmlNode): PaymentTerm[] {
@@ -240,30 +478,39 @@ function notesFromAdditionalDescriptions(descriptions: AdditionalDescription[]) 
 
 function taxBreakdownFromNode(fa: XmlNode): TaxBreakdownLine[] {
   const definitions = [
-    ["1", "Basic rate 23% / 22%", "P_13_1", "P_14_1", "P_14_1W"],
-    ["2", "Reduced rate 8% / 7%", "P_13_2", "P_14_2", "P_14_2W"],
-    ["3", "Reduced rate 5%", "P_13_3", "P_14_3", "P_14_3W"],
-    ["4", "Taxi flat-rate scheme", "P_13_4", "P_14_4", "P_14_4W"],
-    ["5", "Special OSS/IOSS procedure", "P_13_5", "P_14_5", undefined],
-    ["6_1", "0% rate", "P_13_6_1", undefined, undefined],
-    ["6_2", "0% intra-Community supply", "P_13_6_2", undefined, undefined],
-    ["6_3", "0% export", "P_13_6_3", undefined, undefined],
-    ["7", "Tax-exempt sales", "P_13_7", undefined, undefined],
-    ["8", "Supply outside Poland", "P_13_8", undefined, undefined],
-    ["9", "EU services Art. 100", "P_13_9", undefined, undefined],
-    ["10", "Reverse charge", "P_13_10", undefined, undefined],
-    ["11", "Margin scheme", "P_13_11", undefined, undefined]
+    ["1", "23% lub 22%", "P_13_1", "P_14_1", "P_14_1W"],
+    ["2", "8% lub 7%", "P_13_2", "P_14_2", "P_14_2W"],
+    ["3", "5%", "P_13_3", "P_14_3", "P_14_3W"],
+    ["4", "4% lub 3%", "P_13_4", "P_14_4", "P_14_4W"],
+    ["5", "OSS", "P_13_5", "P_14_5", undefined],
+    ["6_1", "0% w przypadku sprzedaży towarów i świadczenia usług na terytorium kraju (z wyłączeniem WDT i eksportu)", "P_13_6_1", undefined, undefined],
+    ["6_2", "0% w przypadku wewnątrzwspólnotowej dostawy towarów (WDT)", "P_13_6_2", undefined, undefined],
+    ["6_3", "0% w przypadku eksportu towarów", "P_13_6_3", undefined, undefined],
+    ["7", "zwolnione od podatku", "P_13_7", undefined, undefined],
+    ["8", "np z wyłączeniem art. 100 ust 1 pkt 4 ustawy", "P_13_8", undefined, undefined],
+    ["9", "np na podstawie art. 100 ust. 1 pkt 4 ustawy", "P_13_9", undefined, undefined],
+    ["10", "odwrotne obciążenie", "P_13_10", undefined, undefined],
+    ["11", "marża", "P_13_11", undefined, undefined]
   ] as const;
 
   return definitions
-    .map(([code, label, netKey, vatKey, vatPlnKey]) => ({
-      code,
-      label,
-      net: optionalNumber(findValue(fa, netKey)),
-      vat: vatKey ? optionalNumber(findValue(fa, vatKey)) : undefined,
-      vatInPln: vatPlnKey ? optionalNumber(findValue(fa, vatPlnKey)) : undefined
-    }))
-    .filter((line) => line.net !== undefined || line.vat !== undefined || line.vatInPln !== undefined);
+    .map(([code, label, netKey, vatKey, vatPlnKey]) => {
+      const net = optionalNonZeroNumber(findValue(fa, netKey));
+      const vat = vatKey ? optionalNonZeroNumber(findValue(fa, vatKey)) : undefined;
+      const vatInPln = vatPlnKey ? optionalNonZeroNumber(findValue(fa, vatPlnKey)) : undefined;
+      const shouldShow = net !== undefined || vat !== undefined || vatInPln !== undefined;
+      return {
+        code,
+        label,
+        net,
+        vat,
+        gross: net !== undefined ? net + (vat ?? 0) : undefined,
+        vatInPln,
+        shouldShow
+      };
+    })
+    .filter((line) => line.shouldShow)
+    .map(({ shouldShow: _shouldShow, ...line }) => line);
 }
 
 function totalsFromTaxBreakdown(lines: TaxBreakdownLine[]) {
@@ -289,11 +536,31 @@ function settlementsFromNode(node: XmlNode | undefined): Invoice["settlements"] 
     deductions,
     totalCharges: optionalNumber(findValue(node, "SumaObciazen")),
     totalDeductions: optionalNumber(findValue(node, "SumaOdliczen")),
+    amountToPay: optionalNumber(findValue(node, "DoZaplaty")),
     amountToSettle: optionalNumber(findValue(node, "DoRozliczenia"))
   };
-  return charges.length || deductions.length || settlements.totalCharges || settlements.totalDeductions || settlements.amountToSettle
+  return charges.length || deductions.length || settlements.totalCharges || settlements.totalDeductions || settlements.amountToPay || settlements.amountToSettle
     ? settlements
     : undefined;
+}
+
+function warehouseDocumentsFromNode(root: XmlNode) {
+  return findAllObjects(root, "WZ")
+    .map((node) => ({
+      number: text(firstDefined(findValue(node, "NrWZ"), findValue(node, "NumerWZ"), getPrimitive(node))) || undefined,
+      date: text(firstDefined(findValue(node, "DataWZ"), findValue(node, "Data"))) || undefined
+    }))
+    .filter((entry) => entry.number || entry.date);
+}
+
+function attachmentsFromNode(root: XmlNode) {
+  return findAllObjects(root, "Zalacznik")
+    .map((node) => ({
+      fileName: text(firstDefined(findValue(node, "NazwaPliku"), findValue(node, "NazwaZalacznika"), findValue(node, "Nazwa"))) || undefined,
+      description: text(firstDefined(findValue(node, "OpisZalacznika"), findValue(node, "Opis"))) || undefined,
+      hash: text(firstDefined(findValue(node, "HashZalacznika"), findValue(node, "Hash"), findValue(node, "SHA256"))) || undefined
+    }))
+    .filter((entry) => entry.fileName || entry.description || entry.hash);
 }
 
 function ordersFromNode(fa: XmlNode): OrderInfo[] {
@@ -315,14 +582,25 @@ function ordersFromNode(fa: XmlNode): OrderInfo[] {
 function orderLineFromNode(node: XmlNode): OrderLine {
   return {
     lineNumber: text(findValue(node, "NrWierszaZam")) || undefined,
-    index: text(firstDefined(findValue(node, "IndeksZ"), findValue(node, "GTINZ"), findValue(node, "PKWiUZ"), findValue(node, "CNZ"))) || undefined,
+    uniqueRowNumber: text(firstDefined(findValue(node, "UU_ID"), findValue(node, "UU_IDZ"))) || undefined,
+    index: text(findValue(node, "IndeksZ")) || undefined,
     name: text(findValue(node, "P_7Z")) || undefined,
     quantity: optionalNumber(findValue(node, "P_8BZ")),
     unit: text(findValue(node, "P_8AZ")) || undefined,
     unitPrice: optionalNumber(findValue(node, "P_9AZ")),
     netValue: optionalNumber(findValue(node, "P_11NettoZ")),
     vatValue: optionalNumber(findValue(node, "P_11VatZ")),
-    vatRate: text(findValue(node, "P_12Z")) || undefined
+    vatRate: text(findValue(node, "P_12Z")) || undefined,
+    ossVatRate: text(findValue(node, "P_12Z_XII")) || undefined,
+    productMarker: text(findValue(node, "P_12Z_Zal_15")) || undefined,
+    gtin: text(findValue(node, "GTINZ")) || undefined,
+    pkwiu: text(findValue(node, "PKWiUZ")) || undefined,
+    cn: text(findValue(node, "CNZ")) || undefined,
+    pkob: text(findValue(node, "PKOBZ")) || undefined,
+    exciseTaxAmount: optionalNumber(findValue(node, "KwotaAkcyzyZ")),
+    gtu: text(findValue(node, "GTUZ")) || undefined,
+    procedure: text(findValue(node, "ProceduraZ")) || undefined,
+    stateBefore: text(findValue(node, "StanPrzedZ")) || undefined
   };
 }
 
@@ -448,8 +726,8 @@ function invoiceTypeLabel(code: string) {
   return labels[code];
 }
 
-function joinCompact(values: string[]) {
-  return values.filter(Boolean).join("");
+function joinCompact(values: Array<string | undefined>, separator = "") {
+  return values.filter(Boolean).join(separator);
 }
 
 function text(value: unknown) {
@@ -471,6 +749,21 @@ function numberFrom(value: unknown, fallback: number) {
 function optionalNumber(value: unknown) {
   const parsed = numberFrom(value, Number.NaN);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function optionalNonZeroNumber(value: unknown) {
+  const parsed = optionalNumber(value);
+  return parsed !== undefined && parsed !== 0 ? parsed : undefined;
+}
+
+function flag(node: unknown, key: string) {
+  return text(findValue(node, key)) === "1";
+}
+
+function hasAnyValue(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasAnyValue);
+  if (isObject(value)) return Object.values(value).some(hasAnyValue);
+  return value !== undefined && value !== null && value !== "" && value !== false;
 }
 
 function isObject(value: unknown): value is XmlNode {

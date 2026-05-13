@@ -39,6 +39,7 @@ https://ksef-invoice-translator.vercel.app
 - Podglad faktury w interfejsie webowym.
 - Eksport PDF jednojezyczny lub dwujezyczny.
 - Kod QR i blok weryfikacyjny w PDF, jezeli faktura zawiera link do strony Ministerstwa Finansow.
+- Dla XML FA(3) eksport PDF korzysta z vendored snapshotu oficjalnego generatora MF jako zrodla prawdy dla kolejnosci, warunkow i layoutu sekcji.
 - Tlumaczenie etykiet z lokalnych slownikow.
 - Tlumaczenie OpenAI tylko dla opisow pozycji, notatek i wolnego tekstu.
 
@@ -104,8 +105,11 @@ lib/
     format.ts
     schema.ts              # walidacja i model domenowy
   pdf/
-    invoice-pdfmake.ts     # generator PDF
+    invoice-pdfmake.ts     # fallbackowy/custom generator PDF
     parser.ts              # ekstrakcja danych z PDF
+  mf-fa3/
+    official-renderer.ts   # adapter do vendored generatora MF FA(3)
+    sections.ts            # wspolna kolejnosc sekcji dla preview/fallbacku
   translation/
     dictionaries.ts        # statyczne slowniki etykiet
     engine.ts              # logika tlumaczen AI
@@ -118,6 +122,9 @@ types/
 
 sample-data/
   sample-fa3-invoice.xml   # bezpieczna probka do testow
+
+vendor/
+  ksef-pdf-generator/      # kontrolowany snapshot CIRFMF/ksef-pdf-generator
 ```
 
 ## Uruchomienie Lokalne
@@ -264,8 +271,8 @@ Najwazniejsze miejsca w kodzie:
 
 Przy dalszym rozwoju trzymamy sie tych zasad:
 
-- najpierw normalizacja danych do `Invoice`, potem render,
-- nie renderujemy bezposrednio z XML,
+- dla XML FA(3) zrodlem prawdy dla PDF jest `vendor/ksef-pdf-generator`, a `Invoice` sluzy do danych aplikacyjnych, tlumaczen i weryfikacji KSeF,
+- bezposredni render z XML jest dopuszczony tylko w adapterze oficjalnego generatora MF FA(3); reszta aplikacji pracuje na `Invoice`,
 - nie uzywamy AI do kwot, numerow, dat ani identyfikatorow,
 - parser XML ma byc tolerancyjny na pola opcjonalne,
 - PDF parsing traktujemy jako best effort,
