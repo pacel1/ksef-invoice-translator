@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database, Json } from "@/lib/supabase/database.types";
 import type { Invoice } from "@/types/invoice";
 import { sha256Hex } from "@/lib/invoice/source-hash";
 import { parseKsefXml } from "@/lib/xml/parser";
@@ -80,7 +80,7 @@ async function uploadXml(opts: {
       issue_date: parsed.invoice.issueDate,
       currency: parsed.invoice.currency,
       total_gross: parsed.invoice.totals?.gross ?? null,
-      source_data: parsed.invoice as unknown as Record<string, unknown>,
+      source_data: parsed.invoice as unknown as Json,
       warnings: parsed.warnings
     })
     .select("id")
@@ -165,7 +165,7 @@ async function uploadPdf(opts: {
       issue_date: parsed.invoice.issueDate,
       currency: parsed.invoice.currency,
       total_gross: parsed.invoice.totals?.gross ?? null,
-      source_data: parsed.invoice as unknown as Record<string, unknown>,
+      source_data: parsed.invoice as unknown as Json,
       warnings: parsed.warnings
     })
     .select("id")
