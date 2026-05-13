@@ -1,8 +1,7 @@
-import "dotenv/config";
 import { config } from "dotenv";
 import path from "node:path";
 
-config({ path: path.resolve(process.cwd(), ".env.test") });
+config({ path: path.resolve(process.cwd(), ".env.test"), override: true });
 
 const required = [
   "NEXT_PUBLIC_SUPABASE_URL",
