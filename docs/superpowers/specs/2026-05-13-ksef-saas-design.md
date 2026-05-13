@@ -54,19 +54,19 @@ A `credit_ledger` table records every grant, purchase, consumption, refund, and 
 
 ## 5. Pricing ladder (slider)
 
-Slider range: 5 → 100, step 5. Tiered unit pricing rewards larger packs and pushes users away from the smallest pack.
+Slider range: 5 → 100, step 5. Tiered unit pricing rewards larger packs and pushes users away from the smallest pack. All prices **net (bez VAT)**; Stripe Tax adds 23% Polish VAT at checkout.
 
-| Pack size  | Unit price | Pack total |
-|------------|-----------:|-----------:|
-| 5          |     €1.50  |     €7.50  |
-| 10, 15, 20 |     €1.30  |    €13–26  |
-| 25–45      |     €1.10  |    €27.50–€49.50 |
-| 50–95      |     €0.90  |    €45–€85.50 |
-| 100        |     €0.75  |    €75.00  |
+| Pack size            | Unit price (net) | Pack total (net) |
+|----------------------|-----------------:|-----------------:|
+| 5                    |       6.99 zł    |       34.95 zł   |
+| 10, 15, 20           |       5.99 zł    |    59.90–119.80 zł |
+| 25, 30, 35, 40, 45   |       4.99 zł    |   124.75–224.55 zł |
+| 50, 55, … 95         |       3.99 zł    |   199.50–379.05 zł |
+| 100                  |       2.99 zł    |       299.00 zł  |
 
-These numbers are placeholders intended to be sensible defaults; final pricing is a business decision. The slider always renders the current unit price and total live, so users see the discount as they drag.
+The slider renders the current unit price and total live, so users see the discount as they drag, plus the gross (z VAT) total below in small text.
 
-Currency: EUR primary, with a setting to add PLN as a second Stripe Price set later. Tax/VAT handling: enable Stripe Tax in the dashboard so cross-border EU VAT is collected automatically; the app does not implement custom VAT logic.
+Currency: PLN only. Single Stripe Price ladder, single currency on Checkout. Stripe Tax enabled for automatic Polish VAT collection and, where applicable, EU OSS handling. Stripe Invoicing produces a VAT-compliant faktura for every paid Checkout session and emails it to the customer; the customer can also download all past invoices from the Stripe customer portal linked on `/billing`.
 
 ## 6. Architecture
 
@@ -137,7 +137,8 @@ total_gross     numeric(18,2)
 source_data     jsonb not null                       -- parsed Invoice model
 warnings        text[] not null default '{}'
 created_at      timestamptz not null default now()
-unique (user_id, source_hash)
+deleted_at      timestamptz                          -- soft delete; hard-deleted after 30 days
+unique (user_id, source_hash) where deleted_at is null
 ```
 
 The `(user_id, source_hash)` unique constraint enforces per-user idempotency: re-uploading the same bytes returns the existing row.
@@ -185,7 +186,7 @@ stripe_payment_intent_id      text unique
 package_size                  integer not null check (package_size between 5 and 100)
 unit_price_cents              integer not null
 total_amount_cents            integer not null
-currency                      text not null default 'eur'
+currency                      text not null default 'pln'
 status                        text not null check (status in ('pending','paid','failed','refunded'))
 credits_granted               integer not null default 0
 created_at                    timestamptz not null default now()
@@ -229,7 +230,7 @@ Refunds: a `charge.refunded` webhook flips the purchase to `refunded` and calls 
 
 ### Routes
 
-- `/` — existing landing page, anonymous, with a **Try with sample** CTA that loads the bundled `sample-fa3-invoice.xml`. Real uploads on this page redirect to `/login` with a return target.
+- `/` — existing landing page, anonymous, with a **Try with sample** CTA that loads the bundled `sample-fa3-invoice.xml`. Real uploads on this page redirect to `/login` with a return target. The current Starter / Business / Enterprise pricing block in `app/page.tsx` is replaced with the new model: **Free** (1 invoice / month, no card), **Pay-as-you-go** (live slider preview that mirrors the `/billing` widget; CTA opens `/login` or `/billing` depending on session), **Enterprise** (custom — anchor link to a simple contact mailto for high-volume or custom-template requests).
 - `/login` — magic link request form. Email-only. On submit, sends a Supabase OTP email and shows "check your inbox" state.
 - `/auth/callback` — handles the magic-link redirect, sets the session, redirects to `/app`.
 - `/app` — main workspace. The current `app/page.tsx` workspace section, lifted out and behind auth. Header shows balance chip `1 free · 35 paid`. Uploading consumes a credit (atomic — see §8).
@@ -240,7 +241,7 @@ Refunds: a `charge.refunded` webhook flips the purchase to `refunded` and calls 
 
 ### API routes (server)
 
-- `POST /api/upload` — auth required, rate-limited 10/min/user. Single entry point for both XML and PDF (current client-side XML parsing in `app/page.tsx` is moved server-side so credit consumption cannot be bypassed). Flow inside a single transaction: (1) compute `source_hash`, (2) look up `invoices` by `(user_id, source_hash)` — if it exists, return the existing row without consuming a credit, (3) otherwise pre-check that `free_credits_remaining + paid_credits >= 1`, refusing with HTTP 402 if not, (4) detect type and parse via `parseKsefXml` or the PDF parser, (5) insert the new `invoices` row, (6) call `consume_credit`. If parsing fails after the pre-check, no credit is consumed because step 6 only runs after a successful insert. Steps 2–6 run in one DB transaction to prevent races where two parallel uploads of the same file double-charge.
+- `POST /api/upload` — auth required, rate-limited 10/min/user. Single entry point for both XML and PDF (current client-side XML parsing in `app/page.tsx` is moved server-side so credit consumption cannot be bypassed). Flow inside a single transaction: (1) compute `source_hash`, (2) look up live `invoices` by `(user_id, source_hash) where deleted_at is null` — if it exists, return the existing row without consuming a credit, (3) otherwise pre-check that `free_credits_remaining + paid_credits >= 1`, refusing with HTTP 402 if not, (4) detect type and parse via `parseKsefXml` or the PDF parser, (5) insert the new `invoices` row, (6) call `consume_credit`. If parsing fails after the pre-check, no credit is consumed because step 6 only runs after a successful insert. Steps 2–6 run in one DB transaction to prevent races where two parallel uploads of the same file double-charge.
 - `POST /api/translate` — auth required. Uses cached translation if `(invoice_id, language, bilingual)` already exists. Free — no credit consumed here.
 - `POST /api/pdf` — auth required. Free.
 - `POST /api/stripe/checkout` — auth required. Creates pending purchase + Stripe session.
@@ -275,8 +276,12 @@ Localisation: PL/EN already exists in `app/page.tsx`. Lift the `copy` object int
 - Pricing is recomputed server-side from a single source of truth; the client never tells the server how much to charge.
 - File size limit: 10 MB per upload, enforced at the API route boundary.
 - Per-user rate limits: `upload` 10/min, `translate` 20/min, `pdf` 30/min.
+- Purchase abuse caps: at most **3 Checkout sessions per user per 24h** and at most **500 credits purchased per user per 24h**. These prevent card-testing and brute-force abuse without affecting normal customers (who'd buy one pack and use it down). Caps enforced in `/api/stripe/checkout` before session creation.
 - OpenAI key, Stripe secret, Supabase service role: env-only, validated at server boot.
-- Stored invoice data (`source_data`, `translated_data`) contains business PII (VAT IDs, addresses). RLS is the primary defence. Add an option to delete an invoice on the history page; a "delete my account" action cascades and purges all rows. Supabase backups still hold deleted data for the standard retention period — call this out in the privacy policy.
+- Stored invoice data (`source_data`, `translated_data`) contains business PII (VAT IDs, addresses). RLS is the primary defence. Retention model:
+  - **Per-invoice delete**: soft delete (set `deleted_at`), excluded from history queries, recoverable for 30 days, then a daily Supabase scheduled job hard-deletes rows with `deleted_at < now() - interval '30 days'`. Deleting an invoice does not refund the credit.
+  - **Account deletion**: triggers immediate cascade hard delete of `invoices`, `translations`, and `credit_balances`. `credit_ledger` and `stripe_purchases` rows are retained for the legally required period (5 years for Polish accounting), with the `user_id` replaced by a tombstone UUID and `email` removed from the related `profile` row, which is then soft-deleted. This satisfies GDPR right-to-erasure while preserving the financial audit trail Stripe Invoicing relies on.
+  - **Backups**: Supabase managed PITR backups retain deleted data for the standard retention window (7 days on Pro). Privacy policy states this clearly.
 - Logs: never log raw invoice bodies, only `invoice_id` + warnings.
 
 ## 13. Observability
@@ -297,17 +302,7 @@ Each phase ends with a deployable, demoable state.
 6. **UX polish + i18n lift** — `frontend-design` pass over `/app`, `/billing`, `/history`; lift `copy` to `lib/i18n`; balance chip in header; PL/EN parity for the new screens.
 7. **Hardening** — rate limits, Sentry, account deletion, legal pages, Stripe Tax verification.
 
-## 15. Open questions
-
-These are not blockers but should be answered before launch:
-
-- Final pricing ladder and currency mix (EUR only, or EUR + PLN).
-- Whether the landing page should reveal the new SaaS pricing (replacing the current Starter/Business/Enterprise marketing tiers with the slider preview).
-- Account-level GDPR retention window for deleted invoices.
-- Whether to issue VAT-compliant invoices for the SaaS purchases themselves (likely yes for EU B2B; Stripe Tax + Stripe Invoicing covers this).
-- Cap on `package_size`: 100 is a slider ceiling, but should there be a daily purchase cap to deter card-testing abuse?
-
-## 16. Non-goals
+## 15. Non-goals
 
 - Team accounts, shared credit pools, org billing.
 - Subscriptions or auto-top-up.
