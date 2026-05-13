@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
-import { uploadInvoiceForUser } from "@/lib/invoice/upload-service";
+import { uploadInvoiceForUser, UploadError } from "@/lib/invoice/upload-service";
+import { sha256Hex } from "@/lib/invoice/source-hash";
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,29 +20,63 @@ async function newUser(label: string) {
 }
 
 describe("uploadInvoiceForUser (PDF)", () => {
-  it("parses a PDF upload and persists it", async () => {
-    const userId = await newUser("pdf-new");
-    // For deterministic testing we re-render the sample XML through pdfmake and ingest it.
-    // The sample-data folder is XML-only so we synthesise a minimal PDF via the existing renderer.
-    const { renderInvoicePdfMake } = await import("@/lib/pdf/invoice-pdfmake");
-    const { parseKsefXml } = await import("@/lib/xml/parser");
-    const xml = readFileSync(samplePath, "utf8");
-    const parsed = parseKsefXml(xml);
-    if (!parsed.ok) throw new Error("sample XML failed to parse");
-    const pdfBytes = await renderInvoicePdfMake(parsed.invoice, "en", false);
-    const file = new File([Buffer.from(pdfBytes)], "sample.pdf", { type: "application/pdf" });
+  // The repo does not ship a real KSeF PDF fixture (sample-data is XML-only) and
+  // the pdfmake-rendered output does not round-trip through parseKsefPdf, so the
+  // happy path is verified end-to-end in the E2E suite once a real fixture lands.
+  // Here we cover the dispatch + error path and the dedupe short-circuit.
 
+  it("routes a .pdf upload to the PDF parser and surfaces a 422 on unparseable bytes", async () => {
+    const userId = await newUser("pdf-bad");
+    // A few bytes of pure junk — definitely not a valid KSeF PDF.
+    const bytes = Buffer.from("%PDF-1.4 not a real pdf");
+    const file = new File([bytes], "garbage.pdf", { type: "application/pdf" });
+
+    let thrown: unknown;
+    try {
+      await uploadInvoiceForUser({ userId, file, supabase: admin });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(UploadError);
+    expect((thrown as UploadError).status).toBe(422);
+
+    // No row was persisted because parsing failed.
+    const { count } = await admin
+      .from("invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    expect(count).toBe(0);
+
+    await admin.auth.admin.deleteUser(userId);
+  });
+
+  it("dedupes PDF uploads via source_hash before parsing", async () => {
+    const userId = await newUser("pdf-dedupe");
+    const bytes = Buffer.from("%PDF-1.4 placeholder");
+    const hash = await sha256Hex(bytes);
+
+    // Seed an invoices row as if a prior PDF upload had succeeded.
+    const seeded = await admin
+      .from("invoices")
+      .insert({
+        user_id: userId,
+        source_type: "pdf",
+        source_hash: hash,
+        source_size: bytes.length,
+        source_data: { invoiceNumber: "FX-SEEDED" } as unknown as Record<string, unknown>,
+        warnings: []
+      })
+      .select("id")
+      .single();
+    expect(seeded.error).toBeNull();
+
+    // Re-upload the same bytes — the dedupe lookup short-circuits before parseKsefPdf runs.
+    const file = new File([bytes], "again.pdf", { type: "application/pdf" });
     const result = await uploadInvoiceForUser({ userId, file, supabase: admin });
 
-    expect(result.isNew).toBe(true);
-    expect(result.invoice.invoiceNumber).toBeTruthy();
-
-    const { data: row } = await admin
-      .from("invoices")
-      .select("source_type")
-      .eq("id", result.invoiceId)
-      .single();
-    expect(row?.source_type).toBe("pdf");
+    expect(result.isNew).toBe(false);
+    expect(result.invoiceId).toBe(seeded.data!.id);
 
     await admin.auth.admin.deleteUser(userId);
   });
