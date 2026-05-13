@@ -5,6 +5,30 @@ import { getBilingualLabels, getLabels } from "@/lib/translation/dictionaries";
 import { getOfficialTextOverrides, OFFICIAL_LABEL_MAP } from "@/lib/mf-fa3/official-labels";
 import type { Invoice, LanguageCode } from "@/types/invoice";
 
+type OfficialXmlRecord = Record<string, unknown>;
+
+type OfficialPdfDocument = {
+  vfs?: Record<string, string>;
+  getBuffer: (callback: (buffer: Buffer | Uint8Array) => void) => void;
+};
+
+type OfficialGeneratorModule = {
+  generateFA3: (faktura: OfficialXmlRecord, additionalData: Record<string, unknown>) => OfficialPdfDocument;
+  initI18next: () => Promise<void>;
+  i18next?: {
+    options?: { debug?: boolean };
+    addResourceBundle?: (
+      language: string,
+      namespace: string,
+      resources: Record<string, unknown>,
+      deep?: boolean,
+      overwrite?: boolean
+    ) => void;
+    getResourceBundle?: (language: string, namespace: string) => Record<string, unknown>;
+    changeLanguage?: (language: string) => Promise<unknown>;
+  };
+};
+
 export type OfficialFa3RenderInput = {
   sourceXml: string;
   invoice: Invoice;
@@ -35,63 +59,69 @@ export async function renderOfficialFa3Pdf({
   return createdPdfToBuffer(pdf);
 }
 
-function ensureOfficialRenderableFa3(faktura: Record<string, any>, invoice: Invoice) {
-  faktura.Fa ??= {};
-  faktura.Fa.RodzajFaktury ??= { _text: invoice.invoiceType ?? "VAT" };
-  faktura.Fa.P_2 ??= { _text: invoice.invoiceNumber };
-  faktura.Fa.P_1 ??= { _text: invoice.issueDate };
-  faktura.Fa.KodWaluty ??= { _text: invoice.currency };
+function ensureOfficialRenderableFa3(faktura: OfficialXmlRecord, invoice: Invoice) {
+  const fa = ensureObjectChild(faktura, "Fa");
+  fa.RodzajFaktury ??= { _text: invoice.invoiceType ?? "VAT" };
+  fa.P_2 ??= { _text: invoice.invoiceNumber };
+  fa.P_1 ??= { _text: invoice.issueDate };
+  fa.KodWaluty ??= { _text: invoice.currency };
 }
 
-function applyAppFreeTextToOfficialXml(faktura: Record<string, any>, invoice: Invoice, bilingual: boolean) {
-  const fa = faktura.Fa;
+function applyAppFreeTextToOfficialXml(faktura: OfficialXmlRecord, invoice: Invoice, bilingual: boolean) {
+  const fa = asRecord(faktura.Fa);
   if (!fa) return;
 
   asArray(fa.FaWiersz).forEach((row, index) => {
+    const rowRecord = asRecord(row);
     const item = invoice.items[index];
-    if (!item) return;
-    setText(row.P_7, translatedText(item.translatedName, item.name, bilingual));
-    setText(row.P_8A, translatedText(item.translatedUnit, item.unit, bilingual));
+    if (!item || !rowRecord) return;
+    setText(rowRecord.P_7, translatedText(item.translatedName, item.name, bilingual));
+    setText(rowRecord.P_8A, translatedText(item.translatedUnit, item.unit, bilingual));
   });
 
   asArray(fa.Zamowienie).forEach((order, orderIndex) => {
+    const orderRecord = asRecord(order);
     const appOrder = invoice.orders?.[orderIndex];
-    asArray(order?.ZamowienieWiersz).forEach((row, rowIndex) => {
+    asArray(orderRecord?.ZamowienieWiersz).forEach((row, rowIndex) => {
+      const rowRecord = asRecord(row);
       const line = appOrder?.lines?.[rowIndex];
-      if (!line) return;
-      setText(row.P_7Z, translatedText(line.translatedName, line.name, bilingual));
-      setText(row.P_8AZ, translatedText(line.translatedUnit, line.unit, bilingual));
+      if (!line || !rowRecord) return;
+      setText(rowRecord.P_7Z, translatedText(line.translatedName, line.name, bilingual));
+      setText(rowRecord.P_8AZ, translatedText(line.translatedUnit, line.unit, bilingual));
     });
   });
 
   asArray(fa.DodatkowyOpis).forEach((entry, index) => {
+    const entryRecord = asRecord(entry);
     const description = invoice.additionalDescriptions?.[index];
-    if (!description) return;
-    setText(entry.Klucz, translatedText(description.translatedKey, description.key, bilingual));
-    setText(entry.Wartosc, translatedText(description.translatedValue, description.value, bilingual));
+    if (!description || !entryRecord) return;
+    setText(entryRecord.Klucz, translatedText(description.translatedKey, description.key, bilingual));
+    setText(entryRecord.Wartosc, translatedText(description.translatedValue, description.value, bilingual));
   });
 
-  if (faktura.Stopka?.StopkaFaktury) {
-    setText(faktura.Stopka.StopkaFaktury, translatedText(invoice.footer?.translatedText, invoice.footer?.text, bilingual));
-  }
+  const footer = asRecord(faktura.Stopka);
+  setText(footer?.StopkaFaktury, translatedText(invoice.footer?.translatedText, invoice.footer?.text, bilingual));
 }
 
-export function parseOfficialFa3Xml(sourceXml: string): Record<string, any> {
+export function parseOfficialFa3Xml(sourceXml: string): OfficialXmlRecord {
   const parsed = xml2js(sourceXml, {
     compact: true,
     cdataKey: "_text",
     trim: true,
     elementNameFn: stripPrefix,
     attributeNameFn: stripPrefix
-  }) as { Faktura?: Record<string, any> };
+  }) as { Faktura?: OfficialXmlRecord };
 
   if (!parsed.Faktura) {
     throw new Error("Official MF renderer could not find Faktura root element.");
   }
 
-  const kodSystemowy = parsed.Faktura.Naglowek?.KodFormularza?._attributes?.kodSystemowy;
+  const header = asRecord(parsed.Faktura.Naglowek);
+  const formCode = asRecord(header?.KodFormularza);
+  const attributes = asRecord(formCode?._attributes);
+  const kodSystemowy = attributes?.kodSystemowy;
   if (kodSystemowy !== "FA (3)") {
-    throw new Error(`Official MF renderer supports only FA (3), got ${kodSystemowy || "unknown schema"}.`);
+    throw new Error(`Official MF renderer supports only FA (3), got ${String(kodSystemowy || "unknown schema")}.`);
   }
 
   return parsed.Faktura;
@@ -106,8 +136,22 @@ function asArray<T>(value: T | T[] | undefined): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
-function setText(node: { _text?: string } | undefined, value: string | undefined) {
-  if (node && value) node._text = value;
+function asRecord(value: unknown): OfficialXmlRecord | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  return value as OfficialXmlRecord;
+}
+
+function ensureObjectChild(parent: OfficialXmlRecord, key: string): OfficialXmlRecord {
+  const existing = asRecord(parent[key]);
+  if (existing) return existing;
+  const next: OfficialXmlRecord = {};
+  parent[key] = next;
+  return next;
+}
+
+function setText(node: unknown, value: string | undefined) {
+  const record = asRecord(node);
+  if (record && value) record._text = value;
 }
 
 function translatedText(translated: string | undefined, original: string | undefined, bilingual: boolean) {
@@ -129,38 +173,8 @@ function officialLanguage(translated: boolean) {
   return "app";
 }
 
-function officialGenerator(): {
-  generateFA3: (faktura: Record<string, any>, additionalData: Record<string, unknown>) => any;
-  initI18next: () => Promise<void>;
-  i18next?: {
-    options?: { debug?: boolean };
-    addResourceBundle?: (
-      language: string,
-      namespace: string,
-      resources: Record<string, unknown>,
-      deep?: boolean,
-      overwrite?: boolean
-    ) => void;
-    getResourceBundle?: (language: string, namespace: string) => Record<string, unknown>;
-    changeLanguage?: (language: string) => Promise<unknown>;
-  };
-} {
-  return officialMfGenerator as unknown as {
-    generateFA3: (faktura: Record<string, any>, additionalData: Record<string, unknown>) => any;
-    initI18next: () => Promise<void>;
-    i18next?: {
-      options?: { debug?: boolean };
-      addResourceBundle?: (
-        language: string,
-        namespace: string,
-        resources: Record<string, unknown>,
-        deep?: boolean,
-        overwrite?: boolean
-      ) => void;
-      getResourceBundle?: (language: string, namespace: string) => Record<string, unknown>;
-      changeLanguage?: (language: string) => Promise<unknown>;
-    };
-  };
+function officialGenerator(): OfficialGeneratorModule {
+  return officialMfGenerator as unknown as OfficialGeneratorModule;
 }
 
 function configureOfficialTranslations(
@@ -240,13 +254,13 @@ async function initOfficialI18nextQuietly(initI18next: () => Promise<void>) {
   }
 }
 
-function ensureRobotoVfs(pdf: { vfs?: Record<string, string> }) {
+function ensureRobotoVfs(pdf: OfficialPdfDocument) {
   if (pdf.vfs?.["Roboto-Regular.ttf"]) return;
   const vfs = pdfMakeVfs as unknown as Record<string, string> & { default?: Record<string, string> };
   pdf.vfs = { ...(vfs["Roboto-Regular.ttf"] ? vfs : vfs.default ?? {}) };
 }
 
-function createdPdfToBuffer(pdf: { getBuffer: (callback: (buffer: Buffer | Uint8Array) => void) => void }): Promise<Buffer> {
+function createdPdfToBuffer(pdf: OfficialPdfDocument): Promise<Buffer> {
   return new Promise((resolve) => {
     pdf.getBuffer((buffer: Buffer | Uint8Array) => {
       resolve(Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer));
