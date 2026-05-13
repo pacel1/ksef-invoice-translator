@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdf-parse"],
+  serverExternalPackages: ["pdf-parse", "pdfmake"],
+  outputFileTracingIncludes: {
+    "/api/pdf": ["./node_modules/pdfmake/fonts/Roboto/*.ttf"],
+    "/api/pdf/route": ["./node_modules/pdfmake/fonts/Roboto/*.ttf"]
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "8mb"

@@ -18,10 +18,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { InvoicePreview } from "@/components/invoice-preview";
 import { parseKsefXml } from "@/lib/xml/parser";
-import { languageOptions } from "@/lib/translation/languages";
+import { buildKsefXmlVerificationLink } from "@/lib/xml/verification";
+import { getLanguageOptions } from "@/lib/translation/languages";
 import type { Invoice, LanguageCode } from "@/types/invoice";
 
 type UiLanguage = "pl" | "en";
+
+const ksefVerificationMessages = {
+  confirmed: "Faktura została odnaleziona w KSeF. Numer KSeF został dodany do wygenerowanej faktury.",
+  notConfirmed:
+    "Nie udało się potwierdzić faktury w KSeF na podstawie publicznego linku weryfikacyjnego. Blok QR/link/numer KSeF nie został dodany do faktury."
+};
 
 const copy = {
   pl: {
@@ -175,9 +182,10 @@ export default function Home() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const t = copy[uiLanguage];
+  const languageOptions = useMemo(() => getLanguageOptions(uiLanguage), [uiLanguage]);
   const selectedLanguage = useMemo(
-    () => languageOptions.find((option) => option.code === language)?.label ?? "English",
-    [language]
+    () => languageOptions.find((option) => option.code === language)?.label ?? language,
+    [language, languageOptions]
   );
 
   async function handleFile(file?: File) {
@@ -204,6 +212,9 @@ export default function Home() {
 
         setInvoice(payload.invoice);
         setMessages(payload.warnings ?? []);
+        if (payload.invoice?.verification?.qrLink) {
+          void verifyKsefForPreview(payload.invoice.verification.qrLink);
+        }
       } catch (error) {
         setInvoice(null);
         setMessages([error instanceof Error ? error.message : String(t.parsePdfFailed)]);
@@ -213,7 +224,8 @@ export default function Home() {
       return;
     }
 
-    const xml = await file.text();
+    const xmlBytes = await file.arrayBuffer();
+    const xml = new TextDecoder().decode(xmlBytes);
     const parsed = parseKsefXml(xml);
     if (!parsed.ok) {
       setInvoice(null);
@@ -221,8 +233,63 @@ export default function Home() {
       return;
     }
 
-    setInvoice(parsed.invoice);
-    setMessages(parsed.warnings);
+    const qrLink = await buildKsefXmlVerificationLink(
+      xmlBytes,
+      parsed.invoice.issueDate,
+      parsed.invoice.seller.vatId
+    );
+    const invoiceWithVerification: Invoice = qrLink
+      ? {
+          ...parsed.invoice,
+          verification: {
+            ...parsed.invoice.verification,
+            qrLink
+          }
+        }
+      : parsed.invoice;
+
+    setInvoice(invoiceWithVerification);
+    setMessages(qrLink ? parsed.warnings : [...parsed.warnings, "Unable to build KSeF XML verification link: missing seller NIP or issue date."]);
+    if (qrLink) {
+      void verifyKsefForPreview(qrLink);
+    }
+  }
+
+  async function verifyKsefForPreview(verificationUrl: string) {
+    try {
+      const response = await fetch("/api/verify-ksef", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verificationUrl })
+      });
+      const result = await response.json();
+
+      if (result.confirmed && result.ksefNumber) {
+        setInvoice((currentInvoice) =>
+          currentInvoice?.verification?.qrLink === verificationUrl
+            ? {
+                ...currentInvoice,
+                verification: {
+                  ...currentInvoice.verification,
+                  ksefNumber: result.ksefNumber
+                }
+              }
+            : currentInvoice
+        );
+        setMessages((currentMessages) => [...currentMessages, ksefVerificationMessages.confirmed]);
+        return;
+      }
+
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        [ksefVerificationMessages.notConfirmed, result.statusCode ? `Status HTTP: ${result.statusCode}.` : "", result.error].filter(Boolean).join(" ")
+      ]);
+    } catch {
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        "Nie udało się sprawdzić publicznego linku KSeF dla podglądu faktury."
+      ]);
+    }
   }
 
   async function translate() {
@@ -256,6 +323,7 @@ export default function Home() {
         body: JSON.stringify({ invoice, language, bilingual })
       });
       if (!response.ok) throw new Error(String(t.pdfFailed));
+      const ksefConfirmed = response.headers.get("X-KSeF-Verification-Confirmed") === "true";
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -263,6 +331,29 @@ export default function Home() {
       link.download = `ksef-invoice-${invoice.invoiceNumber}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
+      const ksefStatus = response.headers.get("X-KSeF-Verification-Status");
+      const ksefError = response.headers.get("X-KSeF-Verification-Error");
+      const ksefNumber = response.headers.get("X-KSeF-Number");
+      const decodedKsefError = ksefError ? decodeURIComponent(ksefError) : "";
+      const decodedKsefNumber = ksefNumber ? decodeURIComponent(ksefNumber) : "";
+      if (ksefConfirmed && decodedKsefNumber) {
+        setInvoice((currentInvoice) =>
+          currentInvoice
+            ? {
+                ...currentInvoice,
+                verification: {
+                  ...currentInvoice.verification,
+                  ksefNumber: decodedKsefNumber
+                }
+              }
+            : currentInvoice
+        );
+      }
+      setMessages([
+        ksefConfirmed
+          ? ksefVerificationMessages.confirmed
+          : [ksefVerificationMessages.notConfirmed, ksefStatus ? `Status HTTP: ${ksefStatus}.` : "", decodedKsefError].filter(Boolean).join(" ")
+      ]);
     } catch (error) {
       setMessages([error instanceof Error ? error.message : String(t.pdfFailed)]);
     } finally {
