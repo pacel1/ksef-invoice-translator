@@ -10,3 +10,16 @@ coverage
 .vercel
 przykłady/
 broszura-informacyjna-dotyczaca-struktury-logicznej-fa-3-04032026.pdf
+
+# Supabase
+supabase/.branches
+supabase/.temp
+
+# Playwright
+test-results
+playwright-report
+playwright/.cache
+
+# Test envs
+.env.test
+.env.local

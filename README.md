@@ -297,3 +297,66 @@ https://github.com/CIRFMF/ksef-pdf-generator
 ```
 
 Projekt `CIRFMF/ksef-pdf-generator` jest opublikowany na licencji MIT. Szczegoly sa w `THIRD_PARTY_NOTICES.md`.
+
+## Supabase development setup
+
+Phase 1 of the SaaS layer introduces Supabase auth and persistent storage. The schema is defined in `supabase/migrations/` and applied either to the remote project or a local Docker-backed stack.
+
+### Option A: remote Supabase via MCP (current default for this project)
+
+The `ksef` project lives in the `JakubSledz` Supabase org. All schema is applied via the Supabase MCP server (`apply_migration`, `execute_sql`, `generate_typescript_types`) — no Docker required.
+
+To run the app locally against the remote project, copy `.env.example` to `.env.local` and fill in:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://tzfuboudblqdsdhhvrvs.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable key from Supabase MCP>
+SUPABASE_SERVICE_ROLE_KEY=<grab via `npx supabase login` + `npx supabase projects api-keys --project-ref tzfuboudblqdsdhhvrvs`>
+```
+
+Mirror the same `NEXT_PUBLIC_*` values plus `SUPABASE_SERVICE_ROLE_KEY` into `.env.test` so Vitest integration tests and Playwright E2E tests can run.
+
+### Option B: local Supabase via Docker
+
+If you prefer to iterate locally without touching the remote project:
+
+```bash
+npm run db:start         # boots Postgres + Auth + Studio + Inbucket via Docker
+npx supabase status      # prints local URLs and keys
+cp .env.test.example .env.test
+cp .env.example .env.local
+# Paste anon + service_role into both .env files.
+
+npm run dev
+```
+
+- Studio: http://localhost:54323
+- Inbucket (catches magic-link emails in local mode): http://localhost:54324
+
+Reset the local DB and re-apply all migrations:
+
+```bash
+npm run db:reset
+```
+
+### Running tests
+
+```bash
+npm test                    # Vitest unit + integration (needs .env.test populated)
+npm run test:e2e            # Playwright E2E (boots Next dev server automatically)
+```
+
+Note: the integration tests at `tests/integration/sql/` and the E2E auth spec require `SUPABASE_SERVICE_ROLE_KEY` in `.env.test`.
+
+## Workspace flow (Phase 2)
+
+After signing in, the translator workspace lives at `/app`. The flow:
+
+1. Upload an XML or PDF KSeF invoice. The server computes a SHA-256 hash; if the same bytes were uploaded before by the same user, the existing row is reused (no duplicate persistence).
+2. Parsing happens server-side (`lib/invoice/upload-service.ts`). The parsed invoice is stored in `invoices.source_data`.
+3. Translation goes through `/api/translate` with `{ invoiceId, language, bilingual }`. The first request triggers `translateInvoiceFreeText`; subsequent identical requests are served from `translations` (cached forever).
+4. PDF generation goes through `/api/pdf` with `{ invoiceId, language, bilingual }`. It uses the cached translation if present.
+
+Anonymous callers can still use `/api/translate` and `/api/pdf` with `{ invoice }` (inline mode) — credits are not consumed yet (Phase 3 wires that up).
+
+The public landing page at `/` is marketing only; the "Sign in" CTA is the only entry point to the workspace.

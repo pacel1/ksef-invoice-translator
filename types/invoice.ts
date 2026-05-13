@@ -295,6 +295,7 @@ export type Invoice = {
   notes?: string;
   translatedNotes?: string;
   footer?: InvoiceFooter;
+  sourceXml?: string;
 };
 
 export type LanguageCode =

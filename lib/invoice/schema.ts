@@ -347,5 +347,6 @@ export const invoiceSchema = z.object({
         })
         .optional()
     })
-    .optional()
+    .optional(),
+  sourceXml: z.string().optional()
 });
