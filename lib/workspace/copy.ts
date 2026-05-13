@@ -1,0 +1,147 @@
+// Verbatim move of the bilingual copy dictionary previously inlined in app/page.tsx.
+// Phase 2 lifts it here so the workspace component and the landing page can share strings.
+
+export type UiLanguage = "pl" | "en";
+
+export const copy = {
+  pl: {
+    navProduct: "Produkt",
+    navHow: "Jak działa",
+    navPricing: "Cennik",
+    navFaq: "FAQ",
+    uiLanguage: "Język interfejsu",
+    badge: "Narzędzie dla polskich firm pracujących z KSeF",
+    headline: "Tłumacz faktury KSeF na profesjonalne faktury dla zagranicznych kontrahentów.",
+    subheadline:
+      "Wgraj FA(3) XML albo PDF faktury KSeF, sprawdź czytelny podgląd, przetłumacz opisy i wyeksportuj estetyczny PDF bez logowania do KSeF, ERP ani systemu księgowego.",
+    ctaUpload: "Wgraj fakturę",
+    ctaHow: "Zobacz proces",
+    trust1: "Nie wystawia faktur",
+    trust2: "Nie łączy się z KSeF",
+    trust3: "Nie zmienia danych finansowych",
+    uploadTitle: "Wgraj KSeF FA(3) XML lub PDF",
+    uploadHelp: "Przeciągnij plik tutaj albo wybierz z dysku.",
+    parserFeature: "Parser FA(3) XML i PDF KSeF",
+    translationFeature: "Tłumaczenia etykiet i opisów",
+    pdfFeature: "Eksport PDF z polskimi znakami i QR",
+    targetLanguage: "Język tłumaczenia faktury",
+    bilingual: "Dwujęzycznie: wybrany język + polski",
+    translate: "Tłumacz opisy",
+    download: "Pobierz PDF",
+    parsing: "Analizuję PDF KSeF...",
+    empty: "Wgraj fakturę FA(3) XML lub PDF KSeF, aby wygenerować podgląd w języku",
+    noAi:
+      "Etykiety są tłumaczone słownikowo. Dodaj OPENAI_API_KEY, aby tłumaczyć opisy pozycji, jednostki, notatki i stopkę.",
+    parsePdfFailed: "Nie udało się odczytać PDF.",
+    translationFailed: "Tłumaczenie nie powiodło się.",
+    pdfFailed: "Generowanie PDF nie powiodło się.",
+    workspaceTitle: "Konwerter faktury",
+    workspaceLead:
+      "To główne narzędzie aplikacji. Wgraj plik, wybierz język kontrahenta, zdecyduj czy dokument ma być jedno- czy dwujęzyczny i pobierz gotowy PDF.",
+    howTitle: "Jak korzystać",
+    howLead: "Proces jest prosty i nie wymaga wdrożenia ani integracji.",
+    steps: [
+      ["Wgraj plik", "Obsługiwany jest XML FA(3) oraz wygenerowany PDF faktury KSeF."],
+      ["Sprawdź podgląd", "Aplikacja normalizuje dane faktury do jednego modelu i pokazuje je w czytelnym układzie."],
+      ["Przetłumacz treść", "Stałe etykiety pochodzą ze słowników, a AI tłumaczy tylko opisy, notatki i wolny tekst."],
+      ["Pobierz PDF", "Eksport zawiera dane stron, pozycje, płatności, stopkę, QR KSeF i informację o reprezentacji tłumaczonej."]
+    ],
+    valueTitle: "Zaprojektowane pod komunikację z kontrahentami",
+    valueLead:
+      "To nie jest księgowość ani ERP. To wyspecjalizowane narzędzie do przygotowania zrozumiałej reprezentacji faktury dla odbiorcy zagranicznego.",
+    values: [
+      ["Bezpieczny zakres", "Nie wystawiamy, nie księgujemy i nie modyfikujemy faktury źródłowej."],
+      ["Kontrola wartości", "Kwoty, daty, numery faktur, NIP, IBAN i stawki VAT nie są tłumaczone przez AI."],
+      ["Europejskie języki", "Obsługa najważniejszych języków europejskich z możliwością szybkiego dodania kolejnych."],
+      ["KSeF-ready", "Mapper obsługuje FA(3), faktury zaliczkowe, płatności, rachunki bankowe, stopkę i QR weryfikacyjny."]
+    ],
+    pricingTitle: "Cennik MVP",
+    pricingLead: "Prosty model dla firm, które chcą szybko wysyłać czytelne faktury do partnerów zagranicznych.",
+    plans: [
+      ["Starter", "0 zł", "Testy i walidacja procesu", ["XML/PDF upload", "Podgląd faktury", "Eksport przykładowy", "Brak kont użytkowników"]],
+      ["Business", "149 zł / mies.", "Dla zespołów sprzedaży i administracji", ["Nielimitowane tłumaczenia", "PDF z brandingiem", "Historia lokalna lub firmowa", "Priorytetowe języki UE"]],
+      ["Enterprise", "Indywidualnie", "Dla organizacji z większym wolumenem", ["SLA i wdrożenie", "Polityki bezpieczeństwa", "Integracje wewnętrzne", "Dedykowane szablony PDF"]]
+    ],
+    faqTitle: "Najczęstsze pytania",
+    faqs: [
+      ["Czy aplikacja łączy się z KSeF?", "Nie. Użytkownik sam wgrywa XML lub PDF. Aplikacja tylko parsuje, tłumaczy, renderuje i eksportuje."],
+      ["Czy to zastępuje księgowość?", "Nie. To czytelna reprezentacja faktury dla kontrahenta, a nie system księgowy."],
+      ["Co tłumaczy AI?", "Wyłącznie wolny tekst: opisy pozycji, usług, notatki, stopkę i instrukcje płatnicze."],
+      ["Czy kwoty lub numery mogą zostać zmienione?", "Nie powinny. Dane finansowe, identyfikatory, daty, waluty, IBAN i stawki VAT są przepisywane bez tłumaczenia AI."]
+    ],
+    seoTitle: "Tłumacz faktur KSeF, viewer FA(3), XML invoice to PDF",
+    seoBody:
+      "KSeF Invoice Translator pomaga polskim firmom przygotować profesjonalne tłumaczenie faktury KSeF dla kontrahenta. Narzędzie obsługuje FA(3) XML invoice, PDF z KSeF, Polish invoice translation, translate KSeF invoice oraz eksport invoice PDF dla partnerów międzynarodowych."
+  },
+  en: {
+    navProduct: "Product",
+    navHow: "How it works",
+    navPricing: "Pricing",
+    navFaq: "FAQ",
+    uiLanguage: "Interface language",
+    badge: "Utility for Polish companies working with KSeF",
+    headline: "Translate KSeF invoices into professional invoices for international contractors.",
+    subheadline:
+      "Upload FA(3) XML or a rendered KSeF PDF, review a readable invoice, translate free text, and export a polished PDF without KSeF login, ERP, or accounting workflows.",
+    ctaUpload: "Upload invoice",
+    ctaHow: "See workflow",
+    trust1: "Does not issue invoices",
+    trust2: "Does not connect to KSeF",
+    trust3: "Does not alter financial data",
+    uploadTitle: "Upload KSeF FA(3) XML or PDF",
+    uploadHelp: "Drag and drop, or choose a file from your computer.",
+    parserFeature: "FA(3) XML and KSeF PDF parser",
+    translationFeature: "Label and free-text translation",
+    pdfFeature: "Unicode PDF export with QR",
+    targetLanguage: "Invoice target language",
+    bilingual: "Bilingual: selected language + Polish",
+    translate: "Translate descriptions",
+    download: "Download PDF",
+    parsing: "Parsing KSeF PDF...",
+    empty: "Upload a FA(3) XML or KSeF PDF invoice to generate the preview in",
+    noAi:
+      "Static labels are translated from dictionaries. Add OPENAI_API_KEY to translate item descriptions, units, notes, and footer text.",
+    parsePdfFailed: "PDF parsing failed.",
+    translationFailed: "Translation failed.",
+    pdfFailed: "PDF generation failed.",
+    workspaceTitle: "Invoice converter",
+    workspaceLead:
+      "This is the application workspace. Upload a file, select the contractor language, choose mono- or bilingual output, and export the PDF.",
+    howTitle: "How it works",
+    howLead: "A focused workflow with no deployment or integration required.",
+    steps: [
+      ["Upload file", "FA(3) XML and rendered KSeF invoice PDFs are supported."],
+      ["Review preview", "The app normalizes invoice data into one internal model and renders it clearly."],
+      ["Translate text", "Fixed labels use dictionaries; AI translates only descriptions, notes, and free text."],
+      ["Export PDF", "The export includes parties, line items, payment, footer, KSeF QR, and translation disclaimer."]
+    ],
+    valueTitle: "Built for contractor communication",
+    valueLead:
+      "This is not accounting or ERP software. It is a focused utility for readable invoice representations for foreign recipients.",
+    values: [
+      ["Safe scope", "We do not issue, book, or modify the source invoice."],
+      ["Value control", "Amounts, dates, invoice numbers, VAT IDs, IBANs, and VAT rates are never translated by AI."],
+      ["European languages", "Major European languages are supported and more can be added centrally."],
+      ["KSeF-ready", "The mapper handles FA(3), advances, payments, bank accounts, footers, and verification QR links."]
+    ],
+    pricingTitle: "MVP pricing",
+    pricingLead: "A simple model for companies sending readable invoices to foreign partners.",
+    plans: [
+      ["Starter", "€0", "Testing and validation", ["XML/PDF upload", "Invoice preview", "Sample export", "No user accounts"]],
+      ["Business", "€35 / mo", "For sales and administration teams", ["Unlimited translations", "Branded PDFs", "Local or company history", "Priority EU languages"]],
+      ["Enterprise", "Custom", "For larger invoice volumes", ["SLA and onboarding", "Security policies", "Internal integrations", "Custom PDF templates"]]
+    ],
+    faqTitle: "FAQ",
+    faqs: [
+      ["Does it connect to KSeF?", "No. Users upload XML or PDF files. The app only parses, translates, renders, and exports."],
+      ["Does it replace accounting?", "No. It creates a readable representation for contractors, not bookkeeping records."],
+      ["What does AI translate?", "Only free text: line item descriptions, service names, notes, footer, and payment instructions."],
+      ["Can amounts or identifiers change?", "They should not. Financial values, IDs, dates, currencies, IBANs, and VAT rates are copied, not translated by AI."]
+    ],
+    seoTitle: "KSeF invoice translator, FA(3) viewer, XML invoice to PDF",
+    seoBody:
+      "KSeF Invoice Translator helps Polish companies prepare professional KSeF invoice translations for contractors. It supports FA(3) XML invoice files, KSeF PDFs, Polish invoice translation, translate KSeF invoice workflows, and invoice PDF export for international partners."
+  }
+} satisfies Record<UiLanguage, Record<string, unknown>>;
+
+export type Copy = (typeof copy)[UiLanguage];
