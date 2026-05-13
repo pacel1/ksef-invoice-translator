@@ -32,6 +32,9 @@ export async function uploadInvoiceForUser({ userId, file, supabase }: UploadOpt
   if (sourceType === "xml") {
     return uploadXml({ userId, supabase, bytes, hash });
   }
+  if (sourceType === "pdf") {
+    return uploadPdf({ userId, supabase, bytes, hash });
+  }
   throw new UploadError(`Unsupported source type: ${sourceType}`, 415);
 }
 
@@ -69,6 +72,64 @@ async function uploadXml(opts: {
     .insert({
       user_id: opts.userId,
       source_type: "xml",
+      source_hash: opts.hash,
+      source_size: opts.bytes.length,
+      invoice_number: parsed.invoice.invoiceNumber,
+      issue_date: parsed.invoice.issueDate,
+      currency: parsed.invoice.currency,
+      total_gross: parsed.invoice.totals?.gross ?? null,
+      source_data: parsed.invoice as unknown as Record<string, unknown>,
+      warnings: parsed.warnings
+    })
+    .select("id")
+    .single();
+
+  if (insert.error || !insert.data) {
+    throw new UploadError(insert.error?.message ?? "Failed to persist invoice", 500);
+  }
+
+  return {
+    invoice: parsed.invoice,
+    invoiceId: insert.data.id,
+    isNew: true,
+    warnings: parsed.warnings
+  };
+}
+
+async function uploadPdf(opts: {
+  userId: string;
+  supabase: SupabaseClient<Database>;
+  bytes: Buffer;
+  hash: string;
+}): Promise<UploadResult> {
+  const existing = await opts.supabase
+    .from("invoices")
+    .select("id, source_data, warnings")
+    .eq("user_id", opts.userId)
+    .eq("source_hash", opts.hash)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (existing.data) {
+    return {
+      invoice: existing.data.source_data as unknown as Invoice,
+      invoiceId: existing.data.id,
+      isNew: false,
+      warnings: existing.data.warnings ?? []
+    };
+  }
+
+  const { parseKsefPdf } = await import("@/lib/pdf/parser");
+  const parsed = await parseKsefPdf(opts.bytes);
+  if (!parsed.ok) {
+    throw new UploadError(parsed.error, 422);
+  }
+
+  const insert = await opts.supabase
+    .from("invoices")
+    .insert({
+      user_id: opts.userId,
+      source_type: "pdf",
       source_hash: opts.hash,
       source_size: opts.bytes.length,
       invoice_number: parsed.invoice.invoiceNumber,

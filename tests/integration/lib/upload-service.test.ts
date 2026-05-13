@@ -18,6 +18,35 @@ async function newUser(label: string) {
   return data.user!.id;
 }
 
+describe("uploadInvoiceForUser (PDF)", () => {
+  it("parses a PDF upload and persists it", async () => {
+    const userId = await newUser("pdf-new");
+    // For deterministic testing we re-render the sample XML through pdfmake and ingest it.
+    // The sample-data folder is XML-only so we synthesise a minimal PDF via the existing renderer.
+    const { renderInvoicePdfMake } = await import("@/lib/pdf/invoice-pdfmake");
+    const { parseKsefXml } = await import("@/lib/xml/parser");
+    const xml = readFileSync(samplePath, "utf8");
+    const parsed = parseKsefXml(xml);
+    if (!parsed.ok) throw new Error("sample XML failed to parse");
+    const pdfBytes = await renderInvoicePdfMake(parsed.invoice, "en", false);
+    const file = new File([Buffer.from(pdfBytes)], "sample.pdf", { type: "application/pdf" });
+
+    const result = await uploadInvoiceForUser({ userId, file, supabase: admin });
+
+    expect(result.isNew).toBe(true);
+    expect(result.invoice.invoiceNumber).toBeTruthy();
+
+    const { data: row } = await admin
+      .from("invoices")
+      .select("source_type")
+      .eq("id", result.invoiceId)
+      .single();
+    expect(row?.source_type).toBe("pdf");
+
+    await admin.auth.admin.deleteUser(userId);
+  });
+});
+
 describe("uploadInvoiceForUser (XML)", () => {
   it("parses a fresh XML upload and persists an invoices row", async () => {
     const userId = await newUser("xml-new");
