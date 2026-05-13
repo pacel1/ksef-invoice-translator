@@ -390,6 +390,12 @@ export default function Home() {
                 <option value="en">EN</option>
               </select>
             </label>
+            <a
+              href="/login"
+              className="ml-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50"
+            >
+              {uiLanguage === "pl" ? "Zaloguj się" : "Sign in"}
+            </a>
           </nav>
         </div>
       </header>
