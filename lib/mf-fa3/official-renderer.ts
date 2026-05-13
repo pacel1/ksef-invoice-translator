@@ -91,16 +91,14 @@ function applyAppFreeTextToOfficialXml(faktura: OfficialXmlRecord, invoice: Invo
     });
   });
 
-  asArray(fa.DodatkowyOpis).forEach((entry, index) => {
-    const entryRecord = asRecord(entry);
+  findObjectChildren(fa, "DodatkowyOpis").forEach((entryRecord, index) => {
     const description = invoice.additionalDescriptions?.[index];
-    if (!description || !entryRecord) return;
+    if (!description) return;
     setText(entryRecord.Klucz, translatedText(description.translatedKey, description.key, bilingual));
     setText(entryRecord.Wartosc, translatedText(description.translatedValue, description.value, bilingual));
   });
 
-  const footer = asRecord(faktura.Stopka);
-  setText(footer?.StopkaFaktury, translatedText(invoice.footer?.translatedText, invoice.footer?.text, bilingual));
+  applyFooterFreeTextToOfficialXml(faktura, invoice, bilingual);
 }
 
 export function parseOfficialFa3Xml(sourceXml: string): OfficialXmlRecord {
@@ -149,9 +147,37 @@ function ensureObjectChild(parent: OfficialXmlRecord, key: string): OfficialXmlR
   return next;
 }
 
+function findObjectChildren(node: unknown, key: string): OfficialXmlRecord[] {
+  const record = asRecord(node);
+  if (!record) return [];
+
+  const direct = record[key];
+  const matches = asArray(direct)
+    .map(asRecord)
+    .filter((entry): entry is OfficialXmlRecord => Boolean(entry));
+  const nested = Object.entries(record)
+    .filter(([childKey]) => childKey !== key)
+    .flatMap(([, value]) => (Array.isArray(value) ? value.flatMap((entry) => findObjectChildren(entry, key)) : findObjectChildren(value, key)));
+
+  return [...matches, ...nested];
+}
+
 function setText(node: unknown, value: string | undefined) {
   const record = asRecord(node);
   if (record && value) record._text = value;
+}
+
+function applyFooterFreeTextToOfficialXml(faktura: OfficialXmlRecord, invoice: Invoice, bilingual: boolean) {
+  const value = translatedText(invoice.footer?.translatedText, invoice.footer?.text, bilingual);
+  if (!value) return;
+
+  findObjectChildren(faktura, "Informacje").forEach((entry) => {
+    setText(entry.StopkaFaktury, value);
+  });
+
+  findObjectChildren(faktura, "Stopka").forEach((entry) => {
+    setText(entry.StopkaFaktury, value);
+  });
 }
 
 function translatedText(translated: string | undefined, original: string | undefined, bilingual: boolean) {

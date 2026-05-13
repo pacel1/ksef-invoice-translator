@@ -733,12 +733,14 @@ function OfficialPdfPreview({
   fallback: ReactNode;
 }) {
   if (pdfUrl) {
+    const previewSrc = `${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1&zoom=page-width`;
+
     return (
-      <div className="overflow-x-auto pb-4">
+      <div className="pb-4">
         <iframe
           title="Podgląd faktury PDF"
-          src={pdfUrl}
-          className="mx-auto h-[1123px] w-[794px] max-w-full border border-slate-300 bg-white shadow-soft"
+          src={previewSrc}
+          className="mx-auto h-[calc(100vh-120px)] min-h-[760px] w-full max-w-5xl border border-slate-300 bg-white shadow-soft"
         />
       </div>
     );

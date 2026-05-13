@@ -58,7 +58,7 @@ export async function translateInvoiceFreeText(
       {
         role: "system",
         content:
-          "Translate only invoice free text and units of measure into the requested target language. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, or registry numbers. Preserve the order and array lengths exactly. Return strict JSON with keys items:string[], orderLines:string[], units:object, additionalDescriptions:{key:string,value:string}[], settlementReasons:string[], notes:string, and footer:string. The units object must map each original unit string exactly to its translation."
+          "Translate only invoice free text and units of measure into the requested target language. For additionalDescriptions.key, translate short category/type labels such as 'Lokalizacja' to the target language. For additionalDescriptions.value and footer, translate natural-language words and sentences, but preserve invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, registry numbers, street names, addresses, postal codes, and city names exactly as written. Do not leave Polish free-text labels unchanged when they have a normal target-language equivalent. Preserve the order and array lengths exactly. Return strict JSON with keys items:string[], orderLines:string[], units:object, additionalDescriptions:{key:string,value:string}[], settlementReasons:string[], notes:string, and footer:string. The units object must map each original unit string exactly to its translation."
       },
       {
         role: "user",
