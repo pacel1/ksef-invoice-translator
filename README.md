@@ -353,3 +353,16 @@ After signing in, the translator workspace lives at `/app`. The flow:
 Anonymous callers can still use `/api/translate` and `/api/pdf` with `{ invoice }` (inline mode) — credits are not consumed yet (Phase 3 wires that up).
 
 The public landing page at `/` is marketing only; the "Sign in" CTA is the only entry point to the workspace.
+
+## Credit enforcement (Phase 3)
+
+`/api/upload` now consumes one credit per successful new upload.
+
+- **Free tier**: every account gets 1 credit per calendar month, granted lazily on the first upload attempt of that month. Free credits do not accumulate — unused credits are lost on the 1st.
+- **Paid credits** never expire and are consumed only after the free credit is gone.
+- **Dedupe hits cost nothing**: re-uploading the same file (matched by SHA-256 of the bytes, per user) returns the existing row with `isNew: false`.
+- **Out of credits**: `/api/upload` returns HTTP 402 with `{ "error": "Out of credits", "code": "insufficient_credit" }`. The workspace shows a modal pointing to `/billing` (placeholder until Phase 4 wires up Stripe Checkout).
+
+The current balance is visible in the protected header (`<BalanceChip>`) and queryable at `GET /api/me/balance`. The chip refreshes automatically when the workspace dispatches a `credit-balance-changed` event after a credit-consuming upload.
+
+All credit changes are recorded in `credit_ledger` (append-only). The `credit_balances` row is a denormalised view of the ledger sum.
