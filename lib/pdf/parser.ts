@@ -74,7 +74,7 @@ export async function parseKsefPdf(buffer: Buffer): Promise<PdfParseResult> {
     };
 
     if (!invoice.verification?.qrLink) {
-      warnings.push("No KSeF QR verification link was found in PDF text. If it exists only as a bitmap QR code, OCR/QR image decoding is needed.");
+      warnings.push("No KSeF QR verification link was found in PDF text; the reconstructed PDF will be rendered without QR verification.");
     }
 
     const validated = invoiceSchema.parse(invoice);
