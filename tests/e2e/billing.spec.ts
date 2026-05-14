@@ -1,27 +1,7 @@
-import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
+import { admin, expect, signIn, test } from "./helpers/auth";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const admin = createClient(url, serviceRole, { auth: { persistSession: false } });
-
-async function signIn(page: import("@playwright/test").Page, email: string) {
-  const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email });
-  if (error || !data.properties?.hashed_token) throw new Error("generateLink failed");
-  await page.goto(`/auth/callback?token_hash=${data.properties.hashed_token}&type=email`);
-  await expect(page).toHaveURL(/\/app$/);
-}
-
-async function deleteUser(email: string) {
-  const { data } = await admin.auth.admin.listUsers();
-  const created = data.users.find((u) => u.email === email);
-  if (created) await admin.auth.admin.deleteUser(created.id);
-}
-
-test("slider reflects price changes and redirects to Stripe Checkout", async ({ page }) => {
-  const email = `billing-${Date.now()}@example.test`;
-  await admin.auth.admin.createUser({ email, email_confirm: true });
-  await signIn(page, email);
+test("slider reflects price changes and redirects to Stripe Checkout", async ({ page, testUser }) => {
+  await signIn(page, testUser.email);
 
   await page.goto("/billing");
 
@@ -58,36 +38,25 @@ test("slider reflects price changes and redirects to Stripe Checkout", async ({ 
   expect(checkoutPayload.url).toMatch(/^https:\/\/checkout\.stripe\.com\//);
 
   // Source-of-truth check: a stripe_purchases row should exist for this user with status='pending'.
-  const userId = (await admin.auth.admin.listUsers()).data.users.find((u) => u.email === email)?.id;
   const { data: rows } = await admin
     .from("stripe_purchases")
     .select("package_size, status")
-    .eq("user_id", userId!)
+    .eq("user_id", testUser.userId)
     .order("created_at", { ascending: false })
     .limit(1);
   expect(rows?.[0]).toMatchObject({ package_size: 50, status: "pending" });
-
-  await deleteUser(email);
 });
 
-test("?status=paid shows success toast and dispatches balance-changed", async ({ page }) => {
-  const email = `billing-paid-${Date.now()}@example.test`;
-  await admin.auth.admin.createUser({ email, email_confirm: true });
-  await signIn(page, email);
+test("?status=paid shows success toast and dispatches balance-changed", async ({ page, testUser }) => {
+  await signIn(page, testUser.email);
 
   await page.goto("/billing?status=paid&session_id=cs_test_stub");
   await expect(page.getByText(/Płatność zakończona|Payment complete/i)).toBeVisible();
-
-  await deleteUser(email);
 });
 
-test("?status=cancelled shows cancellation toast", async ({ page }) => {
-  const email = `billing-cancel-${Date.now()}@example.test`;
-  await admin.auth.admin.createUser({ email, email_confirm: true });
-  await signIn(page, email);
+test("?status=cancelled shows cancellation toast", async ({ page, testUser }) => {
+  await signIn(page, testUser.email);
 
   await page.goto("/billing?status=cancelled");
   await expect(page.getByText(/Płatność anulowana|Payment cancelled/i)).toBeVisible();
-
-  await deleteUser(email);
 });
