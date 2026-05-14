@@ -100,7 +100,21 @@ export const copy = {
     paymentSuccessTitle: "Płatność zakończona",
     paymentSuccessBody: "Kredyty zostały dodane do Twojego konta.",
     paymentCancelledTitle: "Płatność anulowana",
-    paymentCancelledBody: "Płatność została anulowana. Możesz spróbować ponownie."
+    paymentCancelledBody: "Płatność została anulowana. Możesz spróbować ponownie.",
+    topUp: "Doładuj",
+    creditsExhaustedShort: "Brak kredytów",
+    lowBalanceBannerTitle: "Brak kredytów",
+    lowBalanceBannerBody:
+      "Wykorzystałeś darmową fakturę w tym miesiącu i nie masz pakietu kredytów. Kup pakiet, aby przesłać kolejną fakturę.",
+    newInvoice: "Nowa faktura",
+    tryWithSample: "Spróbuj z przykładową fakturą",
+    onboardingTitle: "Co dostajesz",
+    onboardingItem1: "1 darmowa faktura w miesiącu",
+    onboardingItem2: "Tłumaczenie do 20+ języków",
+    onboardingItem3: "Dwujęzyczny PDF z kodem QR KSeF",
+    onboardingItem4: "Bez logowania do KSeF, bez integracji",
+    cached: "zapisane",
+    moreLanguages: "Więcej języków"
   },
   en: {
     navProduct: "Product",
@@ -198,7 +212,21 @@ export const copy = {
     paymentSuccessTitle: "Payment complete",
     paymentSuccessBody: "Credits have been added to your account.",
     paymentCancelledTitle: "Payment cancelled",
-    paymentCancelledBody: "The payment was cancelled. You can try again."
+    paymentCancelledBody: "The payment was cancelled. You can try again.",
+    topUp: "Top up",
+    creditsExhaustedShort: "Out of credits",
+    lowBalanceBannerTitle: "Out of credits",
+    lowBalanceBannerBody:
+      "You have used your free invoice this month and have no credit pack. Buy a pack to upload another invoice.",
+    newInvoice: "New invoice",
+    tryWithSample: "Try with sample invoice",
+    onboardingTitle: "What you get",
+    onboardingItem1: "1 free invoice per month",
+    onboardingItem2: "Translation to 20+ languages",
+    onboardingItem3: "Bilingual PDF with KSeF QR",
+    onboardingItem4: "No KSeF login, no integration required",
+    cached: "cached",
+    moreLanguages: "More languages"
   }
 } satisfies Record<UiLanguage, Record<string, unknown>>;
 
