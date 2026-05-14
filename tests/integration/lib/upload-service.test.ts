@@ -66,6 +66,8 @@ describe("uploadInvoiceForUser (PDF)", () => {
     const hash = await sha256Hex(bytes);
 
     // Seed an invoices row as if a prior PDF upload had succeeded.
+    // Include a non-empty `sourceXml` so the dedupe path skips the synthetic-XML
+    // backfill (which would crash on this intentionally-sparse fixture).
     const seeded = await admin
       .from("invoices")
       .insert({
@@ -73,7 +75,10 @@ describe("uploadInvoiceForUser (PDF)", () => {
         source_type: "pdf",
         source_hash: hash,
         source_size: bytes.length,
-        source_data: { invoiceNumber: "FX-SEEDED" } as unknown as Record<string, unknown>,
+        source_data: {
+          invoiceNumber: "FX-SEEDED",
+          sourceXml: "<Faktura/>"
+        } as unknown as Record<string, unknown>,
         warnings: []
       })
       .select("id")

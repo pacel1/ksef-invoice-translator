@@ -449,3 +449,21 @@ curl -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
 ```
 
 Local dev: Supabase auth runs on `supabase.co` and can't hit `localhost:3000`. Either (a) keep the production hook URI and test via the deployed Vercel URL, or (b) tunnel with `ngrok http 3000` and temporarily point the hook at the ngrok URL.
+
+## Workspace UX (`/app`)
+
+The authenticated `/app` workspace has two states:
+
+1. **Empty state** — drop zone for XML/PDF + onboarding side panel listing what the user gets (1 free invoice/month, 20+ languages, bilingual PDF, KSeF QR).
+2. **Invoice view** — `<InvoicePreview>` of the parsed invoice + a sticky bottom action bar (`<WorkspaceToolbar>`).
+
+The toolbar contains:
+- **Language pills** (`<LanguagePills>`) for EN/DE/FR/ES/IT plus a "More languages" overflow for the other 15. The active language has a filled cyan background; cached translations show a checkmark; clicking a pill auto-translates (or instant-switches if cached).
+- **Bilingual toggle** (PL + selected language in the same PDF).
+- **Download PDF** for the currently-displayed language + bilingual toggle.
+- **New invoice** button that resets the workspace to the empty state without a page refresh.
+
+### Balance chip + low-balance banner
+
+- The header `<BalanceChip>` is a `<Link>` to `/billing`. Default state shows the free/paid breakdown; zero-balance state shows an amber "Out of credits" with the same link.
+- When the user lands on `/app` with zero balance, a proactive `<LowBalanceBanner>` renders above the workspace. Dismissable per session via `sessionStorage`. Auto-disappears once a credit purchase fires the `credit-balance-changed` event.

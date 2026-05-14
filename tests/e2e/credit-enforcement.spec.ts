@@ -44,8 +44,10 @@ test("free credit is consumed on the first new upload", async ({ page }) => {
   ]);
   expect(uploadResponse.status()).toBe(200);
 
-  // Balance should drop to "0 free credit". The chip refetches on credit-balance-changed.
-  await expect(page.getByText(/0 (darmowy kredyt|free credit)/i).first()).toBeVisible({ timeout: 10_000 });
+  // Balance should drop to zero. With the redesign, the chip switches to its amber
+  // "Brak kredytów / Out of credits" variant and the LowBalanceBanner appears — either
+  // surface confirms the credit was consumed.
+  await expect(page.getByText(/Brak kredytów|Out of credits/i).first()).toBeVisible({ timeout: 10_000 });
 
   const userId = (await userIdFor(email))!;
   const { data: bal } = await admin
@@ -137,8 +139,9 @@ test("upload at zero balance returns 402 and shows the modal", async ({ page }) 
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("dialog").getByText(/Brak kredytów|Out of credits/i)).toBeVisible();
 
-  // The Buy-credits link should point to /billing.
-  const buy = page.getByRole("link", { name: /Kup pakiet|Buy credits/i });
+  // The Buy-credits link inside the modal should point to /billing.
+  // Scope to the dialog — the LowBalanceBanner also shows a "Kup pakiet" link.
+  const buy = page.getByRole("dialog").getByRole("link", { name: /Kup pakiet|Buy credits/i });
   await expect(buy).toHaveAttribute("href", "/billing");
 
   await deleteUser(email);
