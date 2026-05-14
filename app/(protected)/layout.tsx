@@ -42,6 +42,8 @@ export default async function ProtectedLayout({ children }: { children: React.Re
               initialPaid={balance?.paid_credits ?? 0}
               freeLabel={String(t.balanceFree)}
               paidLabel={String(t.balanceFreePaid)}
+              topUpLabel={String(t.topUp)}
+              outOfCreditsLabel={String(t.creditsExhaustedShort)}
             />
             <Link href="/account" className="rounded-md px-3 py-2 hover:bg-slate-100">
               {user.email}
