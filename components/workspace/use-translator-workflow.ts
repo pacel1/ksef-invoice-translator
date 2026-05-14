@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Invoice, LanguageCode } from "@/types/invoice";
+
+export type WorkspaceLanguageCode = LanguageCode | "pl";
 
 export type WorkflowStatus = "idle" | "uploading" | "translating" | "generating-pdf";
 
@@ -11,10 +13,12 @@ export interface UseTranslatorWorkflowResult {
   status: WorkflowStatus;
   messages: string[];
   insufficientCredit: boolean;
-  currentLanguage: LanguageCode;
+  currentLanguage: WorkspaceLanguageCode;
   bilingual: boolean;
   cachedLanguages: Set<LanguageCode>;
-  setCurrentLanguage(lang: LanguageCode): void;
+  previewPdfUrl: string | null;
+  isPreparingPreview: boolean;
+  setCurrentLanguage(lang: WorkspaceLanguageCode): void;
   setBilingual(value: boolean): void;
   upload(file: File): Promise<void>;
   translateCurrent(): Promise<void>;
@@ -23,17 +27,85 @@ export interface UseTranslatorWorkflowResult {
   reset(): void;
 }
 
-const DEFAULT_LANGUAGE: LanguageCode = "en";
+/**
+ * Default language is "pl" — the user sees the official MF-compatible Polish
+ * layout immediately on upload (no translation cost). They click a language pill
+ * to translate.
+ */
+const DEFAULT_LANGUAGE: WorkspaceLanguageCode = "pl";
 
 export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [sourceInvoice, setSourceInvoice] = useState<Invoice | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [status, setStatus] = useState<WorkflowStatus>("idle");
   const [messages, setMessages] = useState<string[]>([]);
   const [insufficientCredit, setInsufficientCredit] = useState(false);
-  const [currentLanguage, setCurrentLanguageState] = useState<LanguageCode>(DEFAULT_LANGUAGE);
+  const [currentLanguage, setCurrentLanguageState] = useState<WorkspaceLanguageCode>(DEFAULT_LANGUAGE);
   const [bilingual, setBilingualState] = useState(true);
   const [cachedLanguages, setCachedLanguages] = useState<Set<LanguageCode>>(new Set());
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  const [isPreparingPreview, setIsPreparingPreview] = useState(false);
+
+  // PDF preview pipeline — regenerates whenever the selected language/bilingual
+  // changes. Skips non-"pl" languages until their translation is cached, so the
+  // /api/pdf call never races ahead of /api/translate.
+  useEffect(() => {
+    if (!invoiceId || !invoice) {
+      setPreviewPdfUrl((currentUrl) => {
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        return null;
+      });
+      setIsPreparingPreview(false);
+      return;
+    }
+    if (currentLanguage !== "pl" && !cachedLanguages.has(currentLanguage)) {
+      // Translation not yet available — preview useEffect will re-fire once it
+      // lands in cachedLanguages.
+      return;
+    }
+
+    const controller = new AbortController();
+    let nextUrl: string | null = null;
+    setIsPreparingPreview(true);
+
+    fetch("/api/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        invoiceId,
+        language: currentLanguage,
+        bilingual: currentLanguage !== "pl" && bilingual,
+        translated: currentLanguage !== "pl"
+      }),
+      signal: controller.signal
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("PDF preview generation failed");
+        const blob = await res.blob();
+        nextUrl = URL.createObjectURL(blob);
+        setPreviewPdfUrl((currentUrl) => {
+          if (currentUrl) URL.revokeObjectURL(currentUrl);
+          return nextUrl;
+        });
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.warn("[workspace] preview PDF failed:", error);
+        setPreviewPdfUrl((currentUrl) => {
+          if (currentUrl) URL.revokeObjectURL(currentUrl);
+          return null;
+        });
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsPreparingPreview(false);
+      });
+
+    return () => {
+      controller.abort();
+      if (nextUrl) URL.revokeObjectURL(nextUrl);
+    };
+  }, [invoiceId, invoice, currentLanguage, bilingual, cachedLanguages]);
 
   function notifyBalanceChanged() {
     if (typeof window !== "undefined") {
@@ -41,9 +113,13 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     }
   }
 
-  const setCurrentLanguage = useCallback((lang: LanguageCode) => {
+  const setCurrentLanguage = useCallback((lang: WorkspaceLanguageCode) => {
     setCurrentLanguageState(lang);
-  }, []);
+    // Instant switch back to the source invoice when the user picks PL.
+    if (lang === "pl") {
+      setInvoice((prev) => sourceInvoice ?? prev);
+    }
+  }, [sourceInvoice]);
 
   const setBilingual = useCallback((value: boolean) => {
     setBilingualState(value);
@@ -69,6 +145,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
       }
 
       setInvoice(payload.invoice);
+      setSourceInvoice(payload.invoice);
       setInvoiceId(payload.invoiceId);
       setMessages(payload.warnings ?? []);
       setCachedLanguages(new Set());
@@ -77,6 +154,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
       }
     } catch (error) {
       setInvoice(null);
+      setSourceInvoice(null);
       setInvoiceId(null);
       setMessages([error instanceof Error ? error.message : "Upload failed"]);
     } finally {
@@ -86,6 +164,11 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
 
   async function translateCurrent() {
     if (!invoiceId) return;
+    if (currentLanguage === "pl") {
+      // PL is the source — instant restore, no API call.
+      if (sourceInvoice) setInvoice(sourceInvoice);
+      return;
+    }
     if (cachedLanguages.has(currentLanguage)) return; // no-op when cached
 
     setStatus("translating");
@@ -102,7 +185,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
       setInvoice(payload.invoice);
       setCachedLanguages((prev) => {
         const next = new Set(prev);
-        next.add(currentLanguage);
+        next.add(currentLanguage as LanguageCode);
         return next;
       });
     } catch (error) {
@@ -119,7 +202,12 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
       const res = await fetch("/api/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId, language: currentLanguage, bilingual })
+        body: JSON.stringify({
+          invoiceId,
+          language: currentLanguage,
+          bilingual: currentLanguage !== "pl" && bilingual,
+          translated: currentLanguage !== "pl"
+        })
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
@@ -145,6 +233,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
 
   function reset() {
     setInvoice(null);
+    setSourceInvoice(null);
     setInvoiceId(null);
     setMessages([]);
     setStatus("idle");
@@ -163,6 +252,8 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     currentLanguage,
     bilingual,
     cachedLanguages,
+    previewPdfUrl,
+    isPreparingPreview,
     setCurrentLanguage,
     setBilingual,
     upload,

@@ -115,7 +115,8 @@ export const copy = {
     onboardingItem3: "Dwujęzyczny PDF z kodem QR KSeF",
     onboardingItem4: "Bez logowania do KSeF, bez integracji",
     cached: "zapisane",
-    moreLanguages: "Więcej języków"
+    moreLanguages: "Więcej języków",
+    originalPolish: "Polski"
   },
   en: {
     navProduct: "Product",
@@ -228,7 +229,8 @@ export const copy = {
     onboardingItem3: "Bilingual PDF with KSeF QR",
     onboardingItem4: "No KSeF login, no integration required",
     cached: "cached",
-    moreLanguages: "More languages"
+    moreLanguages: "More languages",
+    originalPolish: "Polish"
   }
 } satisfies Record<UiLanguage, Record<string, unknown>>;
 

@@ -440,6 +440,10 @@ export function getLabels(language: LanguageCode): TranslationLabels {
   return labels;
 }
 
+export function getPolishLabels(): TranslationLabels {
+  return { ...pl };
+}
+
 export function getBilingualLabels(language: LanguageCode): TranslationLabels {
   const target = getLabels(language);
   const labels: TranslationLabels = {};

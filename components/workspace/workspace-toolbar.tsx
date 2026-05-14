@@ -4,14 +4,14 @@ import { Download, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LanguagePills, type LanguageOption } from "./language-pills";
 import type { LanguageCode } from "@/types/invoice";
-import type { WorkflowStatus } from "./use-translator-workflow";
+import type { WorkflowStatus, WorkspaceLanguageCode } from "./use-translator-workflow";
 
 export interface WorkspaceToolbarProps {
-  currentLanguage: LanguageCode;
+  currentLanguage: WorkspaceLanguageCode;
   cachedLanguages: Set<LanguageCode>;
   bilingual: boolean;
   status: WorkflowStatus;
-  onSelectLanguage(code: LanguageCode): void;
+  onSelectLanguage(code: WorkspaceLanguageCode): void;
   onToggleBilingual(value: boolean): void;
   onDownloadPdf(): void;
   onNewInvoice(): void;
@@ -20,6 +20,7 @@ export interface WorkspaceToolbarProps {
   newInvoiceLabel: string;
   cachedLabel: string;
   moreLanguagesLabel: string;
+  originalPolishLabel: string;
   languageOptions: ReadonlyArray<LanguageOption>;
 }
 
@@ -37,6 +38,7 @@ export function WorkspaceToolbar({
   newInvoiceLabel,
   cachedLabel,
   moreLanguagesLabel,
+  originalPolishLabel,
   languageOptions
 }: WorkspaceToolbarProps) {
   const translating = status === "translating";
@@ -56,6 +58,7 @@ export function WorkspaceToolbar({
           onSelect={onSelectLanguage}
           cachedLabel={cachedLabel}
           moreLanguagesLabel={moreLanguagesLabel}
+          originalPolishLabel={originalPolishLabel}
           allLanguageOptions={languageOptions}
         />
         <div className="flex flex-wrap items-center gap-3">

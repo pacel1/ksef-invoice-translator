@@ -22,6 +22,8 @@ export function TranslatorWorkspace({ uiLanguage = "pl" }: TranslatorWorkspacePr
     currentLanguage,
     bilingual,
     cachedLanguages,
+    previewPdfUrl,
+    isPreparingPreview,
     setCurrentLanguage,
     setBilingual,
     upload,
@@ -33,10 +35,13 @@ export function TranslatorWorkspace({ uiLanguage = "pl" }: TranslatorWorkspacePr
 
   const languageOptions = useMemo(() => getLanguageOptions(uiLanguage), [uiLanguage]);
 
-  // Auto-translate when the user picks a language that isn't cached yet.
+  // Auto-translate when the user picks a non-PL language that isn't cached yet.
+  // The "pl" branch is the source invoice (no API call needed); the hook handles
+  // restoring source on setCurrentLanguage("pl").
   const lastTriedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!invoice) return;
+    if (currentLanguage === "pl") return;
     if (cachedLanguages.has(currentLanguage)) return;
     if (status !== "idle") return;
     const key = `${invoice ? "x" : ""}:${currentLanguage}`;
@@ -69,6 +74,8 @@ export function TranslatorWorkspace({ uiLanguage = "pl" }: TranslatorWorkspacePr
           cachedLanguages={cachedLanguages}
           bilingual={bilingual}
           status={status}
+          previewPdfUrl={previewPdfUrl}
+          isPreparingPreview={isPreparingPreview}
           onSelectLanguage={setCurrentLanguage}
           onToggleBilingual={setBilingual}
           onDownloadPdf={downloadPdf}
@@ -78,6 +85,7 @@ export function TranslatorWorkspace({ uiLanguage = "pl" }: TranslatorWorkspacePr
           newInvoiceLabel={String(t.newInvoice)}
           cachedLabel={String(t.cached)}
           moreLanguagesLabel={String(t.moreLanguages)}
+          originalPolishLabel={String(t.originalPolish)}
           languageOptions={languageOptions}
         />
       ) : (

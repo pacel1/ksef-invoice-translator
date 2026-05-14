@@ -10,6 +10,7 @@ const baseProps = {
   onSelect: vi.fn(),
   cachedLabel: "cached",
   moreLanguagesLabel: "More languages",
+  originalPolishLabel: "Polish",
   allLanguageOptions: [
     { code: "en" as const, label: "English" },
     { code: "de" as const, label: "German" },
@@ -68,5 +69,23 @@ describe("<LanguagePills>", () => {
     const nl = screen.getByRole("option", { name: /Dutch/i });
     fireEvent.click(nl);
     expect(onSelect).toHaveBeenCalledWith("nl");
+  });
+
+  it("renders a leading PL pill that calls onSelect('pl') when clicked", () => {
+    const onSelect = vi.fn();
+    render(<LanguagePills {...baseProps} onSelect={onSelect} />);
+    const pl = screen.getByRole("button", { name: /^PL/ });
+    expect(pl).toBeInTheDocument();
+    expect(pl.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(pl);
+    expect(onSelect).toHaveBeenCalledWith("pl");
+  });
+
+  it("PL pill is aria-pressed when current is 'pl'", () => {
+    render(<LanguagePills {...baseProps} current="pl" onSelect={vi.fn()} />);
+    const pl = screen.getByRole("button", { name: /^PL/ });
+    expect(pl.getAttribute("aria-pressed")).toBe("true");
+    const en = screen.getByRole("button", { name: /^EN/ });
+    expect(en.getAttribute("aria-pressed")).toBe("false");
   });
 });

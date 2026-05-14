@@ -68,13 +68,18 @@ test("clicking a language pill switches the active language and caches it", asyn
   ]);
   expect(uploadResponse.status()).toBe(200);
 
-  // Wait for the implicit EN translate.
-  await page.waitForResponse(
-    (r) => r.url().includes("/api/translate") && r.request().method() === "POST",
-    { timeout: 30_000 }
-  );
+  // Default is PL — upload does not auto-translate. The PL pill is aria-pressed.
+  await expect(page.getByRole("button", { name: /^PL/ })).toHaveAttribute("aria-pressed", "true");
 
-  // EN pill should now show aria-pressed=true.
+  // Click EN — should trigger a translate.
+  const [firstTranslate] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes("/api/translate") && r.request().method() === "POST",
+      { timeout: 30_000 }
+    ),
+    page.getByRole("button", { name: /^EN/ }).click()
+  ]);
+  expect(firstTranslate.status()).toBe(200);
   await expect(page.getByRole("button", { name: /^EN/ })).toHaveAttribute("aria-pressed", "true");
 
   // Click DE — should trigger another translate.
@@ -114,10 +119,9 @@ test("clicking 'New invoice' resets the workspace to the empty state", async ({ 
     page.waitForResponse((r) => r.url().includes("/api/upload") && r.request().method() === "POST"),
     chooser.setFiles(samplePath)
   ]);
-  await page.waitForResponse(
-    (r) => r.url().includes("/api/translate") && r.request().method() === "POST",
-    { timeout: 30_000 }
-  );
+  // Default is PL — no auto-translate. Wait for the workspace to settle into
+  // the invoice view by asserting the toolbar's New invoice button is present.
+  await expect(page.getByRole("button", { name: /Nowa faktura|New invoice/i })).toBeVisible();
 
   // Click New invoice.
   await page.getByRole("button", { name: /Nowa faktura|New invoice/i }).click();

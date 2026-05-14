@@ -66,6 +66,8 @@ describe("uploadInvoiceForUser (PDF)", () => {
     const hash = await sha256Hex(bytes);
 
     // Seed an invoices row as if a prior PDF upload had succeeded.
+    // Include a non-empty `sourceXml` so the dedupe path skips the synthetic-XML
+    // backfill (which would crash on this intentionally-sparse fixture).
     const seeded = await admin
       .from("invoices")
       .insert({
@@ -73,7 +75,10 @@ describe("uploadInvoiceForUser (PDF)", () => {
         source_type: "pdf",
         source_hash: hash,
         source_size: bytes.length,
-        source_data: { invoiceNumber: "FX-SEEDED" } as unknown as Record<string, unknown>,
+        source_data: {
+          invoiceNumber: "FX-SEEDED",
+          sourceXml: "<Faktura/>"
+        } as unknown as Record<string, unknown>,
         warnings: []
       })
       .select("id")
@@ -104,13 +109,15 @@ describe("uploadInvoiceForUser (XML)", () => {
 
     const { data: row } = await admin
       .from("invoices")
-      .select("source_type, source_hash, source_size, invoice_number")
+      .select("source_type, source_hash, source_size, invoice_number, source_data")
       .eq("id", result.invoiceId)
       .single();
     expect(row?.source_type).toBe("xml");
     expect(row?.source_hash).toHaveLength(64);
     expect(row?.source_size).toBe(bytes.length);
     expect(row?.invoice_number).toBe(result.invoice.invoiceNumber);
+    expect((row?.source_data as { sourceXml?: string } | null)?.sourceXml).toContain("<Faktura");
+    expect(result.invoice.sourceXml).toContain("<Faktura");
   });
 
   it("returns the existing row when the same bytes are re-uploaded by the same user", async () => {
@@ -131,5 +138,40 @@ describe("uploadInvoiceForUser (XML)", () => {
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId);
     expect(count).toBe(1);
+  });
+
+  it("backfills sourceXml on an existing XML row created before sourceXml was persisted", async () => {
+    const userId = await newUser("xml-backfill");
+    const bytes = readFileSync(samplePath);
+    const hash = await sha256Hex(bytes);
+
+    const seeded = await admin
+      .from("invoices")
+      .insert({
+        user_id: userId,
+        source_type: "xml",
+        source_hash: hash,
+        source_size: bytes.length,
+        invoice_number: "SEEDED-XML",
+        source_data: { invoiceNumber: "SEEDED-XML" } as unknown as Record<string, unknown>,
+        warnings: []
+      })
+      .select("id")
+      .single();
+    expect(seeded.error).toBeNull();
+
+    const file = new File([bytes], "sample.xml", { type: "application/xml" });
+    const result = await uploadInvoiceForUser({ userId, file, supabase: admin });
+
+    expect(result.isNew).toBe(false);
+    expect(result.invoiceId).toBe(seeded.data!.id);
+    expect(result.invoice.sourceXml).toContain("<Faktura");
+
+    const { data: row } = await admin
+      .from("invoices")
+      .select("source_data")
+      .eq("id", seeded.data!.id)
+      .single();
+    expect((row?.source_data as { sourceXml?: string } | null)?.sourceXml).toContain("<Faktura");
   });
 });

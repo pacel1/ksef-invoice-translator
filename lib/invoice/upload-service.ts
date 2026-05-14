@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import type { Invoice } from "@/types/invoice";
 import { sha256Hex } from "@/lib/invoice/source-hash";
+import { buildSyntheticFa3Xml } from "@/lib/mf-fa3/invoice-to-fa3-xml";
+import { buildKsefXmlVerificationLink } from "@/lib/xml/verification";
 import { parseKsefXml } from "@/lib/xml/parser";
 
 export interface UploadResult {
@@ -41,6 +43,7 @@ async function uploadXml(opts: {
   bytes: Buffer;
   hash: string;
 }): Promise<UploadResult> {
+  const xml = new TextDecoder().decode(opts.bytes);
   const existing = await opts.supabase
     .from("invoices")
     .select("id, source_data, warnings")
@@ -55,19 +58,55 @@ async function uploadXml(opts: {
   }
 
   if (existing.data) {
+    const invoice = existing.data.source_data as unknown as Invoice;
+    if (!invoice.sourceXml) {
+      const invoiceWithSourceXml: Invoice = { ...invoice, sourceXml: xml };
+      const update = await opts.supabase
+        .from("invoices")
+        .update({ source_data: invoiceWithSourceXml as unknown as Json })
+        .eq("id", existing.data.id);
+      if (update.error) {
+        console.error("[upload] failed to backfill XML source on existing invoice:", update.error);
+        throw new UploadError("Failed to update existing invoice", 500);
+      }
+      return {
+        invoice: invoiceWithSourceXml,
+        invoiceId: existing.data.id,
+        isNew: false,
+        warnings: existing.data.warnings ?? []
+      };
+    }
     return {
-      invoice: existing.data.source_data as unknown as Invoice,
+      invoice,
       invoiceId: existing.data.id,
       isNew: false,
       warnings: existing.data.warnings ?? []
     };
   }
 
-  const xml = new TextDecoder().decode(opts.bytes);
   const parsed = parseKsefXml(xml);
   if (!parsed.ok) {
     throw new UploadError(parsed.error, 422);
   }
+  const sourceBytes = new Uint8Array(opts.bytes).buffer;
+  const qrLink = await buildKsefXmlVerificationLink(
+    sourceBytes,
+    parsed.invoice.issueDate,
+    parsed.invoice.seller.vatId
+  );
+  const invoice: Invoice = {
+    ...parsed.invoice,
+    sourceXml: xml,
+    verification: qrLink
+      ? {
+          ...parsed.invoice.verification,
+          qrLink
+        }
+      : parsed.invoice.verification
+  };
+  const warnings = qrLink
+    ? parsed.warnings
+    : [...parsed.warnings, "Unable to build KSeF XML verification link: missing seller NIP or issue date."];
 
   const insert = await opts.supabase
     .from("invoices")
@@ -76,12 +115,12 @@ async function uploadXml(opts: {
       source_type: "xml",
       source_hash: opts.hash,
       source_size: opts.bytes.length,
-      invoice_number: parsed.invoice.invoiceNumber,
-      issue_date: parsed.invoice.issueDate,
-      currency: parsed.invoice.currency,
-      total_gross: parsed.invoice.totals?.gross ?? null,
-      source_data: parsed.invoice as unknown as Json,
-      warnings: parsed.warnings
+      invoice_number: invoice.invoiceNumber,
+      issue_date: invoice.issueDate,
+      currency: invoice.currency,
+      total_gross: invoice.totals?.gross ?? null,
+      source_data: invoice as unknown as Json,
+      warnings
     })
     .select("id")
     .single();
@@ -113,10 +152,10 @@ async function uploadXml(opts: {
   }
 
   return {
-    invoice: parsed.invoice,
+    invoice,
     invoiceId: insert.data.id,
     isNew: true,
-    warnings: parsed.warnings
+    warnings
   };
 }
 
@@ -140,8 +179,29 @@ async function uploadPdf(opts: {
   }
 
   if (existing.data) {
+    const invoice = existing.data.source_data as unknown as Invoice;
+    if (!invoice.sourceXml) {
+      const invoiceWithSourceXml = withSyntheticPdfSourceXml(invoice);
+      const update = await opts.supabase
+        .from("invoices")
+        .update({ source_data: invoiceWithSourceXml as unknown as Json })
+        .eq("id", existing.data.id);
+      if (update.error) {
+        console.error("[upload] failed to backfill synthetic XML source on existing PDF invoice:", update.error);
+        throw new UploadError("Failed to update existing invoice", 500);
+      }
+      return {
+        invoice: invoiceWithSourceXml,
+        invoiceId: existing.data.id,
+        isNew: false,
+        warnings: [
+          ...(existing.data.warnings ?? []),
+          "PDF rendered through reconstructed FA(3) XML; original XML was not provided."
+        ]
+      };
+    }
     return {
-      invoice: existing.data.source_data as unknown as Invoice,
+      invoice,
       invoiceId: existing.data.id,
       isNew: false,
       warnings: existing.data.warnings ?? []
@@ -154,6 +214,12 @@ async function uploadPdf(opts: {
     throw new UploadError(parsed.error, 422);
   }
 
+  const invoice = withSyntheticPdfSourceXml(parsed.invoice);
+  const warnings = [
+    ...parsed.warnings,
+    "PDF rendered through reconstructed FA(3) XML; original XML was not provided."
+  ];
+
   const insert = await opts.supabase
     .from("invoices")
     .insert({
@@ -161,12 +227,12 @@ async function uploadPdf(opts: {
       source_type: "pdf",
       source_hash: opts.hash,
       source_size: opts.bytes.length,
-      invoice_number: parsed.invoice.invoiceNumber,
-      issue_date: parsed.invoice.issueDate,
-      currency: parsed.invoice.currency,
-      total_gross: parsed.invoice.totals?.gross ?? null,
-      source_data: parsed.invoice as unknown as Json,
-      warnings: parsed.warnings
+      invoice_number: invoice.invoiceNumber,
+      issue_date: invoice.issueDate,
+      currency: invoice.currency,
+      total_gross: invoice.totals?.gross ?? null,
+      source_data: invoice as unknown as Json,
+      warnings
     })
     .select("id")
     .single();
@@ -198,10 +264,17 @@ async function uploadPdf(opts: {
   }
 
   return {
-    invoice: parsed.invoice,
+    invoice,
     invoiceId: insert.data.id,
     isNew: true,
-    warnings: parsed.warnings
+    warnings
+  };
+}
+
+function withSyntheticPdfSourceXml(invoice: Invoice): Invoice {
+  return {
+    ...invoice,
+    sourceXml: buildSyntheticFa3Xml(invoice)
   };
 }
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import type { LanguageCode } from "@/types/invoice";
+import type { WorkspaceLanguageCode } from "./use-translator-workflow";
 
 export interface LanguageOption {
   code: LanguageCode;
@@ -10,12 +11,14 @@ export interface LanguageOption {
 }
 
 export interface LanguagePillsProps {
-  current: LanguageCode;
+  current: WorkspaceLanguageCode;
   cached: Set<LanguageCode>;
   translating: boolean;
-  onSelect: (code: LanguageCode) => void;
+  onSelect: (code: WorkspaceLanguageCode) => void;
   cachedLabel: string;
   moreLanguagesLabel: string;
+  /** Localized name for the source language pill (e.g. "Polski" / "Polish"). */
+  originalPolishLabel: string;
   allLanguageOptions: ReadonlyArray<LanguageOption>;
 }
 
@@ -28,20 +31,34 @@ export function LanguagePills({
   onSelect,
   cachedLabel,
   moreLanguagesLabel,
+  originalPolishLabel,
   allLanguageOptions
 }: LanguagePillsProps) {
   const [overflowOpen, setOverflowOpen] = useState(false);
 
   const visibleCodes = new Set<LanguageCode>(DEFAULT_VISIBLE);
-  if (!visibleCodes.has(current)) {
+  if (current !== "pl" && !visibleCodes.has(current)) {
     visibleCodes.add(current);
   }
 
   const visiblePills = allLanguageOptions.filter((option) => visibleCodes.has(option.code));
   const overflowPills = allLanguageOptions.filter((option) => !visibleCodes.has(option.code));
 
+  const plActive = current === "pl";
+
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onSelect("pl")}
+        aria-pressed={plActive}
+        aria-label={`PL — ${originalPolishLabel}`}
+        data-cached="source"
+        className={pillClass(plActive, false)}
+      >
+        <span className="font-semibold">PL</span>
+      </button>
+
       {visiblePills.map((option) => {
         const isActive = option.code === current;
         const isCached = cached.has(option.code);

@@ -49,12 +49,15 @@ test("authenticated user can upload, translate, and download an invoice", async 
   expect(invoiceRows).toHaveLength(1);
   expect(invoiceRows![0].source_type).toBe("xml");
 
-  // After upload, the workspace auto-translates to EN (the default currentLanguage).
-  // Wait for that response.
-  const translateResponse = await page.waitForResponse(
-    (r) => r.url().includes("/api/translate") && r.request().method() === "POST",
-    { timeout: 30_000 }
-  );
+  // The workspace defaults to PL (original) — no auto-translate on upload.
+  // Click the EN pill to trigger a translation, then wait for the response.
+  const [translateResponse] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes("/api/translate") && r.request().method() === "POST",
+      { timeout: 30_000 }
+    ),
+    page.getByRole("button", { name: /^EN/ }).click()
+  ]);
   expect(translateResponse.status()).toBe(200);
 
   // Download PDF — assert the network response.
