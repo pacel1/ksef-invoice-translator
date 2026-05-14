@@ -1,21 +1,22 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { LanguagePills } from "@/components/workspace/language-pills";
+import type { LanguageCode } from "@/types/invoice";
 
 const baseProps = {
   current: "en" as const,
-  cached: new Set<string>(["en"]),
+  cached: new Set<LanguageCode>(["en"]),
   translating: false,
   onSelect: vi.fn(),
   cachedLabel: "cached",
   moreLanguagesLabel: "More languages",
   allLanguageOptions: [
-    { code: "en", label: "English" },
-    { code: "de", label: "German" },
-    { code: "fr", label: "French" },
-    { code: "es", label: "Spanish" },
-    { code: "it", label: "Italian" },
-    { code: "nl", label: "Dutch" }
+    { code: "en" as const, label: "English" },
+    { code: "de" as const, label: "German" },
+    { code: "fr" as const, label: "French" },
+    { code: "es" as const, label: "Spanish" },
+    { code: "it" as const, label: "Italian" },
+    { code: "nl" as const, label: "Dutch" }
   ]
 };
 
@@ -53,7 +54,7 @@ describe("<LanguagePills>", () => {
   });
 
   it("renders cached indicator only on cached pills", () => {
-    const cached = new Set(["en", "fr"]);
+    const cached = new Set<LanguageCode>(["en", "fr"]);
     render(<LanguagePills {...baseProps} cached={cached} onSelect={vi.fn()} />);
     expect(screen.getByRole("button", { name: /^EN/ }).getAttribute("data-cached")).toBe("true");
     expect(screen.getByRole("button", { name: /^DE/ }).getAttribute("data-cached")).toBe("false");
