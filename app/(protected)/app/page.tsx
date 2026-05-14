@@ -1,35 +1,21 @@
 import { TranslatorWorkspace } from "@/components/workspace/translator-workspace";
 import { LowBalanceBanner } from "@/components/billing/low-balance-banner";
 import { requireUser } from "@/lib/auth/require-user";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import { copy, type UiLanguage } from "@/lib/workspace/copy";
+import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { getCurrentBalance } from "@/lib/billing/get-current-balance";
+import { copy } from "@/lib/workspace/copy";
 
 export default async function AppPage() {
   const user = await requireUser();
-  const supabase = await createSupabaseServerClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("locale")
-    .eq("id", user.id)
-    .single();
-
-  const uiLanguage: UiLanguage = profile?.locale === "en" ? "en" : "pl";
+  const { uiLanguage } = await getCurrentProfile(user.id);
+  const balance = await getCurrentBalance(user.id);
   const t = copy[uiLanguage];
-
-  const admin = getSupabaseAdminClient();
-  await admin.rpc("ensure_free_credit_for_period", { p_user: user.id });
-  const { data: balance } = await admin
-    .from("credit_balances")
-    .select("free_credits_remaining, paid_credits")
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   return (
     <>
       <LowBalanceBanner
-        initialFree={balance?.free_credits_remaining ?? 0}
-        initialPaid={balance?.paid_credits ?? 0}
+        initialFree={balance.freeCreditsRemaining}
+        initialPaid={balance.paidCredits}
         title={String(t.lowBalanceBannerTitle)}
         body={String(t.lowBalanceBannerBody)}
         buyLabel={String(t.buyCredits)}
