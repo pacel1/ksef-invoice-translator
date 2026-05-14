@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { Invoice, LanguageCode } from "@/types/invoice";
 
 export type WorkflowStatus = "idle" | "uploading" | "translating" | "generating-pdf";
@@ -11,12 +11,19 @@ export interface UseTranslatorWorkflowResult {
   status: WorkflowStatus;
   messages: string[];
   insufficientCredit: boolean;
+  currentLanguage: LanguageCode;
+  bilingual: boolean;
+  cachedLanguages: Set<LanguageCode>;
+  setCurrentLanguage(lang: LanguageCode): void;
+  setBilingual(value: boolean): void;
   upload(file: File): Promise<void>;
-  translate(language: LanguageCode, bilingual: boolean): Promise<void>;
-  downloadPdf(language: LanguageCode, bilingual: boolean): Promise<void>;
+  translateCurrent(): Promise<void>;
+  downloadPdf(): Promise<void>;
   dismissInsufficientCredit(): void;
   reset(): void;
 }
+
+const DEFAULT_LANGUAGE: LanguageCode = "en";
 
 export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -24,12 +31,23 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
   const [status, setStatus] = useState<WorkflowStatus>("idle");
   const [messages, setMessages] = useState<string[]>([]);
   const [insufficientCredit, setInsufficientCredit] = useState(false);
+  const [currentLanguage, setCurrentLanguageState] = useState<LanguageCode>(DEFAULT_LANGUAGE);
+  const [bilingual, setBilingualState] = useState(true);
+  const [cachedLanguages, setCachedLanguages] = useState<Set<LanguageCode>>(new Set());
 
   function notifyBalanceChanged() {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("credit-balance-changed"));
     }
   }
+
+  const setCurrentLanguage = useCallback((lang: LanguageCode) => {
+    setCurrentLanguageState(lang);
+  }, []);
+
+  const setBilingual = useCallback((value: boolean) => {
+    setBilingualState(value);
+  }, []);
 
   async function upload(file: File) {
     setMessages([]);
@@ -53,6 +71,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
       setInvoice(payload.invoice);
       setInvoiceId(payload.invoiceId);
       setMessages(payload.warnings ?? []);
+      setCachedLanguages(new Set());
       if (payload.isNew) {
         notifyBalanceChanged();
       }
@@ -65,20 +84,27 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     }
   }
 
-  async function translate(language: LanguageCode, bilingual: boolean) {
+  async function translateCurrent() {
     if (!invoiceId) return;
+    if (cachedLanguages.has(currentLanguage)) return; // no-op when cached
+
     setStatus("translating");
     try {
       const res = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId, language, bilingual })
+        body: JSON.stringify({ invoiceId, language: currentLanguage, bilingual })
       });
       const payload = await res.json();
       if (!res.ok) {
         throw new Error(payload.error ?? "Translation failed");
       }
       setInvoice(payload.invoice);
+      setCachedLanguages((prev) => {
+        const next = new Set(prev);
+        next.add(currentLanguage);
+        return next;
+      });
     } catch (error) {
       setMessages([error instanceof Error ? error.message : "Translation failed"]);
     } finally {
@@ -86,14 +112,14 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     }
   }
 
-  async function downloadPdf(language: LanguageCode, bilingual: boolean) {
+  async function downloadPdf() {
     if (!invoiceId || !invoice) return;
     setStatus("generating-pdf");
     try {
       const res = await fetch("/api/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId, language, bilingual })
+        body: JSON.stringify({ invoiceId, language: currentLanguage, bilingual })
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
@@ -123,6 +149,9 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     setMessages([]);
     setStatus("idle");
     setInsufficientCredit(false);
+    setCurrentLanguageState(DEFAULT_LANGUAGE);
+    setBilingualState(true);
+    setCachedLanguages(new Set());
   }
 
   return {
@@ -131,8 +160,13 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     status,
     messages,
     insufficientCredit,
+    currentLanguage,
+    bilingual,
+    cachedLanguages,
+    setCurrentLanguage,
+    setBilingual,
     upload,
-    translate,
+    translateCurrent,
     downloadPdf,
     dismissInsufficientCredit,
     reset
