@@ -409,3 +409,43 @@ Then in another shell, trigger a test event:
 ```bash
 stripe trigger checkout.session.completed
 ```
+
+## Auth emails (Phase 4.5)
+
+Magic-link and other auth emails are sent through Resend via a Supabase Send Email Hook. The hook target is `/api/auth/send-email-hook`.
+
+### Flow
+
+1. User submits `signInWithOtp` on `/login`.
+2. Supabase generates the token + action URL internally.
+3. Instead of sending email itself, Supabase POSTs a Standard Webhooks signed payload to `/api/auth/send-email-hook`.
+4. Our route verifies the signature with `SUPABASE_AUTH_HOOK_SECRET`, looks up the user's `profiles.locale`, renders a bilingual React Email template, and calls `resend.emails.send(...)`.
+5. Resend delivers the email; user clicks the link; flow continues through `/auth/callback`.
+
+### Templates
+
+`emails/magic-link.tsx` is a React Email component with PL/EN copy chosen at render time. Action-type-specific subjects in `emails/render-template.ts` (signup / magiclink / recovery / email_change / invite).
+
+### Required env vars
+
+- `RESEND_API_KEY` — Resend HTTP API key (`re_...`)
+- `SUPABASE_AUTH_HOOK_SECRET` — Standard Webhooks signing secret (`v1,whsec_...`). Same value must be set in Supabase project config.
+
+### Configuring the hook on Supabase
+
+```bash
+PAT=<your supabase PAT>
+PROJECT_REF=tzfuboudblqdsdhhvrvs
+HOOK_SECRET=$(grep '^SUPABASE_AUTH_HOOK_SECRET=' .env.test | cut -d= -f2-)
+
+curl -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+  -H "Authorization: Bearer $PAT" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"hook_send_email_enabled\": true,
+    \"hook_send_email_uri\": \"https://ksef-invoice-translator.vercel.app/api/auth/send-email-hook\",
+    \"hook_send_email_secret\": \"$HOOK_SECRET\"
+  }"
+```
+
+Local dev: Supabase auth runs on `supabase.co` and can't hit `localhost:3000`. Either (a) keep the production hook URI and test via the deployed Vercel URL, or (b) tunnel with `ngrok http 3000` and temporarily point the hook at the ngrok URL.
