@@ -32,6 +32,31 @@ describe("POST /api/pdf", () => {
     expect(Buffer.from(bytes.slice(0, 4)).toString("utf8")).toBe("%PDF");
   });
 
+  it("renders a PDF from an inline invoice payload with sourceXml", async () => {
+    const xml = readFileSync(samplePath, "utf8");
+    const { parseKsefXml } = await import("@/lib/xml/parser");
+    const parsed = parseKsefXml(xml);
+    if (!parsed.ok) throw new Error("sample XML failed to parse");
+
+    const res = await fetch(`${APP}/api/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        invoice: parsed.invoice,
+        sourceXml: xml,
+        language: "en",
+        bilingual: true,
+        translated: true
+      })
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/pdf");
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    expect(bytes.length).toBeGreaterThan(1000);
+    expect(Buffer.from(bytes.slice(0, 4)).toString("utf8")).toBe("%PDF");
+  });
+
   it("rejects payload missing both invoiceId and invoice", async () => {
     const res = await fetch(`${APP}/api/pdf`, {
       method: "POST",
