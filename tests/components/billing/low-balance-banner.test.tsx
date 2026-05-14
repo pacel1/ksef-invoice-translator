@@ -7,7 +7,8 @@ const baseProps = {
   initialPaid: 0,
   title: "Out of credits",
   body: "Buy a pack to upload another invoice.",
-  buyLabel: "Buy credits"
+  buyLabel: "Buy credits",
+  closeLabel: "Close"
 };
 
 beforeEach(() => {

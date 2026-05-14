@@ -33,6 +33,7 @@ export default async function AppPage() {
         title={String(t.lowBalanceBannerTitle)}
         body={String(t.lowBalanceBannerBody)}
         buyLabel={String(t.buyCredits)}
+        closeLabel={String(t.close)}
       />
       <TranslatorWorkspace uiLanguage={uiLanguage} />
     </>

@@ -10,6 +10,7 @@ export interface LowBalanceBannerProps {
   title: string;
   body: string;
   buyLabel: string;
+  closeLabel: string;
 }
 
 const STORAGE_KEY = "low-balance-banner-dismissed";
@@ -19,7 +20,8 @@ export function LowBalanceBanner({
   initialPaid,
   title,
   body,
-  buyLabel
+  buyLabel,
+  closeLabel
 }: LowBalanceBannerProps) {
   const [free, setFree] = useState(initialFree);
   const [paid, setPaid] = useState(initialPaid);
@@ -85,7 +87,7 @@ export function LowBalanceBanner({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={closeLabel}
           className="rounded-md p-1.5 text-amber-700 hover:bg-amber-100"
         >
           <X className="h-4 w-4" />
