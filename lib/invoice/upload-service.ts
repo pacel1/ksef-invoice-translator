@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import type { Invoice } from "@/types/invoice";
 import { sha256Hex } from "@/lib/invoice/source-hash";
+import { buildKsefXmlVerificationLink } from "@/lib/xml/verification";
 import { parseKsefXml } from "@/lib/xml/parser";
 
 export interface UploadResult {
@@ -68,6 +69,25 @@ async function uploadXml(opts: {
   if (!parsed.ok) {
     throw new UploadError(parsed.error, 422);
   }
+  const sourceBytes = new Uint8Array(opts.bytes).buffer;
+  const qrLink = await buildKsefXmlVerificationLink(
+    sourceBytes,
+    parsed.invoice.issueDate,
+    parsed.invoice.seller.vatId
+  );
+  const invoice: Invoice = {
+    ...parsed.invoice,
+    sourceXml: xml,
+    verification: qrLink
+      ? {
+          ...parsed.invoice.verification,
+          qrLink
+        }
+      : parsed.invoice.verification
+  };
+  const warnings = qrLink
+    ? parsed.warnings
+    : [...parsed.warnings, "Unable to build KSeF XML verification link: missing seller NIP or issue date."];
 
   const insert = await opts.supabase
     .from("invoices")
@@ -76,12 +96,12 @@ async function uploadXml(opts: {
       source_type: "xml",
       source_hash: opts.hash,
       source_size: opts.bytes.length,
-      invoice_number: parsed.invoice.invoiceNumber,
-      issue_date: parsed.invoice.issueDate,
-      currency: parsed.invoice.currency,
-      total_gross: parsed.invoice.totals?.gross ?? null,
-      source_data: parsed.invoice as unknown as Json,
-      warnings: parsed.warnings
+      invoice_number: invoice.invoiceNumber,
+      issue_date: invoice.issueDate,
+      currency: invoice.currency,
+      total_gross: invoice.totals?.gross ?? null,
+      source_data: invoice as unknown as Json,
+      warnings
     })
     .select("id")
     .single();
@@ -113,10 +133,10 @@ async function uploadXml(opts: {
   }
 
   return {
-    invoice: parsed.invoice,
+    invoice,
     invoiceId: insert.data.id,
     isNew: true,
-    warnings: parsed.warnings
+    warnings
   };
 }
 

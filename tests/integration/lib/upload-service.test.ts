@@ -104,13 +104,15 @@ describe("uploadInvoiceForUser (XML)", () => {
 
     const { data: row } = await admin
       .from("invoices")
-      .select("source_type, source_hash, source_size, invoice_number")
+      .select("source_type, source_hash, source_size, invoice_number, source_data")
       .eq("id", result.invoiceId)
       .single();
     expect(row?.source_type).toBe("xml");
     expect(row?.source_hash).toHaveLength(64);
     expect(row?.source_size).toBe(bytes.length);
     expect(row?.invoice_number).toBe(result.invoice.invoiceNumber);
+    expect((row?.source_data as { sourceXml?: string } | null)?.sourceXml).toContain("<Faktura");
+    expect(result.invoice.sourceXml).toContain("<Faktura");
   });
 
   it("returns the existing row when the same bytes are re-uploaded by the same user", async () => {

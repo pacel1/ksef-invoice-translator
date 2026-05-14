@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { invoiceSchema } from "@/lib/invoice/schema";
 import { verifyPublicKsefQrUrl } from "@/lib/ksef/public-verification";
+import { renderOfficialFa3Pdf } from "@/lib/mf-fa3/official-renderer";
 import { renderInvoicePdfMake } from "@/lib/pdf/invoice-pdfmake";
 import { supportedLanguages } from "@/lib/translation/languages";
 import { getOrCreateTranslation } from "@/lib/translation/translation-cache";
@@ -14,13 +15,16 @@ export const runtime = "nodejs";
 const cachedRequestSchema = z.object({
   invoiceId: z.string().uuid(),
   language: z.string(),
-  bilingual: z.boolean().optional()
+  bilingual: z.boolean().optional(),
+  translated: z.boolean().optional()
 });
 
 const inlineRequestSchema = z.object({
   invoice: z.record(z.unknown()),
   language: z.string(),
-  bilingual: z.boolean().optional()
+  bilingual: z.boolean().optional(),
+  translated: z.boolean().optional(),
+  sourceXml: z.string().optional()
 });
 
 export async function POST(request: Request) {
@@ -45,7 +49,8 @@ export async function POST(request: Request) {
 }
 
 async function pdfFromCache(params: z.infer<typeof cachedRequestSchema>) {
-  if (!(params.language in supportedLanguages)) {
+  const language = normalizedLanguage(params.language);
+  if (!language.ok) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
   }
 
@@ -65,33 +70,50 @@ async function pdfFromCache(params: z.infer<typeof cachedRequestSchema>) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
 
-  const bilingual = params.bilingual !== false;
-  const translation = await getOrCreateTranslation({
-    supabase: getSupabaseAdminClient(),
-    invoice: row.data.source_data as unknown as Invoice,
-    invoiceId: params.invoiceId,
-    language: params.language as LanguageCode,
-    bilingual
-  });
+  const sourceInvoice = invoiceSchema.parse(row.data.source_data);
+  const translated = params.translated ?? language.translated;
+  const bilingual = translated && params.bilingual !== false;
+  const invoice = translated
+    ? (
+        await getOrCreateTranslation({
+          supabase: getSupabaseAdminClient(),
+          invoice: sourceInvoice,
+          invoiceId: params.invoiceId,
+          language: language.code,
+          bilingual
+        })
+      ).invoice
+    : sourceInvoice;
 
-  return renderPdfResponse(translation.invoice, params.language as LanguageCode, bilingual);
+  return renderPdfResponse(invoice, language.code, bilingual, translated, invoice.sourceXml ?? sourceInvoice.sourceXml);
 }
 
 async function pdfFromInline(params: z.infer<typeof inlineRequestSchema>) {
-  if (!(params.language in supportedLanguages)) {
+  const language = normalizedLanguage(params.language);
+  if (!language.ok) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
   }
   const invoice = invoiceSchema.parse(params.invoice);
-  return renderPdfResponse(invoice, params.language as LanguageCode, params.bilingual !== false);
+  const translated = params.translated ?? language.translated;
+  const bilingual = translated && params.bilingual !== false;
+  return renderPdfResponse(invoice, language.code, bilingual, translated, params.sourceXml ?? invoice.sourceXml);
 }
 
-async function renderPdfResponse(invoice: Invoice, language: LanguageCode, bilingual: boolean) {
+async function renderPdfResponse(
+  invoice: Invoice,
+  language: LanguageCode,
+  bilingual: boolean,
+  translated: boolean,
+  sourceXml?: string
+) {
   const verificationUrl = invoice.verification?.qrLink;
   const verificationResult = verificationUrl
     ? await verifyPublicKsefQrUrl(verificationUrl)
     : { confirmed: false as const };
   const invoiceForPdf = invoiceWithConfirmedKsefVerification(invoice, verificationUrl, verificationResult);
-  const pdf = await renderInvoicePdfMake(invoiceForPdf, language, bilingual);
+  const pdf = sourceXml
+    ? await renderPdfWithOfficialFallback(sourceXml, invoiceForPdf, language, bilingual, translated)
+    : await renderInvoicePdfMake(invoiceForPdf, language, bilingual);
 
   return new Response(new Uint8Array(pdf), {
     headers: {
@@ -105,6 +127,29 @@ async function renderPdfResponse(invoice: Invoice, language: LanguageCode, bilin
   });
 }
 
+async function renderPdfWithOfficialFallback(
+  sourceXml: string,
+  invoice: Invoice,
+  language: LanguageCode,
+  bilingual: boolean,
+  translated: boolean
+) {
+  try {
+    return await renderOfficialFa3Pdf({ sourceXml, invoice, language, bilingual, translated });
+  } catch (error) {
+    console.warn("Official MF FA(3) renderer failed, falling back to custom renderer.", error);
+    return renderInvoicePdfMake(invoice, language, bilingual);
+  }
+}
+
+function normalizedLanguage(language: string):
+  | { ok: true; code: LanguageCode; translated: boolean }
+  | { ok: false } {
+  if (language === "pl") return { ok: true, code: "en", translated: false };
+  if (language in supportedLanguages) return { ok: true, code: language as LanguageCode, translated: true };
+  return { ok: false };
+}
+
 function encodeHeaderValue(value: string) {
   return encodeURIComponent(value).slice(0, 500);
 }
@@ -115,7 +160,8 @@ function invoiceWithConfirmedKsefVerification(
   verificationResult: { confirmed: boolean; ksefNumber?: string }
 ): Invoice {
   if (!verificationUrl || !verificationResult.confirmed || !verificationResult.ksefNumber) {
-    const { verification: _verification, ...invoiceWithoutVerification } = invoice;
+    const invoiceWithoutVerification = { ...invoice };
+    delete invoiceWithoutVerification.verification;
     return invoiceWithoutVerification;
   }
   return {
