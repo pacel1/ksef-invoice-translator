@@ -40,9 +40,11 @@ function sign(payload: string): { headers: Record<string, string> } {
   };
 }
 
-function buildPayload(email: string, actionType = "magiclink") {
+function buildPayload(email: string, options: { userId?: string; actionType?: string } = {}) {
+  const actionType = options.actionType ?? "magiclink";
+  const userId = options.userId ?? "00000000-0000-0000-0000-000000000001";
   return JSON.stringify({
-    user: { email, id: "00000000-0000-0000-0000-000000000001" },
+    user: { email, id: userId },
     email_data: {
       token: "abc123",
       token_hash: "tokenhash123",
@@ -99,8 +101,8 @@ describe("processAuthEmailHook", () => {
   });
 
   it("renders the PL template for a PL-locale user and sends via Resend", async () => {
-    const { email } = await newUserWithLocale("pl-user", "pl");
-    const payload = buildPayload(email);
+    const { userId, email } = await newUserWithLocale("pl-user", "pl");
+    const payload = buildPayload(email, { userId });
     const { headers } = sign(payload);
     const resendSend = vi.fn().mockResolvedValue({ data: { id: "re_xyz" } });
 
@@ -125,8 +127,8 @@ describe("processAuthEmailHook", () => {
   });
 
   it("renders the EN template for an EN-locale user", async () => {
-    const { email } = await newUserWithLocale("en-user", "en");
-    const payload = buildPayload(email);
+    const { userId, email } = await newUserWithLocale("en-user", "en");
+    const payload = buildPayload(email, { userId });
     const { headers } = sign(payload);
     const resendSend = vi.fn().mockResolvedValue({ data: { id: "re_abc" } });
 

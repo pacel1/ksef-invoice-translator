@@ -85,14 +85,16 @@ export async function processAuthEmailHook(
     throw new AuthHookError("Payload missing email or token_hash", 400);
   }
 
-  // Look up locale by email (best-effort; default to en).
+  // Look up locale (best-effort; default to en).
   let locale: "pl" | "en" = "en";
-  const { data: profile } = await opts.supabase
-    .from("profiles")
-    .select("locale")
-    .eq("email", email)
-    .maybeSingle();
-  if (profile?.locale === "pl") locale = "pl";
+  if (payload.user.id) {
+    const { data: profile } = await opts.supabase
+      .from("profiles")
+      .select("locale")
+      .eq("id", payload.user.id)
+      .maybeSingle();
+    if (profile?.locale === "pl") locale = "pl";
+  }
 
   const callbackPath = `/auth/callback?token_hash=${encodeURIComponent(tokenHash)}&type=${encodeURIComponent(
     actionType === "magiclink" ? "email" : actionType
