@@ -71,7 +71,16 @@ export const copy = {
     ],
     seoTitle: "Tłumacz faktur KSeF, viewer FA(3), XML invoice to PDF",
     seoBody:
-      "KSeF Invoice Translator pomaga polskim firmom przygotować profesjonalne tłumaczenie faktury KSeF dla kontrahenta. Narzędzie obsługuje FA(3) XML invoice, PDF z KSeF, Polish invoice translation, translate KSeF invoice oraz eksport invoice PDF dla partnerów międzynarodowych."
+      "KSeF Invoice Translator pomaga polskim firmom przygotować profesjonalne tłumaczenie faktury KSeF dla kontrahenta. Narzędzie obsługuje FA(3) XML invoice, PDF z KSeF, Polish invoice translation, translate KSeF invoice oraz eksport invoice PDF dla partnerów międzynarodowych.",
+    balanceFree: "Darmowy kredyt",
+    balanceFreePaid: "kredytów",
+    outOfCreditsTitle: "Brak kredytów",
+    outOfCreditsBody:
+      "Wykorzystałeś darmową fakturę w tym miesiącu i nie masz pakietu kredytów. Kup pakiet, aby kontynuować — pierwszy kredyt darmowy odnawia się 1. dnia każdego miesiąca.",
+    buyCredits: "Kup pakiet",
+    cancel: "Anuluj",
+    billingPlaceholderTitle: "Pakiety kredytów",
+    billingPlaceholderBody: "Sklep z pakietami będzie dostępny w następnej fazie."
   },
   en: {
     navProduct: "Product",
@@ -140,7 +149,16 @@ export const copy = {
     ],
     seoTitle: "KSeF invoice translator, FA(3) viewer, XML invoice to PDF",
     seoBody:
-      "KSeF Invoice Translator helps Polish companies prepare professional KSeF invoice translations for contractors. It supports FA(3) XML invoice files, KSeF PDFs, Polish invoice translation, translate KSeF invoice workflows, and invoice PDF export for international partners."
+      "KSeF Invoice Translator helps Polish companies prepare professional KSeF invoice translations for contractors. It supports FA(3) XML invoice files, KSeF PDFs, Polish invoice translation, translate KSeF invoice workflows, and invoice PDF export for international partners.",
+    balanceFree: "Free credit",
+    balanceFreePaid: "credits",
+    outOfCreditsTitle: "Out of credits",
+    outOfCreditsBody:
+      "You have used your free invoice for this month and have no credit pack. Buy a pack to continue — the free credit refreshes on the 1st of each month.",
+    buyCredits: "Buy credits",
+    cancel: "Cancel",
+    billingPlaceholderTitle: "Credit packs",
+    billingPlaceholderBody: "The credit-pack store will be available in the next phase."
   }
 } satisfies Record<UiLanguage, Record<string, unknown>>;
 

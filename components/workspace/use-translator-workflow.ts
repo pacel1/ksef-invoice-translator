@@ -10,9 +10,11 @@ export interface UseTranslatorWorkflowResult {
   invoiceId: string | null;
   status: WorkflowStatus;
   messages: string[];
+  insufficientCredit: boolean;
   upload(file: File): Promise<void>;
   translate(language: LanguageCode, bilingual: boolean): Promise<void>;
   downloadPdf(language: LanguageCode, bilingual: boolean): Promise<void>;
+  dismissInsufficientCredit(): void;
   reset(): void;
 }
 
@@ -21,21 +23,39 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [status, setStatus] = useState<WorkflowStatus>("idle");
   const [messages, setMessages] = useState<string[]>([]);
+  const [insufficientCredit, setInsufficientCredit] = useState(false);
+
+  function notifyBalanceChanged() {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("credit-balance-changed"));
+    }
+  }
 
   async function upload(file: File) {
     setMessages([]);
     setStatus("uploading");
+    setInsufficientCredit(false);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
+
+      if (res.status === 402) {
+        setInsufficientCredit(true);
+        return;
+      }
+
       const payload = await res.json();
       if (!res.ok) {
         throw new Error(payload.error ?? "Upload failed");
       }
+
       setInvoice(payload.invoice);
       setInvoiceId(payload.invoiceId);
       setMessages(payload.warnings ?? []);
+      if (payload.isNew) {
+        notifyBalanceChanged();
+      }
     } catch (error) {
       setInvoice(null);
       setInvoiceId(null);
@@ -93,12 +113,28 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     }
   }
 
+  function dismissInsufficientCredit() {
+    setInsufficientCredit(false);
+  }
+
   function reset() {
     setInvoice(null);
     setInvoiceId(null);
     setMessages([]);
     setStatus("idle");
+    setInsufficientCredit(false);
   }
 
-  return { invoice, invoiceId, status, messages, upload, translate, downloadPdf, reset };
+  return {
+    invoice,
+    invoiceId,
+    status,
+    messages,
+    insufficientCredit,
+    upload,
+    translate,
+    downloadPdf,
+    dismissInsufficientCredit,
+    reset
+  };
 }

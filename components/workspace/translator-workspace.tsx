@@ -9,6 +9,7 @@ import { copy, type UiLanguage } from "@/lib/workspace/copy";
 import { getLanguageOptions } from "@/lib/translation/languages";
 import type { LanguageCode } from "@/types/invoice";
 import { useTranslatorWorkflow } from "./use-translator-workflow";
+import { InsufficientCreditModal } from "./insufficient-credit-modal";
 
 export interface TranslatorWorkspaceProps {
   uiLanguage?: UiLanguage;
@@ -18,7 +19,16 @@ export function TranslatorWorkspace({ uiLanguage = "pl" }: TranslatorWorkspacePr
   const t = copy[uiLanguage];
   const [language, setLanguage] = useState<LanguageCode>("en");
   const [bilingual, setBilingual] = useState(true);
-  const { invoice, status, messages, upload, translate, downloadPdf } = useTranslatorWorkflow();
+  const {
+    invoice,
+    status,
+    messages,
+    insufficientCredit,
+    upload,
+    translate,
+    downloadPdf,
+    dismissInsufficientCredit
+  } = useTranslatorWorkflow();
 
   const languageOptions = useMemo(() => getLanguageOptions(uiLanguage), [uiLanguage]);
   const selectedLanguage =
@@ -96,6 +106,14 @@ export function TranslatorWorkspace({ uiLanguage = "pl" }: TranslatorWorkspacePr
           </p>
         </div>
       )}
+      <InsufficientCreditModal
+        open={insufficientCredit}
+        title={String(t.outOfCreditsTitle)}
+        body={String(t.outOfCreditsBody)}
+        buyLabel={String(t.buyCredits)}
+        cancelLabel={String(t.cancel)}
+        onClose={dismissInsufficientCredit}
+      />
     </section>
   );
 }
