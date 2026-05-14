@@ -49,12 +49,12 @@ test("authenticated user can upload, translate, and download an invoice", async 
   expect(invoiceRows).toHaveLength(1);
   expect(invoiceRows![0].source_type).toBe("xml");
 
-  // Translate — wait for the translate response before clicking the PDF button so
-  // OpenAI latency doesn't bleed into the PDF response timeout.
-  const [translateResponse] = await Promise.all([
-    page.waitForResponse((r) => r.url().includes("/api/translate") && r.request().method() === "POST"),
-    page.getByRole("button", { name: /Tłumacz opisy|Translate descriptions/i }).click()
-  ]);
+  // After upload, the workspace auto-translates to EN (the default currentLanguage).
+  // Wait for that response.
+  const translateResponse = await page.waitForResponse(
+    (r) => r.url().includes("/api/translate") && r.request().method() === "POST",
+    { timeout: 30_000 }
+  );
   expect(translateResponse.status()).toBe(200);
 
   // Download PDF — assert the network response.
