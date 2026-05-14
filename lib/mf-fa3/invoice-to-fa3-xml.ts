@@ -83,6 +83,7 @@ function renderFa(invoice: Invoice) {
     renderAnnotations(invoice),
     `<RodzajFaktury>${text(invoice.invoiceType || "VAT")}</RodzajFaktury>`,
     renderAdditionalDescriptions(invoice.additionalDescriptions),
+    renderAdvanceInvoiceReferences(invoice),
     invoice.items.map(renderItem).join(""),
     renderPayment(invoice),
     renderTransactionTerms(invoice),
@@ -134,6 +135,18 @@ function renderAnnotations(invoice: Invoice) {
     "<PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy>",
     "</Adnotacje>"
   ].join("");
+}
+
+function renderAdvanceInvoiceReferences(invoice: Invoice) {
+  return (invoice.details?.advanceInvoices ?? [])
+    .filter((entry) => entry.ksefNumber || entry.number)
+    .map((entry) => [
+      "<FakturaZaliczkowa>",
+      entry.ksefNumber ? `<NrKSeFFaZaliczkowej>${text(entry.ksefNumber)}</NrKSeFFaZaliczkowej>` : "",
+      entry.number ? `<NrFaZaliczkowej>${text(entry.number)}</NrFaZaliczkowej>` : "",
+      "</FakturaZaliczkowa>"
+    ].join(""))
+    .join("");
 }
 
 function renderAdditionalDescriptions(descriptions: AdditionalDescription[] | undefined) {

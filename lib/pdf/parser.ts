@@ -40,6 +40,7 @@ export async function parseKsefPdf(buffer: Buffer): Promise<PdfParseResult> {
     const taxBreakdown = parseTaxBreakdown(rawText, currency);
     const items = parseItems(rawText, currency, totals.gross, taxBreakdown);
     const invoiceType = invoiceTypeFromPdf(rawText);
+    const advanceInvoices = parseAdvanceInvoiceReferences(rawText);
     const invoice: Invoice = {
       invoiceNumber: requireValue(matchFirst(rawText, /Numer Faktury:\s*\n?\s*([^\n]+)/i), "invoice number"),
       invoiceType: invoiceType?.code,
@@ -57,6 +58,7 @@ export async function parseKsefPdf(buffer: Buffer): Promise<PdfParseResult> {
         )
       ),
       currency,
+      details: advanceInvoices.length ? { advanceInvoices } : undefined,
       seller,
       buyer,
       items,
@@ -265,6 +267,17 @@ function parsePayment(text: string): Invoice["payment"] {
     bankAccount: bankAccounts[0]?.accountNumber,
     bankAccounts
   };
+}
+
+function parseAdvanceInvoiceReferences(text: string): NonNullable<NonNullable<Invoice["details"]>["advanceInvoices"]> {
+  const block = section(text, "Numery wcześniejszych faktur zaliczkowych", ["Pozycje"]);
+  if (!block) return [];
+  return block
+    .split("\n")
+    .map(cleanText)
+    .filter((line): line is string => Boolean(line))
+    .filter((line) => !sectionNames.some((name) => line.startsWith(name)))
+    .map((line) => ({ ksefNumber: line }));
 }
 
 function parseBankAccounts(block: string): BankAccount[] {
