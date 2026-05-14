@@ -1,10 +1,15 @@
-import Link from "next/link";
-import { CreditCard } from "lucide-react";
+import { CreditSlider } from "@/components/billing/credit-slider";
+import { PurchaseHistory } from "@/components/billing/purchase-history";
+import { BillingStatusToast } from "@/components/billing/billing-status-toast";
 import { requireUser } from "@/lib/auth/require-user";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { copy, type UiLanguage } from "@/lib/workspace/copy";
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
   const user = await requireUser();
   const supabase = await createSupabaseServerClient();
   const { data: profile } = await supabase
@@ -15,21 +20,35 @@ export default async function BillingPage() {
   const uiLanguage: UiLanguage = profile?.locale === "en" ? "en" : "pl";
   const t = copy[uiLanguage];
 
+  const params = await searchParams;
+  const status = params.status === "paid" || params.status === "cancelled" ? params.status : undefined;
+
   return (
-    <section className="mx-auto max-w-2xl">
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-8 py-16 text-center shadow-soft">
-        <CreditCard className="mx-auto mb-4 h-10 w-10 text-cyan-700" />
-        <h1 className="text-2xl font-semibold text-slate-950">{String(t.billingPlaceholderTitle)}</h1>
-        <p className="mx-auto mt-3 max-w-md text-slate-600">{String(t.billingPlaceholderBody)}</p>
-        <div className="mt-6">
-          <Link
-            href="/app"
-            className="inline-flex h-10 items-center rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50"
-          >
-            ← Workspace
-          </Link>
-        </div>
+    <section className="mx-auto max-w-3xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">{String(t.billingTitle)}</h1>
+        <p className="mt-2 max-w-2xl text-slate-600">{String(t.billingSubtitle)}</p>
       </div>
+
+      <CreditSlider
+        pickPackageLabel={String(t.pickPackage)}
+        unitPriceLabel={String(t.unitPrice)}
+        totalLabel={String(t.total)}
+        totalWithTaxLabel={String(t.totalWithTax)}
+        continueLabel={String(t.continueToCheckout)}
+      />
+
+      {status ? (
+        <BillingStatusToast
+          status={status}
+          successTitle={String(t.paymentSuccessTitle)}
+          successBody={String(t.paymentSuccessBody)}
+          cancelledTitle={String(t.paymentCancelledTitle)}
+          cancelledBody={String(t.paymentCancelledBody)}
+        />
+      ) : null}
+
+      <PurchaseHistory userId={user.id} uiLanguage={uiLanguage} />
     </section>
   );
 }
