@@ -111,14 +111,15 @@ async function renderPdfResponse(
     ? await verifyPublicKsefQrUrl(verificationUrl)
     : { confirmed: false as const };
   const invoiceForPdf = invoiceWithConfirmedKsefVerification(invoice, verificationUrl, verificationResult);
-  const pdf = sourceXml
+  const rendered = sourceXml
     ? await renderPdfWithOfficialFallback(sourceXml, invoiceForPdf, language, bilingual, translated)
-    : await renderInvoicePdfMake(invoiceForPdf, language, bilingual);
+    : { pdf: await renderInvoicePdfMake(invoiceForPdf, language, bilingual), renderer: "legacy-no-source-xml" };
 
-  return new Response(new Uint8Array(pdf), {
+  return new Response(new Uint8Array(rendered.pdf), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${pdfFilename(invoice.invoiceNumber)}"`,
+      "X-PDF-Renderer": rendered.renderer,
       "X-KSeF-Verification-Confirmed": verificationResult.confirmed ? "true" : "false",
       "X-KSeF-Verification-Status": String(verificationResult.statusCode ?? ""),
       "X-KSeF-Verification-Error": encodeHeaderValue(verificationResult.error ?? ""),
@@ -135,10 +136,16 @@ async function renderPdfWithOfficialFallback(
   translated: boolean
 ) {
   try {
-    return await renderOfficialFa3Pdf({ sourceXml, invoice, language, bilingual, translated });
+    return {
+      pdf: await renderOfficialFa3Pdf({ sourceXml, invoice, language, bilingual, translated }),
+      renderer: "official-mf-fa3"
+    };
   } catch (error) {
     console.warn("Official MF FA(3) renderer failed, falling back to custom renderer.", error);
-    return renderInvoicePdfMake(invoice, language, bilingual);
+    return {
+      pdf: await renderInvoicePdfMake(invoice, language, bilingual),
+      renderer: "legacy-official-failed"
+    };
   }
 }
 

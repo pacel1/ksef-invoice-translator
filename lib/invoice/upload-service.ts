@@ -42,6 +42,7 @@ async function uploadXml(opts: {
   bytes: Buffer;
   hash: string;
 }): Promise<UploadResult> {
+  const xml = new TextDecoder().decode(opts.bytes);
   const existing = await opts.supabase
     .from("invoices")
     .select("id, source_data, warnings")
@@ -56,15 +57,32 @@ async function uploadXml(opts: {
   }
 
   if (existing.data) {
+    const invoice = existing.data.source_data as unknown as Invoice;
+    if (!invoice.sourceXml) {
+      const invoiceWithSourceXml: Invoice = { ...invoice, sourceXml: xml };
+      const update = await opts.supabase
+        .from("invoices")
+        .update({ source_data: invoiceWithSourceXml as unknown as Json })
+        .eq("id", existing.data.id);
+      if (update.error) {
+        console.error("[upload] failed to backfill XML source on existing invoice:", update.error);
+        throw new UploadError("Failed to update existing invoice", 500);
+      }
+      return {
+        invoice: invoiceWithSourceXml,
+        invoiceId: existing.data.id,
+        isNew: false,
+        warnings: existing.data.warnings ?? []
+      };
+    }
     return {
-      invoice: existing.data.source_data as unknown as Invoice,
+      invoice,
       invoiceId: existing.data.id,
       isNew: false,
       warnings: existing.data.warnings ?? []
     };
   }
 
-  const xml = new TextDecoder().decode(opts.bytes);
   const parsed = parseKsefXml(xml);
   if (!parsed.ok) {
     throw new UploadError(parsed.error, 422);

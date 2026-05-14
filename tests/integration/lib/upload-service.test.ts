@@ -134,4 +134,39 @@ describe("uploadInvoiceForUser (XML)", () => {
       .eq("user_id", userId);
     expect(count).toBe(1);
   });
+
+  it("backfills sourceXml on an existing XML row created before sourceXml was persisted", async () => {
+    const userId = await newUser("xml-backfill");
+    const bytes = readFileSync(samplePath);
+    const hash = await sha256Hex(bytes);
+
+    const seeded = await admin
+      .from("invoices")
+      .insert({
+        user_id: userId,
+        source_type: "xml",
+        source_hash: hash,
+        source_size: bytes.length,
+        invoice_number: "SEEDED-XML",
+        source_data: { invoiceNumber: "SEEDED-XML" } as unknown as Record<string, unknown>,
+        warnings: []
+      })
+      .select("id")
+      .single();
+    expect(seeded.error).toBeNull();
+
+    const file = new File([bytes], "sample.xml", { type: "application/xml" });
+    const result = await uploadInvoiceForUser({ userId, file, supabase: admin });
+
+    expect(result.isNew).toBe(false);
+    expect(result.invoiceId).toBe(seeded.data!.id);
+    expect(result.invoice.sourceXml).toContain("<Faktura");
+
+    const { data: row } = await admin
+      .from("invoices")
+      .select("source_data")
+      .eq("id", seeded.data!.id)
+      .single();
+    expect((row?.source_data as { sourceXml?: string } | null)?.sourceXml).toContain("<Faktura");
+  });
 });
