@@ -366,3 +366,86 @@ The public landing page at `/` is marketing only; the "Sign in" CTA is the only 
 The current balance is visible in the protected header (`<BalanceChip>`) and queryable at `GET /api/me/balance`. The chip refreshes automatically when the workspace dispatches a `credit-balance-changed` event after a credit-consuming upload.
 
 All credit changes are recorded in `credit_ledger` (append-only). The `credit_balances` row is a denormalised view of the ledger sum.
+
+## Stripe purchases (Phase 4)
+
+`/billing` hosts a 5→100 step-5 slider against a canonical PLN price ladder defined in `lib/billing/pricing.ts`:
+
+| Pack size            | Unit price (net) |
+|----------------------|-----------------:|
+| 5                    |       6.99 zł    |
+| 10, 15, 20           |       5.99 zł    |
+| 25, 30, 35, 40, 45   |       4.99 zł    |
+| 50, 55, … 95         |       3.99 zł    |
+| 100                  |       2.99 zł    |
+
+Prices are net; Stripe Tax adds 23% Polish VAT at checkout. Stripe Invoicing emails a VAT-compliant faktura to the buyer for every paid session.
+
+### Flow
+
+1. User picks a pack size on `/billing`. The slider fetches `/api/billing/price` on each change.
+2. "Continue to checkout" POSTs to `/api/stripe/checkout`. Server recomputes the price from `priceForPackage()`, checks 24h abuse caps (≤ 3 sessions, ≤ 500 credits), inserts a `stripe_purchases` row with `status='pending'`, creates a Stripe Checkout Session with `automatic_tax: true` + `invoice_creation: true`, returns the redirect URL.
+3. User completes payment on Stripe's hosted page.
+4. Stripe sends `checkout.session.completed` to `/api/stripe/webhook` → signature-verified, idempotent → row flips to `status='paid'`, `grant_paid_credits(user, purchase, package_size)` runs.
+5. User redirects to `/billing?status=paid` → success toast + `credit-balance-changed` event → `<BalanceChip>` refetches.
+
+### Refunds
+
+A `charge.refunded` webhook flips the matching purchase to `status='refunded'` and calls `refund_paid_credits` (which clamps at zero if the user already spent the credits).
+
+### Abuse caps
+
+Per user, last 24 hours: max 3 Checkout sessions OR 500 credits purchased. Enforced server-side in `/api/stripe/checkout`. Returns 429 with `code: "session_cap"` or `code: "credit_cap"`.
+
+### Local dev with Stripe CLI
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+# Copy the printed `whsec_...` into STRIPE_WEBHOOK_SECRET in .env.local.
+```
+
+Then in another shell, trigger a test event:
+
+```bash
+stripe trigger checkout.session.completed
+```
+
+## Auth emails (Phase 4.5)
+
+Magic-link and other auth emails are sent through Resend via a Supabase Send Email Hook. The hook target is `/api/auth/send-email-hook`.
+
+### Flow
+
+1. User submits `signInWithOtp` on `/login`.
+2. Supabase generates the token + action URL internally.
+3. Instead of sending email itself, Supabase POSTs a Standard Webhooks signed payload to `/api/auth/send-email-hook`.
+4. Our route verifies the signature with `SUPABASE_AUTH_HOOK_SECRET`, looks up the user's `profiles.locale`, renders a bilingual React Email template, and calls `resend.emails.send(...)`.
+5. Resend delivers the email; user clicks the link; flow continues through `/auth/callback`.
+
+### Templates
+
+`emails/magic-link.tsx` is a React Email component with PL/EN copy chosen at render time. Action-type-specific subjects in `emails/render-template.ts` (signup / magiclink / recovery / email_change / invite).
+
+### Required env vars
+
+- `RESEND_API_KEY` — Resend HTTP API key (`re_...`)
+- `SUPABASE_AUTH_HOOK_SECRET` — Standard Webhooks signing secret (`v1,whsec_...`). Same value must be set in Supabase project config.
+
+### Configuring the hook on Supabase
+
+```bash
+PAT=<your supabase PAT>
+PROJECT_REF=tzfuboudblqdsdhhvrvs
+HOOK_SECRET=$(grep '^SUPABASE_AUTH_HOOK_SECRET=' .env.test | cut -d= -f2-)
+
+curl -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+  -H "Authorization: Bearer $PAT" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"hook_send_email_enabled\": true,
+    \"hook_send_email_uri\": \"https://ksef-invoice-translator.vercel.app/api/auth/send-email-hook\",
+    \"hook_send_email_secret\": \"$HOOK_SECRET\"
+  }"
+```
+
+Local dev: Supabase auth runs on `supabase.co` and can't hit `localhost:3000`. Either (a) keep the production hook URI and test via the deployed Vercel URL, or (b) tunnel with `ngrok http 3000` and temporarily point the hook at the ngrok URL.

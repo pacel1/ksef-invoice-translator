@@ -24,6 +24,8 @@
     "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts"
   },
   "dependencies": {
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.8",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.45.4",
     "class-variance-authority": "^0.7.1",
@@ -39,6 +41,9 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.56.4",
+    "resend": "^6.12.3",
+    "standardwebhooks": "^1.0.0",
+    "stripe": "^22.1.1",
     "tailwind-merge": "^3.3.0",
     "xml-js": "^1.6.11",
     "zod": "^3.25.28"
