@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
       supabase: getSupabaseAdminClient(),
       resendSend,
       hookSecret,
-      appUrl
+      appUrl,
+      fromAddress: process.env.RESEND_FROM_ADDRESS
     });
     return NextResponse.json({ ok: true, providerId });
   } catch (error) {
