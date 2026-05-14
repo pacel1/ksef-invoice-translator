@@ -126,11 +126,19 @@ export async function processAuthEmailHook(
   return { providerId: result.data?.id ?? null };
 }
 
+const SANDBOX_FROM = "KSeF Translator <onboarding@resend.dev>";
+
 function defaultFromAddress(appUrl: string): string {
   try {
     const host = new URL(appUrl).host.replace(/^www\./, "");
+    // Vercel-managed hosts can never be verified as a Resend sender domain.
+    // Fall back to Resend's sandbox sender, which only delivers to the
+    // Resend account owner's email — fine for previews and dev.
+    if (host.endsWith(".vercel.app") || host === "localhost" || host.startsWith("localhost:")) {
+      return SANDBOX_FROM;
+    }
     return `KSeF Translator <auth@${host}>`;
   } catch {
-    return "KSeF Translator <onboarding@resend.dev>";
+    return SANDBOX_FROM;
   }
 }

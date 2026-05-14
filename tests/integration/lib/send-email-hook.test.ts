@@ -164,4 +164,62 @@ describe("processAuthEmailHook", () => {
     const call = resendSend.mock.calls[0][0];
     expect(call.subject).toMatch(/sign in/i);
   });
+
+  it("uses fromAddress override when provided, taking precedence over derived default", async () => {
+    const { userId, email } = await newUserWithLocale("override", "pl");
+    const payload = buildPayload(email, { userId });
+    const { headers } = sign(payload);
+    const resendSend = vi.fn().mockResolvedValue({ data: { id: "re_override" } });
+
+    await processAuthEmailHook({
+      rawBody: payload,
+      headers,
+      supabase: admin,
+      resendSend,
+      hookSecret: HOOK_SECRET,
+      appUrl: "https://ksef-invoice-translator.vercel.app",
+      fromAddress: "Custom Sender <custom@example.com>"
+    });
+
+    const call = resendSend.mock.calls[0][0];
+    expect(call.from).toBe("Custom Sender <custom@example.com>");
+  });
+
+  it("falls back to sandbox sender for vercel.app hosts when no override", async () => {
+    const { userId, email } = await newUserWithLocale("vercel-host", "en");
+    const payload = buildPayload(email, { userId });
+    const { headers } = sign(payload);
+    const resendSend = vi.fn().mockResolvedValue({ data: { id: "re_sandbox" } });
+
+    await processAuthEmailHook({
+      rawBody: payload,
+      headers,
+      supabase: admin,
+      resendSend,
+      hookSecret: HOOK_SECRET,
+      appUrl: "https://ksef-invoice-translator.vercel.app"
+    });
+
+    const call = resendSend.mock.calls[0][0];
+    expect(call.from).toBe("KSeF Translator <onboarding@resend.dev>");
+  });
+
+  it("uses derived auth@<host> for non-vercel hosts when no override", async () => {
+    const { userId, email } = await newUserWithLocale("custom-host", "en");
+    const payload = buildPayload(email, { userId });
+    const { headers } = sign(payload);
+    const resendSend = vi.fn().mockResolvedValue({ data: { id: "re_custom" } });
+
+    await processAuthEmailHook({
+      rawBody: payload,
+      headers,
+      supabase: admin,
+      resendSend,
+      hookSecret: HOOK_SECRET,
+      appUrl: "https://tlumaczksef.pl"
+    });
+
+    const call = resendSend.mock.calls[0][0];
+    expect(call.from).toBe("KSeF Translator <auth@tlumaczksef.pl>");
+  });
 });
