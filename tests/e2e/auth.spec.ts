@@ -1,9 +1,5 @@
-import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const admin = createClient(url, serviceRole, { auth: { persistSession: false } });
+import { test as base } from "@playwright/test";
+import { admin, expect, test } from "./helpers/auth";
 
 async function generateTokenHash(email: string): Promise<string> {
   const { data, error } = await admin.auth.admin.generateLink({
@@ -16,9 +12,7 @@ async function generateTokenHash(email: string): Promise<string> {
   return data.properties.hashed_token;
 }
 
-test("sign in via magic link lands on /app", async ({ page }) => {
-  const email = `e2e-${Date.now()}@example.test`;
-
+test("sign in via magic link lands on /app", async ({ page, testUser }) => {
   // Intercept the Supabase OTP request so the form sees a success response
   // without requiring a resolvable email domain on the remote project.
   await page.route(/\/auth\/v1\/otp/, async (route) => {
@@ -30,26 +24,23 @@ test("sign in via magic link lands on /app", async ({ page }) => {
   });
 
   await page.goto("/login");
-  await page.fill('input[type="email"]', email);
+  await page.fill('input[type="email"]', testUser.email);
   await page.click('button[type="submit"]');
   await expect(page.getByText(/Wysłaliśmy link logowania/i)).toBeVisible();
 
   // Generate the token hash admin-side and navigate to /auth/callback with it.
   // The callback route calls verifyOtp(token_hash) server-side, which sets the
   // session cookie and redirects to /app — exercising the full auth middleware.
-  const tokenHash = await generateTokenHash(email);
+  const tokenHash = await generateTokenHash(testUser.email);
   await page.goto(`/auth/callback?token_hash=${tokenHash}&type=email`);
 
   await expect(page).toHaveURL(/\/app$/);
-  await expect(page.getByText(email)).toBeVisible();
-
-  // Cleanup
-  const { data } = await admin.auth.admin.listUsers();
-  const created = data.users.find((u) => u.email === email);
-  if (created) await admin.auth.admin.deleteUser(created.id);
+  await expect(page.getByText(testUser.email)).toBeVisible();
 });
 
-test("logged-out visit to /app redirects to /login", async ({ page }) => {
+// This test doesn't need a fixture user — use the base test import so the
+// testUser fixture is never instantiated.
+base("logged-out visit to /app redirects to /login", async ({ page }) => {
   await page.goto("/app");
   await expect(page).toHaveURL(/\/login$/);
 });
