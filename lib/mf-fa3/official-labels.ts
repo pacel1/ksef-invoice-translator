@@ -1,4 +1,5 @@
 import type { getLabels } from "@/lib/translation/dictionaries";
+import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_OFFICIAL_KEYS } from "@/lib/translation/payment-methods";
 import type { LanguageCode } from "@/types/invoice";
 import bgGenerated from "@/lib/mf-fa3/official-labels/generated/bg.json";
 import csGenerated from "@/lib/mf-fa3/official-labels/generated/cs.json";
@@ -604,5 +605,14 @@ const GENERATED: Record<LanguageCode, Record<string, string>> = {
 
 export function getOfficialTextOverrides(language: LanguageCode): Record<string, string> {
   const fallback = language === "fr" ? FR : language === "de" ? DE : language === "es" ? ES : language === "it" ? IT : EN;
-  return { ...fallback, ...GENERATED[language] };
+  return { ...fallback, ...GENERATED[language], ...paymentMethodOverrides(language) };
+}
+
+function paymentMethodOverrides(language: LanguageCode) {
+  return Object.fromEntries(
+    Object.entries(PAYMENT_METHOD_OFFICIAL_KEYS).map(([code, key]) => [
+      key,
+      PAYMENT_METHOD_LABELS[language][code as keyof typeof PAYMENT_METHOD_OFFICIAL_KEYS]
+    ])
+  );
 }

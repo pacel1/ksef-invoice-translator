@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { Invoice, LanguageCode, TranslatedInvoice } from "@/types/invoice";
 import { translationTargets } from "@/lib/translation/languages";
+import { getPaymentMethodLabel } from "@/lib/translation/payment-methods";
 
 export async function translateInvoiceFreeText(
   invoice: Invoice,
@@ -29,7 +30,7 @@ export async function translateInvoiceFreeText(
 
   if (!process.env.OPENAI_API_KEY) {
     return {
-      ...invoice,
+      ...withTranslatedPaymentMethods(invoice, language),
       language,
       items: invoice.items.map((item) => ({
         ...item,
@@ -79,7 +80,7 @@ export async function translateInvoiceFreeText(
   };
   let settlementIndex = 0;
   return {
-    ...invoice,
+    ...withTranslatedPaymentMethods(invoice, language),
     language,
     items: invoice.items.map((item, index) => ({
       ...item,
@@ -122,6 +123,22 @@ export async function translateInvoiceFreeText(
           translatedText: textValue(translated.footer, invoice.footer.text)
         }
       : undefined
+  };
+}
+
+function withTranslatedPaymentMethods(invoice: Invoice, language: LanguageCode): Invoice {
+  if (!invoice.payment) return invoice;
+
+  return {
+    ...invoice,
+    payment: {
+      ...invoice.payment,
+      methodLabel: getPaymentMethodLabel(invoice.payment.method, language) ?? invoice.payment.methodLabel,
+      partialPayments: invoice.payment.partialPayments?.map((payment) => ({
+        ...payment,
+        method: getPaymentMethodLabel(payment.method, language) ?? payment.method
+      }))
+    }
   };
 }
 

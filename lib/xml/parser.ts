@@ -11,6 +11,7 @@ import type {
   SettlementLine,
   TaxBreakdownLine
 } from "@/types/invoice";
+import { getPaymentMethodLabel } from "@/lib/translation/payment-methods";
 import { invoiceSchema } from "@/lib/invoice/schema";
 
 type XmlNode = Record<string, unknown>;
@@ -423,16 +424,7 @@ function firstDefined(...values: unknown[]) {
 }
 
 function paymentMethodLabel(code: string) {
-  const labels: Record<string, string> = {
-    "1": "cash",
-    "2": "card",
-    "3": "voucher",
-    "4": "cheque",
-    "5": "credit",
-    "6": "bank transfer",
-    "7": "mobile payment"
-  };
-  return labels[code];
+  return getPaymentMethodLabel(code, "en")?.toLowerCase();
 }
 
 function invoiceTypeLabel(code: string) {
