@@ -223,12 +223,18 @@ function footerFromNode(node: unknown): InvoiceFooter | undefined {
 }
 
 function additionalDescriptionsFromNode(root: XmlNode): AdditionalDescription[] {
-  return findAllObjects(root, "DodatkowyOpis")
-    .map((entry) => ({
-      lineNumber: text(findValue(entry, "NrWiersza")) || undefined,
-      key: text(findValue(entry, "Klucz")) || undefined,
-      value: text(findValue(entry, "Wartosc"))
-    }))
+  return findAllValues(root, "DodatkowyOpis")
+    .map((entry) => {
+      if (!isObject(entry)) {
+        return { value: text(entry) };
+      }
+
+      return {
+        lineNumber: text(findValue(entry, "NrWiersza")) || undefined,
+        key: text(findValue(entry, "Klucz")) || undefined,
+        value: text(firstDefined(findValue(entry, "Wartosc"), getPrimitive(entry)))
+      };
+    })
     .filter((entry) => entry.value);
 }
 
@@ -417,6 +423,24 @@ function findAllObjects(node: unknown, key: string): XmlNode[] {
       Array.isArray(value) ? value.flatMap((entry) => findAllObjects(entry, key)) : findAllObjects(value, key)
     )
   ];
+}
+
+function findAllValues(node: unknown, key: string): unknown[] {
+  if (!isObject(node)) return [];
+  const direct = key in node ? asArrayUnknown(node[key]) : [];
+  return [
+    ...direct,
+    ...Object.entries(node)
+      .filter(([childKey]) => childKey !== key)
+      .flatMap(([, value]) =>
+        Array.isArray(value) ? value.flatMap((entry) => findAllValues(entry, key)) : findAllValues(value, key)
+      )
+  ];
+}
+
+function asArrayUnknown(value: unknown): unknown[] {
+  if (value === undefined || value === null) return [];
+  return Array.isArray(value) ? value : [value];
 }
 
 function firstDefined(...values: unknown[]) {

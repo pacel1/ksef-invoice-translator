@@ -91,11 +91,16 @@ function applyAppFreeTextToOfficialXml(faktura: OfficialXmlRecord, invoice: Invo
     });
   });
 
-  findObjectChildren(fa, "DodatkowyOpis").forEach((entryRecord, index) => {
+  findObjectChildren(faktura, "DodatkowyOpis").forEach((entryRecord, index) => {
     const description = invoice.additionalDescriptions?.[index];
     if (!description) return;
-    setText(entryRecord.Klucz, translatedText(description.translatedKey, description.key, bilingual));
-    setText(entryRecord.Wartosc, translatedText(description.translatedValue, description.value, bilingual));
+    const key = translatedText(description.translatedKey, description.key, bilingual);
+    const value = translatedText(description.translatedValue, description.value, bilingual);
+    setText(entryRecord.Klucz, key);
+    setText(entryRecord.Wartosc, value);
+    if (!entryRecord.Klucz && !entryRecord.Wartosc) {
+      setText(entryRecord, value);
+    }
   });
 
   applyFooterFreeTextToOfficialXml(faktura, invoice, bilingual);

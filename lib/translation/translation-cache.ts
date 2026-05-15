@@ -19,6 +19,12 @@ export interface CacheLookupOptions {
 
 export async function getOrCreateTranslation(opts: CacheLookupOptions): Promise<CachedTranslation> {
   const { supabase, invoice, invoiceId, language, bilingual } = opts;
+  const usedAi = Boolean(process.env.OPENAI_API_KEY);
+
+  if (usedAi) {
+    const translated = await translateInvoiceFreeText(invoice, language);
+    return { invoice: translated, cached: false, usedAi };
+  }
 
   const hit = await supabase
     .from("translations")
@@ -41,7 +47,6 @@ export async function getOrCreateTranslation(opts: CacheLookupOptions): Promise<
     };
   }
 
-  const usedAi = Boolean(process.env.OPENAI_API_KEY);
   const translated = await translateInvoiceFreeText(invoice, language);
 
   const insert = await supabase
