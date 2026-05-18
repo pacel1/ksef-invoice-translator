@@ -29,10 +29,19 @@ describe("<LowBalanceBanner>", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("has a buy-credits link pointing at /billing", () => {
+  it("has a buy-credits button that dispatches open-credit-drawer", () => {
+    const dispatch = vi.fn();
+    const original = window.dispatchEvent;
+    window.dispatchEvent = dispatch as typeof window.dispatchEvent;
     render(<LowBalanceBanner {...baseProps} />);
-    const link = screen.getByRole("link", { name: /Buy credits/i });
-    expect(link).toHaveAttribute("href", "/billing");
+    const button = screen.getByRole("button", { name: /Buy credits/i });
+    fireEvent.click(button);
+    expect(dispatch).toHaveBeenCalled();
+    const event = dispatch.mock.calls.find(
+      ([e]) => (e as CustomEvent).type === "open-credit-drawer"
+    );
+    expect(event).toBeDefined();
+    window.dispatchEvent = original;
   });
 
   it("dismisses on close click and remembers via sessionStorage", () => {

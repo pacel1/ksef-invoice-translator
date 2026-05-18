@@ -3,6 +3,7 @@ import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { getCurrentBalance } from "@/lib/billing/get-current-balance";
 import { signOut } from "@/app/actions/auth";
 import { BalanceChip } from "@/components/billing/balance-chip";
+import { CreditPurchaseDrawer } from "@/components/billing/credit-purchase-drawer";
 import { AuthenticatedHeader } from "@/components/layout/authenticated-header";
 import { LegalFooter } from "@/components/layout/legal-footer";
 import { copy } from "@/lib/workspace/copy";
@@ -29,6 +30,19 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       <AuthenticatedHeader email={user.email ?? ""} balanceSlot={balanceSlot} signOutAction={signOut} />
       <div className="mx-auto w-full max-w-7xl flex-1 px-5 py-8 md:px-8">{children}</div>
       <LegalFooter locale={uiLanguage} />
+      <CreditPurchaseDrawer
+        sliderLabels={{
+          pickPackageLabel: String(t.pickPackage),
+          unitPriceLabel: String(t.unitPrice),
+          totalLabel: String(t.total),
+          totalWithTaxLabel: String(t.totalWithTax),
+          continueLabel: String(t.continueToCheckout)
+        }}
+        labels={{
+          title: String(t.drawerTitle),
+          closeLabel: String(t.close)
+        }}
+      />
     </div>
   );
 }

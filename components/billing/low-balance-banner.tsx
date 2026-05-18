@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AlertTriangle, X } from "lucide-react";
 
@@ -78,12 +77,17 @@ export function LowBalanceBanner({
         </div>
       </div>
       <div className="flex items-center gap-2 self-end sm:self-auto">
-        <Link
-          href="/billing"
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("open-credit-drawer"));
+            }
+          }}
           className="inline-flex h-9 items-center rounded-md bg-amber-900 px-4 text-sm font-semibold text-white hover:bg-amber-950"
         >
           {buyLabel}
-        </Link>
+        </button>
         <button
           type="button"
           onClick={onClose}

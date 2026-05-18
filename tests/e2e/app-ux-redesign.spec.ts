@@ -22,8 +22,8 @@ test("zero-balance shows the proactive banner with a Buy credits link", async ({
   const banner = page.getByRole("status");
   await expect(banner).toBeVisible();
   await expect(banner.getByText(/Brak kredytów|Out of credits/i)).toBeVisible();
-  const buy = banner.getByRole("link", { name: /Kup pakiet|Buy credits/i });
-  await expect(buy).toHaveAttribute("href", "/billing");
+  const buy = banner.getByRole("button", { name: /Kup pakiet|Buy credits/i });
+  await expect(buy).toBeVisible();
 });
 
 test("clicking a language pill switches the active language and caches it", async ({ page, testUser }) => {
