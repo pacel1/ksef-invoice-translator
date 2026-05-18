@@ -2,7 +2,7 @@ import { CheckCircle2 } from "lucide-react";
 
 export interface SecurityCardProps {
   title: string;
-  items: string[];
+  items: ReadonlyArray<string>;
 }
 
 export function SecurityCard({ title, items }: SecurityCardProps) {
