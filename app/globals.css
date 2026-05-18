@@ -6,15 +6,15 @@
   /* Stripe-minimal palette — specs/2026-05-18 §3.1
      HSL values: enter as "H S% L%" so Tailwind's hsl(var(--token)) wrapper works. */
   --surface: 0 0% 100%;
-  --surface-muted: 210 25% 98%;
+  --surface-muted: 204 45% 98%;
   --text-strong: 213 67% 15%;
   --text: 213 25% 33%;
-  --text-muted: 213 14% 47%;
+  --text-muted: 219 12% 47%;
   --border: 210 22% 91%;
   --border-strong: 213 14% 79%;
   --accent: 245 100% 67%;
   --accent-hover: 245 81% 62%;
-  --accent-soft: 245 100% 96%;
+  --accent-soft: 244 78% 96%;
   --success: 148 45% 45%;
   --danger: 346 60% 52%;
 }
