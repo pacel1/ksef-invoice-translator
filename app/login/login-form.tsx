@@ -3,59 +3,101 @@
 import { useState, type FormEvent } from "react";
 import { Loader2, MailCheck } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { Button } from "@/components/ui/button";
 
-export function LoginForm() {
+export interface LoginFormCopy {
+  emailLabel: string;
+  emailPlaceholder: string;
+  submitButton: string;
+  sendingButton: string;
+  sentTitle: string;
+  sentBodyPrefix: string;
+  sentResend: string;
+  errorGeneric: string;
+  errorRateLimited: string;
+}
+
+export interface LoginFormProps {
+  copy: LoginFormCopy;
+}
+
+type Status = "idle" | "submitting" | "sent" | "error" | "rate-limited";
+
+export function LoginForm({ copy }: LoginFormProps) {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "submitting" | "sent" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<Status>("idle");
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submit(currentEmail: string) {
     setStatus("submitting");
-    setError(null);
     const supabase = createSupabaseBrowserClient();
     const redirectTo = `${window.location.origin}/auth/callback`;
-    const { error: signInError } = await supabase.auth.signInWithOtp({
-      email,
+    const { error } = await supabase.auth.signInWithOtp({
+      email: currentEmail,
       options: { emailRedirectTo: redirectTo }
     });
-    if (signInError) {
-      setStatus("error");
-      setError(signInError.message);
+    if (error) {
+      setStatus(error.status === 429 ? "rate-limited" : "error");
       return;
     }
     setStatus("sent");
   }
 
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await submit(email);
+  }
+
   if (status === "sent") {
     return (
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
-        <MailCheck className="mb-2 h-5 w-5" />
-        Wysłaliśmy link logowania na <strong>{email}</strong>. Sprawdź skrzynkę.
+      <div className="rounded-xl border border-border bg-surface-muted p-6 text-center text-small text-text-strong shadow-sm">
+        <MailCheck className="mx-auto mb-3 h-6 w-6 text-success" />
+        <p className="text-h3 text-text-strong">{copy.sentTitle}</p>
+        <p className="mt-2 text-text">
+          {copy.sentBodyPrefix} <strong className="text-text-strong">{email}</strong>
+        </p>
+        <button
+          type="button"
+          onClick={() => submit(email)}
+          className="mt-4 text-small font-medium text-accent hover:text-accent-hover"
+        >
+          {copy.sentResend}
+        </button>
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-slate-700">Email</span>
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <label className="flex flex-col gap-1.5 text-small">
+        <span className="font-medium text-text">{copy.emailLabel}</span>
         <input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="h-10 rounded-md border border-input bg-white px-3 outline-none focus:ring-2 focus:ring-ring"
-          placeholder="ty@firma.pl"
+          placeholder={copy.emailPlaceholder}
           autoComplete="email"
+          className="h-11 rounded-md border border-border bg-surface px-4 text-body text-text-strong outline-none transition-colors duration-hover ease-out focus:border-accent focus:ring-2 focus:ring-accent-soft"
         />
       </label>
-      <Button type="submit" disabled={status === "submitting"}>
-        {status === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        Wyślij link logowania
-      </Button>
-      {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+      <button
+        type="submit"
+        disabled={status === "submitting"}
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 text-small font-semibold text-white shadow-sm transition-colors duration-hover ease-out hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {status === "submitting" ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> {copy.sendingButton}
+          </>
+        ) : (
+          copy.submitButton
+        )}
+      </button>
+      {status === "error" ? (
+        <p className="text-small text-danger">{copy.errorGeneric}</p>
+      ) : null}
+      {status === "rate-limited" ? (
+        <p className="text-small text-danger">{copy.errorRateLimited}</p>
+      ) : null}
     </form>
   );
 }
