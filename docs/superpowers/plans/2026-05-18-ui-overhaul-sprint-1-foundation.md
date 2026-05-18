@@ -10,7 +10,9 @@
 
 **Spec reference:** `docs/superpowers/specs/2026-05-18-ui-overhaul-design.md` — Section 3 (tokens), Section 4.2 (header/footer), Section 4.3 (trust modules), Section 5.7 (404/500), Section 7 (Sprint 1 row).
 
-**Branch:** `claude/ui-overhaul-spec` (the spec branch). All Sprint 1 commits land on this branch and ship as PR #11.
+**Branch:** `claude/ui-overhaul-sprint-1`, freshly branched from `origin/main` **after** the spec+plan PR (`claude/ui-overhaul-spec`) merges. The spec and plan ship as their own docs-only PR first; Sprint 1 implementation is a separate PR with no spec/plan commits in its history.
+
+**Branching rule for the whole UI overhaul:** every sprint branches from `main`. No branch-chains, no long-lived feature branches. Sprint N+1 cannot start until Sprint N's PR merges to `main`.
 
 ---
 
@@ -1987,6 +1989,13 @@ If any of steps 1–4 fail, the failure is its own fix commit (don't bundle fixe
 
 ## After this plan
 
-Open the Sprint 1 PR against `main` (the spec branch already has the design doc — this PR will contain spec + plan + 14 commits of foundation code).
+The Sprint 1 PR contains only the 14 implementation commits — no spec, no plan (those ship in the prior docs-only PR).
 
-Sprint 2 picks up after Sprint 1 merges. Its plan will be written then, when the tokens, brand, footer, and trust modules are actually present in the codebase and Sprint 2 can import them.
+Workflow:
+
+1. Spec+plan PR merges to `main` (separate PR, docs-only).
+2. `git fetch origin main && git checkout -b claude/ui-overhaul-sprint-1 origin/main`.
+3. Implement Tasks 1–14.
+4. Open Sprint 1 PR. Merge to `main`.
+5. Sprint 2 plan is written then (against the now-updated main, where the tokens, brand, footer, and trust modules are present and Sprint 2 can import them).
+6. `git checkout -b claude/ui-overhaul-sprint-2 origin/main`. Repeat.
