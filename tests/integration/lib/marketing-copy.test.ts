@@ -25,4 +25,20 @@ describe("marketingCopy", () => {
     expect(marketingCopy.en.notFound.title).toBeTruthy();
     expect(marketingCopy.en.serverError.title).toBeTruthy();
   });
+
+  it("has all public-page groups on both locales (Sprint 2)", () => {
+    const expectedGroups = [
+      "landing",
+      "pricing",
+      "security",
+      "terms",
+      "privacy",
+      "login",
+      "authError"
+    ];
+    for (const group of expectedGroups) {
+      expect(marketingCopy.pl).toHaveProperty(group);
+      expect(marketingCopy.en).toHaveProperty(group);
+    }
+  });
 });
