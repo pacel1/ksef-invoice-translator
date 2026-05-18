@@ -24,6 +24,7 @@
     "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts"
   },
   "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.0.8",
     "@supabase/ssr": "^0.10.3",
@@ -35,6 +36,7 @@
     "lucide-react": "^0.511.0",
     "next": "^15.3.2",
     "openai": "^5.0.1",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
     "pdfmake": "^0.3.8",
     "qrcode": "^1.5.4",

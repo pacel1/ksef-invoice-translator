@@ -4,6 +4,7 @@ import { invoiceSchema } from "@/lib/invoice/schema";
 import { verifyPublicKsefQrUrl } from "@/lib/ksef/public-verification";
 import { renderOfficialFa3Pdf } from "@/lib/mf-fa3/official-renderer";
 import { renderInvoicePdfMake } from "@/lib/pdf/invoice-pdfmake";
+import { applyTranslationNoticesToPdf } from "@/lib/pdf/translation-notice-pdf";
 import { supportedLanguages } from "@/lib/translation/languages";
 import { getOrCreateTranslation } from "@/lib/translation/translation-cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -16,7 +17,8 @@ const cachedRequestSchema = z.object({
   invoiceId: z.string().uuid(),
   language: z.string(),
   bilingual: z.boolean().optional(),
-  translated: z.boolean().optional()
+  translated: z.boolean().optional(),
+  reviewedBy: z.string().optional()
 });
 
 const inlineRequestSchema = z.object({
@@ -24,7 +26,8 @@ const inlineRequestSchema = z.object({
   language: z.string(),
   bilingual: z.boolean().optional(),
   translated: z.boolean().optional(),
-  sourceXml: z.string().optional()
+  sourceXml: z.string().optional(),
+  reviewedBy: z.string().optional()
 });
 
 export async function POST(request: Request) {
@@ -60,12 +63,19 @@ async function pdfFromCache(params: z.infer<typeof cachedRequestSchema>) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
-  const row = await supabase
+  const [row, profile] = await Promise.all([
+    supabase
     .from("invoices")
     .select("source_data")
     .eq("id", params.invoiceId)
     .is("deleted_at", null)
-    .maybeSingle();
+      .maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", userData.user.id)
+      .maybeSingle()
+  ]);
   if (!row.data) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
@@ -85,7 +95,10 @@ async function pdfFromCache(params: z.infer<typeof cachedRequestSchema>) {
       ).invoice
     : sourceInvoice;
 
-  return renderPdfResponse(invoice, language.code, bilingual, translated, invoice.sourceXml ?? sourceInvoice.sourceXml);
+  return renderPdfResponse(invoice, language.code, bilingual, translated, {
+    sourceXml: invoice.sourceXml ?? sourceInvoice.sourceXml,
+    reviewedBy: params.reviewedBy ?? profile.data?.display_name ?? userData.user.email
+  });
 }
 
 async function pdfFromInline(params: z.infer<typeof inlineRequestSchema>) {
@@ -96,7 +109,10 @@ async function pdfFromInline(params: z.infer<typeof inlineRequestSchema>) {
   const invoice = invoiceSchema.parse(params.invoice);
   const translated = params.translated ?? language.translated;
   const bilingual = translated && params.bilingual !== false;
-  return renderPdfResponse(invoice, language.code, bilingual, translated, params.sourceXml ?? invoice.sourceXml);
+  return renderPdfResponse(invoice, language.code, bilingual, translated, {
+    sourceXml: params.sourceXml ?? invoice.sourceXml,
+    reviewedBy: params.reviewedBy
+  });
 }
 
 async function renderPdfResponse(
@@ -104,18 +120,27 @@ async function renderPdfResponse(
   language: LanguageCode,
   bilingual: boolean,
   translated: boolean,
-  sourceXml?: string
+  options: {
+    sourceXml?: string;
+    reviewedBy?: string | null;
+  }
 ) {
   const verificationUrl = invoice.verification?.qrLink;
   const verificationResult = verificationUrl
     ? await verifyPublicKsefQrUrl(verificationUrl)
     : { confirmed: false as const };
   const invoiceForPdf = invoiceWithConfirmedKsefVerification(invoice, verificationUrl, verificationResult);
-  const rendered = sourceXml
-    ? await renderPdfWithOfficialFallback(sourceXml, invoiceForPdf, language, bilingual, translated)
+  const rendered = options.sourceXml
+    ? await renderPdfWithOfficialFallback(options.sourceXml, invoiceForPdf, language, bilingual, translated)
     : { pdf: await renderInvoicePdfMake(invoiceForPdf, language, bilingual), renderer: "legacy-no-source-xml" };
+  const pdf = translated
+    ? await applyTranslationNoticesToPdf(rendered.pdf, language, {
+        reviewedBy: options.reviewedBy,
+        generatedAt: formatGeneratedAt(new Date())
+      })
+    : rendered.pdf;
 
-  return new Response(new Uint8Array(rendered.pdf), {
+  return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${pdfFilename(invoice.invoiceNumber)}"`,
@@ -150,11 +175,19 @@ async function renderPdfWithOfficialFallback(
 }
 
 function normalizedLanguage(language: string):
-  | { ok: true; code: LanguageCode; translated: boolean }
-  | { ok: false } {
+  { ok: true; code: LanguageCode; translated: boolean } {
   if (language === "pl") return { ok: true, code: "en", translated: false };
   if (language in supportedLanguages) return { ok: true, code: language as LanguageCode, translated: true };
-  return { ok: false };
+  return { ok: true, code: "en", translated: true };
+}
+
+function formatGeneratedAt(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate())
+  ].join("-") + ` ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function encodeHeaderValue(value: string) {
