@@ -108,6 +108,10 @@ export const copy = {
     lowBalanceBannerBody:
       "Wykorzystałeś darmową fakturę w tym miesiącu i nie masz pakietu kredytów. Kup pakiet, aby przesłać kolejną fakturę.",
     newInvoice: "Nowa faktura",
+    recentHeading: "Ostatnie",
+    allArchive: "Cały archiwum",
+    helpLabel: "Pomoc",
+    contactLabel: "Kontakt",
     tryWithSample: "Spróbuj z przykładową fakturą",
     onboardingTitle: "Co dostajesz",
     onboardingItem1: "1 darmowa faktura w miesiącu",
@@ -222,6 +226,10 @@ export const copy = {
     lowBalanceBannerBody:
       "You have used your free invoice this month and have no credit pack. Buy a pack to upload another invoice.",
     newInvoice: "New invoice",
+    recentHeading: "Recent",
+    allArchive: "Full archive",
+    helpLabel: "Help",
+    contactLabel: "Contact",
     tryWithSample: "Try with sample invoice",
     onboardingTitle: "What you get",
     onboardingItem1: "1 free invoice per month",
