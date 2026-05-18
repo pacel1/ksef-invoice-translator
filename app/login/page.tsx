@@ -1,22 +1,38 @@
-import { LoginForm } from "./login-form";
-import { getOptionalUser } from "@/lib/auth/require-user";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { getOptionalUser } from "@/lib/auth/require-user";
+import { BrandLockup } from "@/components/brand/brand-lockup";
+import { LegalFooter } from "@/components/layout/legal-footer";
+import { LoginForm } from "@/app/login/login-form";
+import { marketingCopy } from "@/lib/marketing/copy";
 
 export default async function LoginPage() {
   const user = await getOptionalUser();
   if (user) redirect("/app");
 
+  const t = marketingCopy.pl.login;
+
   return (
-    <main className="min-h-screen bg-white text-slate-950">
-      <div className="mx-auto flex max-w-md flex-col gap-6 px-5 py-20">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Zaloguj się do KSeF Translator</h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Wpisz swój adres email — wyślemy Ci jednorazowy link logowania.
-          </p>
+    <div className="flex min-h-screen flex-col bg-surface-muted text-text-strong">
+      <main className="flex flex-1 items-center justify-center px-5 py-12 md:px-8">
+        <div className="w-full max-w-md rounded-xl border border-border bg-surface p-8 shadow-sm">
+          <div className="flex justify-center">
+            <BrandLockup href="/" size="lg" />
+          </div>
+          <h1 className="mt-8 text-h2 text-text-strong">{t.title}</h1>
+          <p className="mt-1 text-small text-text-muted">{t.subtitle}</p>
+          <div className="mt-6">
+            <LoginForm copy={t} />
+          </div>
+          <p className="mt-6 text-center text-small text-text-muted">{t.noAccountHint}</p>
         </div>
-        <LoginForm />
+      </main>
+      <LegalFooter />
+      <div className="border-t border-border bg-surface py-4 text-center">
+        <Link href="/" className="text-small text-text-muted hover:text-text-strong">
+          {t.backToHome}
+        </Link>
       </div>
-    </main>
+    </div>
   );
 }
