@@ -87,13 +87,13 @@ export function CreditSlider({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
-      <label htmlFor="slider" className="text-sm font-medium text-slate-700">
+    <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+      <label htmlFor="slider" className="text-small font-medium text-text">
         {pickPackageLabel}
       </label>
       <div className="mt-4 flex items-baseline gap-2">
-        <span className="text-5xl font-semibold tabular-nums text-slate-950">{size}</span>
-        <span className="text-sm text-slate-500">{unitPriceLabel}</span>
+        <span className="text-number-xl font-semibold tabular-nums text-text-strong">{size}</span>
+        <span className="text-small text-text-muted">{unitPriceLabel}</span>
       </div>
       <input
         id="slider"
@@ -103,32 +103,32 @@ export function CreditSlider({
         step={5}
         value={size}
         onChange={(event) => setSize(Number(event.target.value))}
-        className="mt-4 w-full cursor-pointer accent-cyan-700"
+        className="mt-4 w-full cursor-pointer accent-[hsl(var(--accent))]"
       />
-      <div className="mt-1 flex justify-between text-xs text-slate-500">
+      <div className="mt-1 flex justify-between text-micro tabular-nums text-text-muted">
         {ticks.map((tick) => (
-          <span key={tick} className={tick === size ? "font-semibold text-slate-900" : ""}>
+          <span key={tick} className={tick === size ? "font-semibold text-text-strong" : ""}>
             {tick}
           </span>
         ))}
       </div>
 
-      <dl className="mt-6 grid gap-2 text-sm">
+      <dl className="mt-6 grid gap-2 text-small">
         <div className="flex justify-between">
-          <dt className="text-slate-500">{unitPriceLabel}</dt>
-          <dd className="font-medium text-slate-900">
+          <dt className="text-text-muted">{unitPriceLabel}</dt>
+          <dd className="font-medium tabular-nums text-text-strong">
             {loading ? <Loader2 className="inline h-3.5 w-3.5 animate-spin" /> : formatter.format(unitNet)}
           </dd>
         </div>
-        <div className="flex justify-between border-t border-slate-100 pt-2">
-          <dt className="text-slate-500">{totalLabel}</dt>
-          <dd className="text-lg font-semibold text-slate-950 tabular-nums">
+        <div className="flex justify-between border-t border-border pt-2">
+          <dt className="text-text-muted">{totalLabel}</dt>
+          <dd className="text-lg font-semibold tabular-nums text-text-strong">
             {loading ? "—" : formatter.format(totalNet)}
           </dd>
         </div>
-        <div className="flex justify-between text-xs">
-          <dt className="text-slate-400">{totalWithTaxLabel}</dt>
-          <dd className="text-slate-500 tabular-nums">
+        <div className="flex justify-between text-micro">
+          <dt className="text-text-muted">{totalWithTaxLabel}</dt>
+          <dd className="tabular-nums text-text-muted">
             {loading ? "—" : formatter.format(totalGross)}
           </dd>
         </div>
@@ -143,7 +143,7 @@ export function CreditSlider({
         {continueLabel}
       </Button>
 
-      {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
+      {error ? <p className="mt-3 text-small text-rose-700">{error}</p> : null}
     </div>
   );
 }

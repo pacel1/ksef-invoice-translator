@@ -214,4 +214,37 @@ describe("useTranslatorWorkflow", () => {
     expect(result.current.cachedLanguages.size).toBe(0);
     expect(result.current.currentLanguage).toBe("pl");
   });
+
+  it("loadSample fetches the sample XML and calls upload", async () => {
+    const sampleBytes = new TextEncoder().encode("<Faktura/>");
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith("/sample-data/sample-fa3-invoice.xml")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          blob: async () => new Blob([sampleBytes], { type: "application/xml" })
+        });
+      }
+      if (url.includes("/api/upload")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            invoice: { id: "i-sample", invoiceNumber: "SAMPLE-001" },
+            invoiceId: "i-sample",
+            isNew: true,
+            warnings: []
+          })
+        });
+      }
+      return Promise.resolve(defaultPdfPreviewResponse());
+    });
+
+    const { result } = renderHook(() => useTranslatorWorkflow());
+    await act(async () => {
+      await result.current.loadSample();
+    });
+    expect(result.current.invoice).not.toBeNull();
+    expect(result.current.invoiceId).toBe("i-sample");
+  });
 });

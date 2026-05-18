@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -53,12 +52,18 @@ export function InsufficientCreditModal({
           <Button variant="outline" onClick={onClose}>
             {cancelLabel}
           </Button>
-          <Link
-            href="/billing"
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("open-credit-drawer"));
+              }
+            }}
             className="inline-flex h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-900"
           >
             {buyLabel}
-          </Link>
+          </button>
         </div>
       </div>
     </div>

@@ -102,8 +102,8 @@ test("upload at zero balance returns 402 and shows the modal", async ({ page, te
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("dialog").getByText(/Brak kredytów|Out of credits/i)).toBeVisible();
 
-  // The Buy-credits link inside the modal should point to /billing.
-  // Scope to the dialog — the LowBalanceBanner also shows a "Kup pakiet" link.
-  const buy = page.getByRole("dialog").getByRole("link", { name: /Kup pakiet|Buy credits/i });
-  await expect(buy).toHaveAttribute("href", "/billing");
+  // The Buy-credits button inside the modal should be visible.
+  // Scope to the dialog — the LowBalanceBanner also shows a "Kup pakiet" button.
+  const buy = page.getByRole("dialog").getByRole("button", { name: /Kup pakiet|Buy credits/i });
+  await expect(buy).toBeVisible();
 });

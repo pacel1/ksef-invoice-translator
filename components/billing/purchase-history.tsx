@@ -48,10 +48,10 @@ export async function PurchaseHistory({ userId, uiLanguage }: PurchaseHistoryPro
 
   return (
     <section className="mt-8">
-      <h2 className="text-lg font-semibold text-slate-950">{String(t.purchaseHistory)}</h2>
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+      <h2 className="text-h2 font-semibold text-text-strong">{String(t.purchaseHistory)}</h2>
+      <div className="mt-4 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+        <table className="w-full text-small">
+          <thead className="bg-surface-muted text-left text-micro uppercase tracking-wide text-text-muted">
             <tr>
               <th className="px-4 py-3">{String(t.purchaseDate)}</th>
               <th className="px-4 py-3">{String(t.purchaseSize)}</th>
@@ -59,19 +59,19 @@ export async function PurchaseHistory({ userId, uiLanguage }: PurchaseHistoryPro
               <th className="px-4 py-3">{String(t.purchaseStatus)}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border">
             {rows.map((row) => (
-              <tr key={row.id} className="border-t border-slate-100">
-                <td className="px-4 py-3 text-slate-700">
+              <tr key={row.id}>
+                <td className="px-4 py-3 text-text">
                   {dateFormatter.format(new Date(row.created_at))}
                 </td>
-                <td className="px-4 py-3 text-slate-700">{row.package_size}</td>
-                <td className="px-4 py-3 text-slate-700">
+                <td className="px-4 py-3 text-text tabular-nums">{row.package_size}</td>
+                <td className="px-4 py-3 text-text tabular-nums">
                   {formatter.format(row.total_amount_cents / 100)}
                 </td>
                 <td className="px-4 py-3">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(row.status)}`}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-micro font-medium ${statusClass(row.status)}`}
                   >
                     {statusLabel(row.status)}
                   </span>
@@ -88,14 +88,14 @@ export async function PurchaseHistory({ userId, uiLanguage }: PurchaseHistoryPro
 function statusClass(status: string): string {
   switch (status) {
     case "paid":
-      return "bg-emerald-50 text-emerald-800 border border-emerald-200";
+      return "bg-success/10 text-success border border-success/30";
     case "pending":
       return "bg-amber-50 text-amber-800 border border-amber-200";
     case "refunded":
-      return "bg-slate-100 text-slate-700 border border-slate-200";
+      return "bg-surface-muted text-text border border-border";
     case "failed":
-      return "bg-rose-50 text-rose-800 border border-rose-200";
+      return "bg-danger/10 text-danger border border-danger/30";
     default:
-      return "bg-slate-100 text-slate-700 border border-slate-200";
+      return "bg-surface-muted text-text border border-border";
   }
 }

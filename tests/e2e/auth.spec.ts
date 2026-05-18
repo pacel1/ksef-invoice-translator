@@ -26,7 +26,9 @@ test("sign in via magic link lands on /app", async ({ page, testUser }) => {
   await page.goto("/login");
   await page.fill('input[type="email"]', testUser.email);
   await page.click('button[type="submit"]');
-  await expect(page.getByText(/Wysłaliśmy link logowania/i)).toBeVisible();
+  // New LoginForm "sent" state copy (from marketingCopy.pl.login):
+  // title "Sprawdź skrzynkę" + body "Link logowania wysłany na <email>"
+  await expect(page.getByText(/Sprawdź skrzynkę/i)).toBeVisible();
 
   // Generate the token hash admin-side and navigate to /auth/callback with it.
   // The callback route calls verifyOtp(token_hash) server-side, which sets the

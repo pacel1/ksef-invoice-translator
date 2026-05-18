@@ -27,6 +27,7 @@ export function TranslatorWorkspace({ uiLanguage = "pl" }: TranslatorWorkspacePr
     setCurrentLanguage,
     setBilingual,
     upload,
+    loadSample,
     translateCurrent,
     downloadPdf,
     dismissInsufficientCredit,
@@ -97,6 +98,8 @@ export function TranslatorWorkspace({ uiLanguage = "pl" }: TranslatorWorkspacePr
           parsingLabel={String(t.parsing)}
           onboardingTitle={String(t.onboardingTitle)}
           onboardingItems={onboardingItems}
+          onLoadSample={loadSample}
+          sampleLabel={String(t.tryWithSample)}
         />
       )}
 

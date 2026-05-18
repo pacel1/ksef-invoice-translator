@@ -21,6 +21,7 @@ export interface UseTranslatorWorkflowResult {
   setCurrentLanguage(lang: WorkspaceLanguageCode): void;
   setBilingual(value: boolean): void;
   upload(file: File): Promise<void>;
+  loadSample(): Promise<void>;
   translateCurrent(): Promise<void>;
   downloadPdf(): Promise<void>;
   dismissInsufficientCredit(): void;
@@ -162,6 +163,22 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     }
   }
 
+  async function loadSample() {
+    try {
+      const res = await fetch("/sample-data/sample-fa3-invoice.xml");
+      if (!res.ok) {
+        setMessages(["Nie udało się załadować przykładowej faktury."]);
+        return;
+      }
+      const blob = await res.blob();
+      const file = new File([blob], "sample-fa3-invoice.xml", { type: "application/xml" });
+      await upload(file);
+    } catch (err) {
+      console.warn("[loadSample] failed:", err);
+      setMessages(["Nie udało się załadować przykładowej faktury."]);
+    }
+  }
+
   async function translateCurrent() {
     if (!invoiceId) return;
     if (currentLanguage === "pl") {
@@ -257,6 +274,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     setCurrentLanguage,
     setBilingual,
     upload,
+    loadSample,
     translateCurrent,
     downloadPdf,
     dismissInsufficientCredit,
