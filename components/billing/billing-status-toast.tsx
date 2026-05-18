@@ -26,21 +26,21 @@ export function BillingStatusToast({
 
   if (status === "paid") {
     return (
-      <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+      <div className="mt-4 flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 p-4 text-small text-success">
         <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
         <div>
           <p className="font-semibold">{successTitle}</p>
-          <p className="mt-1 text-emerald-800">{successBody}</p>
+          <p className="mt-1 text-success">{successBody}</p>
         </div>
       </div>
     );
   }
   return (
-    <div className="mt-4 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-900">
+    <div className="mt-4 flex items-start gap-3 rounded-xl border border-border bg-surface-muted p-4 text-small text-text-strong">
       <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
       <div>
         <p className="font-semibold">{cancelledTitle}</p>
-        <p className="mt-1 text-slate-700">{cancelledBody}</p>
+        <p className="mt-1 text-text">{cancelledBody}</p>
       </div>
     </div>
   );
