@@ -26,12 +26,12 @@ type TranslationFields = {
 type SplitSection = "items" | "notes";
 
 const SYSTEM_PROMPT =
-  "You translate Polish invoice free-text into the requested target language. Translate every natural-language business phrase, including short keys and labels supplied by the invoice data such as Lokalizacja, Uwagi, Opis, and Miejsce. Never leave Polish words mixed into the translated result unless they are part of a company name, product code, legal identifier, KSeF, or another proper noun. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, GTU, CN, PKWiU, PKOB, or registry numbers. Preserve meaning, keep professional invoice terminology, and preserve the order and array lengths exactly. Return strict JSON with keys items:string[], orderLines:string[], units:object, additionalDescriptions:{key:string,value:string}[], settlementReasons:string[], notes:string, and footer:string. The units object must map each original unit string exactly to its translation.";
+  "You translate Polish invoice free-text into the requested target language. Translate every natural-language business phrase, including short keys and labels supplied by the invoice data such as Lokalizacja, Uwagi, Opis, and Miejsce. Never leave Polish words mixed into the translated result unless they are part of a company name, product code, legal identifier, KSeF, or another proper noun. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, GTU, CN, PKWiU, PKOB, or registry numbers. Preserve meaning, keep professional invoice terminology, and preserve the order and array lengths exactly.";
 
 const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v6-polish-detection";
 
 export function getTranslationModel() {
-  return process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-mini";
+  return process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-nano";
 }
 
 export function getTranslationEngineVersion() {
@@ -176,6 +176,7 @@ async function requestTranslation(
   const completion = await client.chat.completions.create({
     model: getTranslationModel(),
     temperature: 0,
+    max_tokens: estimateMaxTokens(fields),
     response_format: { type: "json_object" },
     messages: [
       {
@@ -191,8 +192,18 @@ async function requestTranslation(
     ]
   });
 
-  const content = completion.choices[0]?.message.content ?? "{}";
+  const choice = completion.choices[0];
+  if (choice?.finish_reason === "length") {
+    throw new Error(`OpenAI translation response was truncated after ${completion.usage?.completion_tokens ?? "unknown"} completion tokens.`);
+  }
+
+  const content = choice?.message.content ?? "{}";
   return safeJson(content) as TranslationPayload;
+}
+
+function estimateMaxTokens(fields: Record<string, unknown>) {
+  const inputTokens = JSON.stringify(fields).length / 3.5;
+  return Math.min(Math.ceil(inputTokens * 1.3), 4000);
 }
 
 async function requestSplitTranslation(
