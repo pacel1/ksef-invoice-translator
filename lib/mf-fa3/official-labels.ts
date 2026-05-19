@@ -867,6 +867,119 @@ const SUBJECT3_ROLE_OVERRIDES: Partial<Record<LanguageCode, Record<string, strin
   }
 };
 
+const CORRECTION_TYPE_OVERRIDES: Record<LanguageCode, Record<string, string>> = {
+  en: {
+    "const.farr.correctionOriginalDate": "Correction effective on the date the original invoice is recognized",
+    "const.farr.correctionInvoiceDate": "Correction effective on the date the correcting invoice is issued",
+    "const.fa.correctionOtherDate": "Correction effective on another date, including when different correcting invoice lines have different effective dates"
+  },
+  de: {
+    "const.farr.correctionOriginalDate": "Korrektur mit Wirkung zum Datum der Erfassung der urspruenglichen Rechnung",
+    "const.farr.correctionInvoiceDate": "Korrektur mit Wirkung zum Ausstellungsdatum der Korrekturrechnung",
+    "const.fa.correctionOtherDate": "Korrektur mit Wirkung zu einem anderen Datum, auch wenn verschiedene Positionen der Korrekturrechnung unterschiedliche Daten haben"
+  },
+  fr: {
+    "const.farr.correctionOriginalDate": "Correction prenant effet a la date de comptabilisation de la facture initiale",
+    "const.farr.correctionInvoiceDate": "Correction prenant effet a la date d'emission de la facture corrective",
+    "const.fa.correctionOtherDate": "Correction prenant effet a une autre date, y compris lorsque differentes lignes de la facture corrective ont des dates differentes"
+  },
+  es: {
+    "const.farr.correctionOriginalDate": "Correccion efectiva en la fecha de registro de la factura original",
+    "const.farr.correctionInvoiceDate": "Correccion efectiva en la fecha de emision de la factura rectificativa",
+    "const.fa.correctionOtherDate": "Correccion efectiva en otra fecha, incluso cuando distintas lineas de la factura rectificativa tengan fechas diferentes"
+  },
+  it: {
+    "const.farr.correctionOriginalDate": "Rettifica efficace alla data di registrazione della fattura originaria",
+    "const.farr.correctionInvoiceDate": "Rettifica efficace alla data di emissione della fattura correttiva",
+    "const.fa.correctionOtherDate": "Rettifica efficace in un'altra data, anche quando righe diverse della fattura correttiva hanno date diverse"
+  },
+  nl: {
+    "const.farr.correctionOriginalDate": "Correctie van kracht op de datum waarop de oorspronkelijke factuur wordt geboekt",
+    "const.farr.correctionInvoiceDate": "Correctie van kracht op de datum waarop de correctiefactuur wordt uitgegeven",
+    "const.fa.correctionOtherDate": "Correctie van kracht op een andere datum, ook wanneer verschillende regels van de correctiefactuur verschillende datums hebben"
+  },
+  pt: {
+    "const.farr.correctionOriginalDate": "Correcao com efeito na data de reconhecimento da fatura original",
+    "const.farr.correctionInvoiceDate": "Correcao com efeito na data de emissao da fatura corretiva",
+    "const.fa.correctionOtherDate": "Correcao com efeito noutra data, incluindo quando diferentes linhas da fatura corretiva tenham datas diferentes"
+  },
+  cs: {
+    "const.farr.correctionOriginalDate": "Oprava ucinna k datu zauctovani puvodni faktury",
+    "const.farr.correctionInvoiceDate": "Oprava ucinna k datu vystaveni opravne faktury",
+    "const.fa.correctionOtherDate": "Oprava ucinna k jinemu datu, vcetne pripadu, kdy ruzne radky opravne faktury maji ruzna data"
+  },
+  sk: {
+    "const.farr.correctionOriginalDate": "Oprava ucinna k datumu zauctovania povodnej faktury",
+    "const.farr.correctionInvoiceDate": "Oprava ucinna k datumu vystavenia opravnej faktury",
+    "const.fa.correctionOtherDate": "Oprava ucinna k inemu datumu, vratane pripadu, ked rozne riadky opravnej faktury maju rozne datumy"
+  },
+  hu: {
+    "const.farr.correctionOriginalDate": "Helyesbites az eredeti szamla elszamolasanak datumaval hatalyos",
+    "const.farr.correctionInvoiceDate": "Helyesbites a helyesbito szamla kiallitasi datumaval hatalyos",
+    "const.fa.correctionOtherDate": "Helyesbites mas datumtol hatalyos, akkor is, ha a helyesbito szamla kulonbozo soraihoz kulonbozo datumok tartoznak"
+  },
+  ro: {
+    "const.farr.correctionOriginalDate": "Corectie cu efect la data inregistrarii facturii initiale",
+    "const.farr.correctionInvoiceDate": "Corectie cu efect la data emiterii facturii de corectie",
+    "const.fa.correctionOtherDate": "Corectie cu efect la o alta data, inclusiv atunci cand linii diferite ale facturii de corectie au date diferite"
+  },
+  bg: {
+    "const.farr.correctionOriginalDate": "Korektsiya s efekt kum datata na oschetovodyavane na parvonachalnata faktura",
+    "const.farr.correctionInvoiceDate": "Korektsiya s efekt kum datata na izdavane na korektsionnata faktura",
+    "const.fa.correctionOtherDate": "Korektsiya s efekt kum druga data, vklyuchitelno kogato razlichni redove na korektsionnata faktura imat razlichni dati"
+  },
+  hr: {
+    "const.farr.correctionOriginalDate": "Ispravak koji vrijedi na datum knjizenja izvorne fakture",
+    "const.farr.correctionInvoiceDate": "Ispravak koji vrijedi na datum izdavanja ispravne fakture",
+    "const.fa.correctionOtherDate": "Ispravak koji vrijedi na drugi datum, ukljucujuci kada razlicite stavke ispravne fakture imaju razlicite datume"
+  },
+  sl: {
+    "const.farr.correctionOriginalDate": "Popravek z ucinkom na datum knjizenja prvotnega racuna",
+    "const.farr.correctionInvoiceDate": "Popravek z ucinkom na datum izdaje popravnega racuna",
+    "const.fa.correctionOtherDate": "Popravek z ucinkom na drug datum, tudi kadar imajo razlicne vrstice popravnega racuna razlicne datume"
+  },
+  lt: {
+    "const.farr.correctionOriginalDate": "Korekcija galioja pradines saskaitos pripazinimo diena",
+    "const.farr.correctionInvoiceDate": "Korekcija galioja korekcines saskaitos israsymo diena",
+    "const.fa.correctionOtherDate": "Korekcija galioja kita diena, iskaitant atvejus, kai skirtingos korekcines saskaitos eilutes turi skirtingas datas"
+  },
+  lv: {
+    "const.farr.correctionOriginalDate": "Korekcija speka sakotneja rekina atzisanas datuma",
+    "const.farr.correctionInvoiceDate": "Korekcija speka korekcijas rekina izdosanas datuma",
+    "const.fa.correctionOtherDate": "Korekcija speka cita datuma, tostarp ja dazadam korekcijas rekina rindam ir dazadi datumi"
+  },
+  et: {
+    "const.farr.correctionOriginalDate": "Parandus kehtib algse arve kajastamise kuupaeval",
+    "const.farr.correctionInvoiceDate": "Parandus kehtib parandusarve valjastamise kuupaeval",
+    "const.fa.correctionOtherDate": "Parandus kehtib muul kuupaeval, sealhulgas kui parandusarve eri ridadel on erinevad kuupaevad"
+  },
+  da: {
+    "const.farr.correctionOriginalDate": "Korrektion med virkning pa datoen for registrering af den oprindelige faktura",
+    "const.farr.correctionInvoiceDate": "Korrektion med virkning pa udstedelsesdatoen for korrektionsfakturaen",
+    "const.fa.correctionOtherDate": "Korrektion med virkning pa en anden dato, ogsa nar forskellige linjer i korrektionsfakturaen har forskellige datoer"
+  },
+  sv: {
+    "const.farr.correctionOriginalDate": "Korrigering som galler fran datumet da den ursprungliga fakturan bokfors",
+    "const.farr.correctionInvoiceDate": "Korrigering som galler fran utfardandedatumet for korrigeringsfakturan",
+    "const.fa.correctionOtherDate": "Korrigering som galler fran ett annat datum, aven nar olika rader i korrigeringsfakturan har olika datum"
+  },
+  fi: {
+    "const.farr.correctionOriginalDate": "Korjaus voimassa alkuperaisen laskun kirjauspaivasta",
+    "const.farr.correctionInvoiceDate": "Korjaus voimassa korjauslaskun laatimispaivasta",
+    "const.fa.correctionOtherDate": "Korjaus voimassa muusta paivasta, myos kun korjauslaskun eri riveilla on eri paivamaarat"
+  },
+  no: {
+    "const.farr.correctionOriginalDate": "Korreksjon med virkning fra datoen den opprinnelige fakturaen bokfores",
+    "const.farr.correctionInvoiceDate": "Korreksjon med virkning fra utstedelsesdatoen for korrigeringsfakturaen",
+    "const.fa.correctionOtherDate": "Korreksjon med virkning fra en annen dato, ogsa nar ulike linjer i korrigeringsfakturaen har ulike datoer"
+  },
+  el: {
+    "const.farr.correctionOriginalDate": "Diorthosi me ischy apo tin imerominia katachorisis tou archikou timologiou",
+    "const.farr.correctionInvoiceDate": "Diorthosi me ischy apo tin imerominia ekdosis tou diorthotikou timologiou",
+    "const.fa.correctionOtherDate": "Diorthosi me ischy se alli imerominia, kai otan diaforetikes grammes tou diorthotikou timologiou echoun diaforetikes imerominies"
+  }
+};
+
 const GENERATED: Record<LanguageCode, Record<string, string>> = {
   en: enGenerated,
   de: deGenerated,
@@ -894,7 +1007,13 @@ const GENERATED: Record<LanguageCode, Record<string, string>> = {
 
 export function getOfficialTextOverrides(language: LanguageCode): Record<string, string> {
   const fallback = language === "fr" ? FR : language === "de" ? DE : language === "es" ? ES : language === "it" ? IT : EN;
-  return { ...fallback, ...GENERATED[language], ...SUBJECT3_ROLE_OVERRIDES[language], ...paymentMethodOverrides(language) };
+  return {
+    ...fallback,
+    ...GENERATED[language],
+    ...SUBJECT3_ROLE_OVERRIDES[language],
+    ...CORRECTION_TYPE_OVERRIDES[language],
+    ...paymentMethodOverrides(language)
+  };
 }
 
 function paymentMethodOverrides(language: LanguageCode) {

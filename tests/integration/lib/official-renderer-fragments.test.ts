@@ -81,6 +81,18 @@ describe("official FA(3) renderer static text overrides", () => {
     });
   });
 
+  it("covers all supported languages for TypKorekty dictionary values", () => {
+    supportedLanguages.forEach((language) => {
+      const overrides = getOfficialTextOverrides(language);
+
+      correctionTypeKeys.forEach((key) => {
+        expect(overrides[key], `${language} ${key}`).toBeTruthy();
+        expect(overrides[key], `${language} ${key}`).not.toContain("Korekta skutku");
+        expect(overrides[key], `${language} ${key}`).not.toContain("faktury pierwotnej");
+      });
+    });
+  });
+
   it("localizes official boolean leaves generated as Polish Tak/Nie", () => {
     const docDefinition = {
       content: [
@@ -123,6 +135,26 @@ describe("official FA(3) renderer static text overrides", () => {
     expect(text).not.toContain("Dodatkowy nabywca");
     expect(text).not.toContain("Tak");
   });
+
+  it("renders Spanish TypKorekty without Polish fallback text", async () => {
+    const sourceXml = correctionEffectXml();
+    const parsed = parseKsefXml(sourceXml);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const pdf = await renderOfficialFa3Pdf({
+      sourceXml,
+      invoice: parsed.invoice,
+      language: "es",
+      bilingual: false,
+      translated: true
+    });
+    const text = normalizePdfText((await pdfParse(pdf)).text);
+
+    expect(text).toContain("Correccion efectiva en la fecha de registro de la factura original");
+    expect(text).not.toContain("Korekta skutku");
+    expect(text).not.toContain("faktury pierwotnej");
+  });
 });
 
 const supportedLanguages = [
@@ -163,6 +195,16 @@ const subject3RoleKeys = [
   "const.fa.vatGroupRecipient",
   "const.fa.employee"
 ] as const;
+
+const correctionTypeKeys = [
+  "const.farr.correctionOriginalDate",
+  "const.farr.correctionInvoiceDate",
+  "const.fa.correctionOtherDate"
+] as const;
+
+function normalizePdfText(text: string) {
+  return text.replace(/\s+/g, " ");
+}
 
 function correctionXml() {
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -245,6 +287,38 @@ function staticOfficialTextXml() {
       <P_11>100</P_11>
       <P_12>23</P_12>
       <StanPrzed>1</StanPrzed>
+    </FaWiersz>
+  </Fa>
+</Faktura>`;
+}
+
+function correctionEffectXml() {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Faktura>
+  <Naglowek><KodFormularza kodSystemowy="FA (3)">FA</KodFormularza></Naglowek>
+  <Podmiot1><DaneIdentyfikacyjne><NIP>1111111111</NIP><Nazwa>Seller</Nazwa></DaneIdentyfikacyjne></Podmiot1>
+  <Podmiot2><DaneIdentyfikacyjne><NIP>2222222222</NIP><Nazwa>Buyer</Nazwa></DaneIdentyfikacyjne></Podmiot2>
+  <Fa>
+    <KodWaluty>PLN</KodWaluty>
+    <P_1>2026-05-15</P_1>
+    <P_2>KOR/STATIC/1</P_2>
+    <P_13_1>100</P_13_1>
+    <P_14_1>23</P_14_1>
+    <P_15>123</P_15>
+    <RodzajFaktury>KOR</RodzajFaktury>
+    <PrzyczynaKorekty>bledne dane</PrzyczynaKorekty>
+    <TypKorekty>1</TypKorekty>
+    <DaneFaKorygowanej>
+      <DataWystFaKorygowanej>2026-05-10</DataWystFaKorygowanej>
+      <NrFaKorygowanej>FV/1</NrFaKorygowanej>
+    </DaneFaKorygowanej>
+    <FaWiersz>
+      <NrWierszaFa>1</NrWierszaFa>
+      <P_7>usluga testowa</P_7>
+      <P_8B>1</P_8B>
+      <P_9A>100</P_9A>
+      <P_11>100</P_11>
+      <P_12>23</P_12>
     </FaWiersz>
   </Fa>
 </Faktura>`;
