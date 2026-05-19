@@ -107,6 +107,19 @@ describe("official FA(3) renderer static text overrides", () => {
     });
   });
 
+  it("does not use English fallback for non-English FA(3) dictionary values", () => {
+    const english = getOfficialTextOverrides("en");
+
+    supportedLanguages
+      .filter((language) => language !== "en")
+      .forEach((language) => {
+        const overrides = getOfficialTextOverrides(language);
+        nonEnglishFallbackSentinelKeys.forEach((key) => {
+          expect(overrides[key], `${language} ${key}`).not.toBe(english[key]);
+        });
+      });
+  });
+
   it("localizes official boolean leaves generated as Polish Tak/Nie", () => {
     const docDefinition = {
       content: [
@@ -296,6 +309,13 @@ const officialFa3DictionaryKeys = [
   "const.fa.oo",
   "const.fa.taxRateNpI",
   "const.fa.taxRateNpII"
+] as const;
+
+const nonEnglishFallbackSentinelKeys = [
+  "const.fa.enforcementAuthority",
+  "const.fa.seaTransport",
+  "const.fa.ownAccountSettlement",
+  "const.fa.taxRateNpI"
 ] as const;
 
 const polishDictionaryResidues = [
