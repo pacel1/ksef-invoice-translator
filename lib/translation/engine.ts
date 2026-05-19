@@ -203,7 +203,7 @@ async function requestTranslation(
 
 function estimateMaxTokens(fields: Record<string, unknown>) {
   const inputTokens = JSON.stringify(fields).length / 3.5;
-  return Math.min(Math.ceil(inputTokens * 1.3), 4000);
+  return Math.min(Math.max(Math.ceil(inputTokens * 1.3), 800), 4000);
 }
 
 async function requestSplitTranslation(
