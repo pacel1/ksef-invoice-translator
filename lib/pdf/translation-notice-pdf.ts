@@ -12,7 +12,7 @@ const marginX = 46;
 const contentTop = 70;
 const footerY = 18;
 const metadataPaddingX = 8;
-const metadataPaddingY = 7;
+const metadataPaddingY = 8;
 const textColor = rgb(0.12, 0.16, 0.22);
 const mutedColor = rgb(0.39, 0.46, 0.55);
 const accentColor = rgb(0.06, 0.46, 0.56);
@@ -68,7 +68,8 @@ function drawTranslationNoticePages(document: PDFDocument, regularFont: PDFFont,
     const lineHeight = isHeading ? 18 : isMetadata ? 10.5 : 13;
     const textWidth = isMetadata ? maxWidth - metadataPaddingX * 2 : maxWidth;
     const lines = paragraph.split("\n").flatMap((line) => wrapText(line, font, size, textWidth));
-    const blockHeight = isMetadata ? lines.length * lineHeight + metadataPaddingY * 2 : lines.length * lineHeight;
+    const metadataTextHeight = size + Math.max(0, lines.length - 1) * lineHeight;
+    const blockHeight = isMetadata ? metadataTextHeight + metadataPaddingY * 2 : lines.length * lineHeight;
     const neededHeight = blockHeight + (isHeading ? 16 : isMetadata ? 18 : 10);
 
     if (y - neededHeight < 58) {
@@ -77,26 +78,42 @@ function drawTranslationNoticePages(document: PDFDocument, regularFont: PDFFont,
     }
 
     if (isHeading && paragraphIndex > 0) {
-      page.drawLine({ start: { x: marginX, y: y + 10 }, end: { x: A4.width - marginX, y: y + 10 }, thickness: 0.8, color: ruleColor });
+      page.drawLine({ start: { x: marginX, y: y + 7 }, end: { x: A4.width - marginX, y: y + 7 }, thickness: 0.8, color: ruleColor });
     }
 
     if (isMetadata) {
+      const boxTop = y + metadataPaddingY;
+      const boxBottom = boxTop - blockHeight;
       page.drawRectangle({
         x: marginX,
-        y: y - blockHeight + metadataPaddingY,
+        y: boxBottom,
         width: maxWidth,
         height: blockHeight,
         borderColor: ruleColor,
         borderWidth: 0.7,
         color: rgb(0.98, 0.99, 1)
       });
+
+      let metadataY = boxTop - metadataPaddingY - size;
+      lines.forEach((line) => {
+        page.drawText(line, {
+          x: marginX + metadataPaddingX,
+          y: metadataY,
+          size,
+          font,
+          color: textColor
+        });
+        metadataY -= lineHeight;
+      });
+      y = boxBottom - 5;
+      return;
     }
 
     lines.forEach((line) => {
-      page.drawText(line, { x: isMetadata ? marginX + metadataPaddingX : marginX, y, size, font, color: isHeading ? accentColor : textColor });
+      page.drawText(line, { x: marginX, y, size, font, color: isHeading ? accentColor : textColor });
       y -= lineHeight;
     });
-    y -= isHeading ? 10 : isMetadata ? metadataPaddingY + 12 : 6;
+    y -= isHeading ? 7 : 6;
   });
 }
 
