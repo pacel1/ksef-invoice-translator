@@ -89,6 +89,50 @@ describe("translateInvoiceFreeText", () => {
     expect(translated.additionalDescriptions?.[0].translatedValue).toBe("Provision of services to an EU VAT taxpayer");
   });
 
+  it("translates FA(3) document fragments by stable id", async () => {
+    const sourceInvoice = {
+      ...invoice(),
+      translationFragments: [
+        {
+          id: "fragment.0",
+          kind: "correction_reason",
+          source: "błędna stawka VAT",
+          xmlPath: ["Fa", "PrzyczynaKorekty"],
+          context: "reason for issuing a corrective invoice"
+        }
+      ]
+    };
+
+    createMock
+      .mockResolvedValueOnce(mockCompletion([{ id: "items.0", translated: "Service at the location" }]))
+      .mockResolvedValueOnce(mockCompletion([
+        { id: "additionalDescriptions.0.key", translated: "Location" },
+        { id: "additionalDescriptions.0.value", translated: "Warsaw" }
+      ]))
+      .mockResolvedValueOnce(mockCompletion([{ id: "fragment.0", translated: "incorrect VAT rate" }]));
+
+    const { translateInvoiceFreeText } = await import("@/lib/translation/engine");
+    const translated = await translateInvoiceFreeText(sourceInvoice, "en");
+
+    expect(createMock).toHaveBeenCalledTimes(3);
+    expect(translated.translationFragments?.[0]).toMatchObject({
+      id: "fragment.0",
+      translated: "incorrect VAT rate"
+    });
+
+    const fragmentPayload = JSON.parse(createMock.mock.calls[2][0].messages[1].content);
+    expect(fragmentPayload).toMatchObject({
+      section: "document_fragments",
+      tasks: [
+        expect.objectContaining({
+          id: "fragment.0",
+          kind: "document_fragment",
+          source: "błędna stawka VAT"
+        })
+      ]
+    });
+  });
+
   it("repairs only the failed atomic annotation task", async () => {
     const descriptions = Array.from({ length: 5 }, (_, index) => ({
       key: `Opis ${index + 1}`,

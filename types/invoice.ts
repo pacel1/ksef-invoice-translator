@@ -150,8 +150,10 @@ export type CorrectedInvoiceReference = {
 export type InvoiceCorrection = {
   correctedInvoiceNumber?: string;
   reason?: string;
+  translatedReason?: string;
   type?: string;
   period?: string;
+  translatedPeriod?: string;
   isCollectiveDiscount?: boolean;
   references?: CorrectedInvoiceReference[];
 };
@@ -237,6 +239,15 @@ export type WarehouseDocument = {
   date?: string;
 };
 
+export type TranslationFragment = {
+  id: string;
+  kind: string;
+  source: string;
+  translated?: string;
+  xmlPath: Array<string | number>;
+  context?: string;
+};
+
 export type Invoice = {
   invoiceNumber: string;
   invoiceType?: string;
@@ -295,6 +306,7 @@ export type Invoice = {
   notes?: string;
   translatedNotes?: string;
   footer?: InvoiceFooter;
+  translationFragments?: TranslationFragment[];
   sourceXml?: string;
 };
 

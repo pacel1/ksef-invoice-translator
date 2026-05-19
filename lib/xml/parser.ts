@@ -9,7 +9,8 @@ import type {
   OrderLine,
   PaymentTerm,
   SettlementLine,
-  TaxBreakdownLine
+  TaxBreakdownLine,
+  TranslationFragment
 } from "@/types/invoice";
 import { getPaymentMethodLabel } from "@/lib/translation/payment-methods";
 import { invoiceSchema } from "@/lib/invoice/schema";
@@ -57,6 +58,8 @@ export function parseKsefXml(xml: string): ParseResult {
     const totalsFromTax = totalsFromTaxBreakdown(taxBreakdown);
     const additionalDescriptions = additionalDescriptionsFromNode(root);
     const notes = notesFromAdditionalDescriptions(additionalDescriptions);
+    const correction = correctionFromNode(fa);
+    const translationFragments = translationFragmentsFromNode(root);
 
     const invoice: Invoice = {
       invoiceNumber: text(firstDefined(getPath(fa, ["P_2"]), findValue(root, "P_2"))) || "UNKNOWN",
@@ -65,6 +68,7 @@ export function parseKsefXml(xml: string): ParseResult {
       issueDate: text(firstDefined(getPath(fa, ["P_1"]), findValue(root, "P_1"))) || "",
       saleDate: text(firstDefined(getPath(fa, ["P_6"]), findValue(root, "P_6"))) || undefined,
       currency: text(firstDefined(getPath(fa, ["KodWaluty"]), findValue(root, "KodWaluty"))) || "PLN",
+      correction,
       seller: partyFromNode(podmiot1),
       buyer: partyFromNode(podmiot2),
       items,
@@ -81,7 +85,8 @@ export function parseKsefXml(xml: string): ParseResult {
       settlements: settlementsFromNode(pickObject(fa, ["Rozliczenie"])),
       orders,
       notes: notes || text(findValue(root, "Uwagi")) || undefined,
-      footer: footerFromNode(stopka)
+      footer: footerFromNode(stopka),
+      translationFragments
     };
 
     const validated = invoiceSchema.parse(invoice);
@@ -97,7 +102,7 @@ export function parseKsefXml(xml: string): ParseResult {
 }
 
 function unwrapRoot(node: XmlNode): XmlNode {
-  const keys = Object.keys(node).filter((key) => !key.startsWith("@_"));
+  const keys = Object.keys(node).filter((key) => !key.startsWith("@_") && key !== "?xml");
   if (keys.length === 1 && isObject(node[keys[0]])) return node[keys[0]] as XmlNode;
   return node;
 }
@@ -277,6 +282,179 @@ function totalsFromTaxBreakdown(lines: TaxBreakdownLine[]) {
   const net = lines.reduce((sum, line) => sum + (line.net ?? 0), 0);
   const vat = lines.reduce((sum, line) => sum + (line.vat ?? 0), 0);
   return { net, vat };
+}
+
+function correctionFromNode(fa: XmlNode): Invoice["correction"] | undefined {
+  const references = findAllObjects(fa, "DaneFaKorygowanej")
+    .map((entry) => ({
+      issueDate: text(findValue(entry, "DataWystFaKorygowanej")) || undefined,
+      invoiceNumber: text(findValue(entry, "NrFaKorygowanej")) || undefined,
+      ksefNumber: text(findValue(entry, "NrKSeFFaKorygowanej")) || undefined
+    }))
+    .filter((entry) => entry.issueDate || entry.invoiceNumber || entry.ksefNumber);
+  const reason = text(findValue(fa, "PrzyczynaKorekty")) || undefined;
+  const type = text(findValue(fa, "TypKorekty")) || undefined;
+  const period = text(findValue(fa, "OkresFaKorygowanej")) || undefined;
+  const correctedInvoiceNumber = text(firstDefined(findValue(fa, "NrFaKorygowany"), references[0]?.invoiceNumber)) || undefined;
+  const correction: NonNullable<Invoice["correction"]> = {
+    correctedInvoiceNumber,
+    reason,
+    type,
+    period,
+    isCollectiveDiscount: Boolean(period && references.length > 1),
+    references: references.length ? references : undefined
+  };
+
+  return correctedInvoiceNumber || reason || type || period || references.length ? correction : undefined;
+}
+
+const TRANSLATABLE_XML_FIELDS: Record<string, { kind: string; context: string }> = {
+  PrzyczynaKorekty: {
+    kind: "correction_reason",
+    context: "reason for issuing a corrective invoice; translate Polish natural language and preserve amounts and identifiers"
+  },
+  OkresFaKorygowanej: {
+    kind: "correction_period",
+    context: "period covered by a corrective invoice; translate natural language period descriptions"
+  },
+  P_19A: {
+    kind: "annotation_exemption",
+    context: "VAT exemption legal basis; preserve article and act numbers"
+  },
+  P_19B: {
+    kind: "annotation_exemption",
+    context: "VAT exemption EU directive basis; preserve directive and article numbers"
+  },
+  P_19C: {
+    kind: "annotation_exemption",
+    context: "other VAT exemption basis; translate natural language and preserve legal references"
+  },
+  TerminOpis: {
+    kind: "payment_term",
+    context: "payment term description; translate Polish natural language"
+  },
+  OpisTerminu: {
+    kind: "payment_term",
+    context: "payment term description; translate Polish natural language"
+  },
+  ZdarzeniePoczatkowe: {
+    kind: "payment_term",
+    context: "starting event for a payment deadline; translate Polish natural language"
+  },
+  Jednostka: {
+    kind: "payment_term_unit",
+    context: "payment deadline unit; translate common time units"
+  },
+  OpisPlatnosci: {
+    kind: "payment_description",
+    context: "payment method or payment note; translate Polish natural language"
+  },
+  WarunkiSkonta: {
+    kind: "discount_terms",
+    context: "cash discount conditions; translate Polish natural language"
+  },
+  OpisSkonta: {
+    kind: "discount_terms",
+    context: "cash discount description; translate Polish natural language"
+  },
+  WarunekSkonta: {
+    kind: "discount_terms",
+    context: "cash discount condition; translate Polish natural language"
+  },
+  Powod: {
+    kind: "settlement_reason",
+    context: "settlement charge or deduction reason; translate Polish natural language"
+  },
+  ZNaglowek: {
+    kind: "attachment_header",
+    context: "attachment block heading; translate Polish natural language"
+  },
+  ZKlucz: {
+    kind: "attachment_key",
+    context: "attachment key or field label; translate Polish natural language"
+  },
+  ZWartosc: {
+    kind: "attachment_value",
+    context: "attachment value; translate Polish natural language and preserve identifiers, addresses, dates, units, and amounts"
+  },
+  Akapit: {
+    kind: "attachment_paragraph",
+    context: "attachment paragraph; translate Polish natural language"
+  },
+  Opis: {
+    kind: "attachment_table_description",
+    context: "attachment table description; translate Polish natural language"
+  },
+  TKlucz: {
+    kind: "attachment_table_key",
+    context: "attachment table metadata key; translate Polish natural language"
+  },
+  TWartosc: {
+    kind: "attachment_table_value",
+    context: "attachment table metadata value; translate Polish natural language and preserve identifiers, units, and amounts"
+  },
+  NKom: {
+    kind: "attachment_column_header",
+    context: "attachment table column header; translate Polish natural language"
+  },
+  WKom: {
+    kind: "attachment_table_cell",
+    context: "attachment table cell; translate Polish natural language and preserve identifiers, dates, units, and amounts"
+  },
+  SKom: {
+    kind: "attachment_summary_cell",
+    context: "attachment table summary cell; translate Polish natural language and preserve identifiers, units, and amounts"
+  }
+};
+
+function translationFragmentsFromNode(root: XmlNode): TranslationFragment[] {
+  const fragments: TranslationFragment[] = [];
+  collectTranslationFragments(root, [], fragments);
+  return fragments;
+}
+
+function collectTranslationFragments(node: unknown, path: Array<string | number>, fragments: TranslationFragment[]) {
+  if (Array.isArray(node)) {
+    node.forEach((entry, index) => collectTranslationFragments(entry, [...path, index], fragments));
+    return;
+  }
+  if (!isObject(node)) return;
+
+  for (const [key, value] of Object.entries(node)) {
+    if (key.startsWith("@_")) continue;
+    const nextPath = [...path, key];
+    const config = TRANSLATABLE_XML_FIELDS[key];
+    if (config) {
+      const values = Array.isArray(value) ? value.map((entry, index) => ({ source: textFromXmlValue(entry), path: [...nextPath, index] })) : [
+        { source: textFromXmlValue(value), path: nextPath }
+      ];
+      for (const entry of values) {
+        if (isTranslatableFragmentSource(entry.source)) {
+          fragments.push({
+            id: `fragment.${fragments.length}`,
+            kind: config.kind,
+            source: entry.source,
+            xmlPath: entry.path,
+            context: config.context
+          });
+        }
+      }
+    }
+    collectTranslationFragments(value, nextPath, fragments);
+  }
+}
+
+function textFromXmlValue(value: unknown) {
+  if (!isObject(value)) return text(value);
+  return text(getPrimitive(value));
+}
+
+function isTranslatableFragmentSource(value: string) {
+  if (!value || value.length < 2) return false;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  if (/^[\d\s.,:/+-]+$/.test(value)) return false;
+  if (/^[A-Z0-9_./ -]+$/.test(value) && !/[a-ząćęłńóśźż]/i.test(value)) return false;
+  return /[\p{L}]/u.test(value);
 }
 
 function settlementsFromNode(node: XmlNode | undefined): Invoice["settlements"] | undefined {

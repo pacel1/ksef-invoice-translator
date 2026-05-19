@@ -9,6 +9,7 @@ type TranslationPayload = {
   units?: Record<string, string>;
   additionalDescriptions?: { key?: string; value?: string }[];
   settlementReasons?: string[];
+  documentFragments?: Record<string, string>;
   notes?: string;
   footer?: string;
 };
@@ -19,12 +20,13 @@ type TranslationFields = {
   units: string[];
   additionalDescriptions: { key: string; value: string }[];
   settlementReasons: string[];
+  documentFragments: NonNullable<Invoice["translationFragments"]>;
   notes: string;
   footer: string;
 };
 
-type SplitSection = "items" | "notes";
-type TranslationRequestSection = "line_items" | "invoice_annotations";
+type SplitSection = "items" | "notes" | "fragments";
+type TranslationRequestSection = "line_items" | "invoice_annotations" | "document_fragments";
 type TranslationTaskKind =
   | "line_item"
   | "order_line"
@@ -32,6 +34,7 @@ type TranslationTaskKind =
   | "annotation_key"
   | "annotation_value"
   | "settlement_reason"
+  | "document_fragment"
   | "notes"
   | "footer";
 
@@ -53,7 +56,10 @@ const LINE_ITEMS_SYSTEM_PROMPT =
 const INVOICE_ANNOTATIONS_SYSTEM_PROMPT =
   'Translate each task.source according to task.kind and context. Translate Polish natural-language keys and values. If any text is already in the target language, keep it unchanged. Do not translate company names, addresses, place names, VAT IDs, NIP, REGON, KRS, IBAN, SWIFT, KSeF, GTU, CN, PKWiU, legal article numbers, EU directive numbers, invoice numbers, dates, amounts, currencies, or tax rates. Return JSON only: { "translations": [{ "id": string, "translated": string }] }. Do not omit tasks and do not reorder ids.';
 
-const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v8-atomic-tasks";
+const DOCUMENT_FRAGMENTS_SYSTEM_PROMPT =
+  'Translate each task.source according to task.kind and context. These are visible FA(3) XML fragments such as correction reasons, payment descriptions, settlement reasons, and attachment labels/table cells. Translate Polish natural-language text. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, NIP, REGON, KRS, IBAN, SWIFT, KSeF numbers, company names, addresses, product codes, GTU, CN, PKWiU, PKOB, legal article numbers, EU directive numbers, or technical identifiers. Return JSON only: { "translations": [{ "id": string, "translated": string }] }. Do not omit tasks and do not reorder ids.';
+
+const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v9-fa3-fragments";
 
 export function getTranslationModel() {
   return process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-nano";
@@ -84,6 +90,7 @@ export async function translateInvoiceFreeText(
       ...(invoice.settlements?.charges ?? []).map((line) => line.reason ?? ""),
       ...(invoice.settlements?.deductions ?? []).map((line) => line.reason ?? "")
     ],
+    documentFragments: invoice.translationFragments ?? [],
     notes: invoice.notes ?? "",
     footer: invoice.footer?.text ?? ""
   };
@@ -100,6 +107,17 @@ export async function translateInvoiceFreeText(
       additionalDescriptions: invoice.additionalDescriptions,
       settlements: invoice.settlements,
       orders: invoice.orders,
+      correction: invoice.correction
+        ? {
+            ...invoice.correction,
+            translatedReason: invoice.correction.reason,
+            translatedPeriod: invoice.correction.period
+          }
+        : undefined,
+      translationFragments: invoice.translationFragments?.map((fragment) => ({
+        ...fragment,
+        translated: fragment.source
+      })),
       translatedNotes: invoice.notes,
       footer: invoice.footer
         ? {
@@ -113,7 +131,7 @@ export async function translateInvoiceFreeText(
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const translationStarted = performance.now();
   const initial = await requestSplitTranslation(client, targetLanguage, language, fields, {
-    sections: ["items", "notes"]
+    sections: ["items", "notes", "fragments"]
   });
   let translated = applyLocalAdditionalDescriptionKeyTranslations(initial.translation, fields, language);
   const issues = translationQualityIssues(fields, translated, language);
@@ -148,9 +166,22 @@ export async function translateInvoiceFreeText(
   console.info("[translation-engine] timings", timings);
 
   let settlementIndex = 0;
+  const translatedFragments = invoice.translationFragments?.map((fragment) => ({
+    ...fragment,
+    translated: translated.documentFragments?.[fragment.id] || fragment.source
+  }));
+  const translatedCorrection = invoice.correction
+    ? {
+        ...invoice.correction,
+        translatedReason: textValue(fragmentTranslationByKind(translatedFragments, "correction_reason"), invoice.correction.reason),
+        translatedPeriod: textValue(fragmentTranslationByKind(translatedFragments, "correction_period"), invoice.correction.period)
+      }
+    : undefined;
+
   return {
     ...withTranslatedPaymentMethods(invoice, language),
     language,
+    correction: translatedCorrection,
     items: invoice.items.map((item, index) => ({
       ...item,
       translatedName: textAt(translated.items, index, item.name),
@@ -185,6 +216,7 @@ export async function translateInvoiceFreeText(
         };
       })
     })),
+    translationFragments: translatedFragments,
     translatedNotes: textValue(translated.notes, invoice.notes),
     footer: invoice.footer
       ? {
@@ -205,6 +237,7 @@ async function requestTranslation(
   repairIssues: string[] = []
 ): Promise<{ translation: TranslationPayload; taskCount: number }> {
   const systemPrompt = section === "line_items" ? LINE_ITEMS_SYSTEM_PROMPT : INVOICE_ANNOTATIONS_SYSTEM_PROMPT;
+  const effectiveSystemPrompt = section === "document_fragments" ? DOCUMENT_FRAGMENTS_SYSTEM_PROMPT : systemPrompt;
   const tasks = buildTranslationTasks(fields, section).filter((task) => !taskIds || taskIds.has(task.id));
   const payload = {
     sourceLanguage: "Polish",
@@ -223,8 +256,8 @@ async function requestTranslation(
       {
         role: "system",
         content: repairIssues.length
-          ? `${systemPrompt} This is a repair attempt for the same section. Fix these quality issues: ${repairIssues.join("; ")}.`
-          : systemPrompt
+          ? `${effectiveSystemPrompt} This is a repair attempt for the same section. Fix these quality issues: ${repairIssues.join("; ")}.`
+          : effectiveSystemPrompt
       },
       {
         role: "user",
@@ -264,6 +297,7 @@ async function requestSplitTranslation(
     units: fields.units,
     additionalDescriptions: [],
     settlementReasons: [],
+    documentFragments: [],
     notes: "",
     footer: ""
   };
@@ -273,20 +307,38 @@ async function requestSplitTranslation(
     units: [],
     additionalDescriptions: fields.additionalDescriptions,
     settlementReasons: fields.settlementReasons,
+    documentFragments: [],
     notes: fields.notes,
     footer: fields.footer
   };
+  const fragmentFields: TranslationFields = {
+    items: [],
+    orderLines: [],
+    units: [],
+    additionalDescriptions: [],
+    settlementReasons: [],
+    documentFragments: fields.documentFragments,
+    notes: "",
+    footer: ""
+  };
 
-  const [itemResult, noteResult] = await Promise.all([
+  const [itemResult, noteResult, fragmentResult] = await Promise.all([
     options.sections.includes("items")
       ? timedTranslation(() => requestTranslation(client, targetLanguage, language, itemFields, "line_items", options.taskIds, repairIssues))
       : Promise.resolve(undefined),
     options.sections.includes("notes")
       ? timedTranslation(() => requestTranslation(client, targetLanguage, language, noteFields, "invoice_annotations", options.taskIds, repairIssues))
+      : Promise.resolve(undefined),
+    options.sections.includes("fragments")
+      && fragmentFields.documentFragments.length
+      ? timedTranslation(() =>
+          requestTranslation(client, targetLanguage, language, fragmentFields, "document_fragments", options.taskIds, repairIssues)
+        )
       : Promise.resolve(undefined)
   ]);
   const itemTranslation = itemResult?.result.translation;
   const noteTranslation = noteResult?.result.translation;
+  const fragmentTranslation = fragmentResult?.result.translation;
 
   return {
     translation: {
@@ -295,6 +347,10 @@ async function requestSplitTranslation(
       units: itemTranslation?.units && typeof itemTranslation.units === "object" ? itemTranslation.units : {},
       additionalDescriptions: Array.isArray(noteTranslation?.additionalDescriptions) ? noteTranslation.additionalDescriptions : [],
       settlementReasons: Array.isArray(noteTranslation?.settlementReasons) ? noteTranslation.settlementReasons : [],
+      documentFragments:
+        fragmentTranslation?.documentFragments && typeof fragmentTranslation.documentFragments === "object"
+          ? fragmentTranslation.documentFragments
+          : {},
       notes: typeof noteTranslation?.notes === "string" ? noteTranslation.notes : "",
       footer: typeof noteTranslation?.footer === "string" ? noteTranslation.footer : ""
     },
@@ -302,7 +358,7 @@ async function requestSplitTranslation(
       itemsMs: itemResult?.elapsedMs,
       notesMs: noteResult?.elapsedMs
     },
-    taskCount: (itemResult?.result.taskCount ?? 0) + (noteResult?.result.taskCount ?? 0)
+    taskCount: (itemResult?.result.taskCount ?? 0) + (noteResult?.result.taskCount ?? 0) + (fragmentResult?.result.taskCount ?? 0)
   };
 }
 
@@ -339,6 +395,18 @@ function buildTranslationTasks(fields: TranslationFields, section: TranslationRe
         context: "unit of measure; translate common abbreviations when appropriate"
       }))
     ].filter((task) => task.source.trim());
+  }
+
+  if (section === "document_fragments") {
+    return fields.documentFragments
+      .map((fragment) => ({
+        id: fragment.id,
+        path: fragment.xmlPath.map(String).join("."),
+        kind: "document_fragment" as const,
+        source: fragment.source,
+        context: fragment.context ?? fragment.kind
+      }))
+      .filter((task) => task.source.trim());
   }
 
   return [
@@ -409,6 +477,15 @@ function translationPayloadFromTasks(
     return { items, orderLines, units };
   }
 
+  if (section === "document_fragments") {
+    const documentFragments: Record<string, string> = {};
+    for (const task of tasks) {
+      const translated = translations.get(task.id);
+      if (translated) documentFragments[task.id] = translated;
+    }
+    return { documentFragments };
+  }
+
   const additionalDescriptions: { key?: string; value?: string }[] = [];
   const settlementReasons: string[] = [];
   let notes = "";
@@ -445,7 +522,8 @@ function mergeTaskTranslation(
     orderLines: [...(base.orderLines ?? [])],
     units: { ...(base.units ?? {}) },
     additionalDescriptions: [...(base.additionalDescriptions ?? [])],
-    settlementReasons: [...(base.settlementReasons ?? [])]
+    settlementReasons: [...(base.settlementReasons ?? [])],
+    documentFragments: { ...(base.documentFragments ?? {}) }
   };
 
   for (const id of taskIds) {
@@ -470,6 +548,9 @@ function mergeTaskTranslation(
     }
     if (id === "notes") merged.notes = repair.notes ?? merged.notes;
     if (id === "footer") merged.footer = repair.footer ?? merged.footer;
+    if (id.startsWith("fragment.")) {
+      merged.documentFragments![id] = repair.documentFragments?.[id] ?? merged.documentFragments![id];
+    }
   }
 
   return merged;
@@ -478,6 +559,9 @@ function mergeTaskTranslation(
 function sectionGuidance(section: TranslationRequestSection) {
   if (section === "line_items") {
     return "items and orderLines are invoice row descriptions; units maps each original unit string to its translation.";
+  }
+  if (section === "document_fragments") {
+    return "document fragments are visible FA(3) XML text nodes; translate natural-language Polish while preserving protected identifiers, amounts, dates, tax rates, legal references, and addresses.";
   }
   return "additionalDescriptions contains {key,value} pairs: key is a label/descriptor and value may be a clause, address, company name, location, or description; notes and footer are invoice text blocks.";
 }
@@ -491,6 +575,7 @@ function repairSectionsForIssues(issues: string[]): SplitSection[] {
   for (const issue of issues) {
     if (/^(items|orderLines)\[/.test(issue)) sections.add("items");
     if (/^(additionalDescriptions|settlementReasons)\[|^(notes|footer)\b/.test(issue)) sections.add("notes");
+    if (/^translationFragments\[/.test(issue)) sections.add("fragments");
   }
   return sections.size ? Array.from(sections) : ["items", "notes"];
 }
@@ -499,6 +584,8 @@ function repairTaskIdsForIssues(issues: string[]) {
   return new Set(
     issues.map((issue) => {
       const field = issue.split(" still contains untranslated Polish text:")[0] ?? "";
+      const fragmentId = field.match(/^translationFragments\[(.+)\]$/)?.[1];
+      if (fragmentId) return fragmentId;
       return field
         .replace(/\[(\d+)\]/g, ".$1")
         .replace(/^\./, "");
@@ -580,6 +667,7 @@ function translationQualityIssues(
     orderLines: string[];
     additionalDescriptions: { key: string; value: string }[];
     settlementReasons: string[];
+    documentFragments: NonNullable<Invoice["translationFragments"]>;
     notes: string;
     footer: string;
   },
@@ -597,6 +685,11 @@ function translationQualityIssues(
       source,
       translated: translated.settlementReasons?.[index],
       field: `settlementReasons[${index}]`
+    })),
+    ...fields.documentFragments.map((fragment) => ({
+      source: fragment.source,
+      translated: translated.documentFragments?.[fragment.id],
+      field: `translationFragments[${fragment.id}]`
     })),
     { source: fields.notes, translated: translated.notes, field: "notes" },
     { source: fields.footer, translated: translated.footer, field: "footer" }
@@ -656,6 +749,13 @@ function textAt(values: unknown[] | undefined, index: number, fallback?: string)
 
 function textValue(value: unknown, fallback?: string) {
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function fragmentTranslationByKind(
+  fragments: NonNullable<Invoice["translationFragments"]> | undefined,
+  kind: string
+) {
+  return fragments?.find((fragment) => fragment.kind === kind)?.translated;
 }
 
 function elapsedMs(started: number) {

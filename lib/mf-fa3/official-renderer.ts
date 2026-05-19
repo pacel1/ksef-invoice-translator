@@ -67,7 +67,7 @@ function ensureOfficialRenderableFa3(faktura: OfficialXmlRecord, invoice: Invoic
   fa.KodWaluty ??= { _text: invoice.currency };
 }
 
-function applyAppFreeTextToOfficialXml(faktura: OfficialXmlRecord, invoice: Invoice, bilingual: boolean) {
+export function applyAppFreeTextToOfficialXml(faktura: OfficialXmlRecord, invoice: Invoice, bilingual: boolean) {
   const fa = asRecord(faktura.Fa);
   if (!fa) return;
 
@@ -104,6 +104,7 @@ function applyAppFreeTextToOfficialXml(faktura: OfficialXmlRecord, invoice: Invo
   });
 
   applyFooterFreeTextToOfficialXml(faktura, invoice, bilingual);
+  applyTranslationFragmentsToOfficialXml(faktura, invoice, bilingual);
 }
 
 export function parseOfficialFa3Xml(sourceXml: string): OfficialXmlRecord {
@@ -170,6 +171,29 @@ function findObjectChildren(node: unknown, key: string): OfficialXmlRecord[] {
 function setText(node: unknown, value: string | undefined) {
   const record = asRecord(node);
   if (record && value) record._text = value;
+}
+
+function applyTranslationFragmentsToOfficialXml(faktura: OfficialXmlRecord, invoice: Invoice, bilingual: boolean) {
+  invoice.translationFragments?.forEach((fragment) => {
+    const value = translatedText(fragment.translated, fragment.source, bilingual);
+    if (!value) return;
+    setTextAtPath(faktura, fragment.xmlPath, value);
+  });
+}
+
+function setTextAtPath(root: OfficialXmlRecord, path: Array<string | number>, value: string) {
+  let current: unknown = root;
+  for (const segment of path) {
+    if (typeof segment === "number") {
+      if (!Array.isArray(current)) return;
+      current = current[segment];
+      continue;
+    }
+    const record = asRecord(current);
+    if (!record) return;
+    current = record[segment];
+  }
+  setText(current, value);
 }
 
 function applyFooterFreeTextToOfficialXml(faktura: OfficialXmlRecord, invoice: Invoice, bilingual: boolean) {

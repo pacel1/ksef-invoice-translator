@@ -186,9 +186,9 @@ function CorrectionSection({ invoice, labels }: { invoice: Invoice; labels: Reco
   if (!correction) return null;
   const rows = [
     { label: label(labels, "correctedInvoiceNumber", "Numer faktury korygowanej"), value: correction.correctedInvoiceNumber ?? "-" },
-    { label: labels.reason, value: correction.reason ?? "-" },
+    { label: labels.reason, value: correction.translatedReason ?? correction.reason ?? "-" },
     { label: label(labels, "correctionType", "Typ korekty"), value: correction.type ?? "-" },
-    { label: label(labels, "correctionPeriod", "Okres korekty"), value: correction.period ?? "-" },
+    { label: label(labels, "correctionPeriod", "Okres korekty"), value: correction.translatedPeriod ?? correction.period ?? "-" },
     ...(correction.references ?? []).flatMap((reference, index) => [
       { label: `${labels.invoiceNumber} ${index + 1}`, value: reference.invoiceNumber ?? "-" },
       { label: `${labels.issueDate} ${index + 1}`, value: reference.issueDate ?? "-" },
@@ -263,8 +263,8 @@ function ItemsSection({
       <DataSection title={label(labels, "discountCorrection", "Rabat")}>
         <KeyValueGrid
           rows={[
-            { label: label(labels, "discountPeriod", "Okres, ktorego dotyczy rabat"), value: invoice.correction.period ?? "-" },
-            { label: labels.reason, value: invoice.correction.reason ?? "-" },
+            { label: label(labels, "discountPeriod", "Okres, ktorego dotyczy rabat"), value: invoice.correction.translatedPeriod ?? invoice.correction.period ?? "-" },
+            { label: labels.reason, value: invoice.correction.translatedReason ?? invoice.correction.reason ?? "-" },
             { label: labels.grossTotal, value: formatMoney(invoice.totals.gross, invoice.currency) }
           ].filter((row) => row.value !== "-")}
         />

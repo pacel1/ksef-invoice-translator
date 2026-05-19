@@ -74,8 +74,10 @@ const detailsSchema = z.object({
 const correctionSchema = z.object({
   correctedInvoiceNumber: z.string().optional(),
   reason: z.string().optional(),
+  translatedReason: z.string().optional(),
   type: z.string().optional(),
   period: z.string().optional(),
+  translatedPeriod: z.string().optional(),
   isCollectiveDiscount: z.boolean().optional(),
   references: z
     .array(
@@ -152,6 +154,15 @@ const transactionTermsSchema = z.object({
     )
     .optional()
 }).optional();
+
+const translationFragmentSchema = z.object({
+  id: z.string().min(1),
+  kind: z.string().min(1),
+  source: z.string().min(1),
+  translated: z.string().optional(),
+  xmlPath: z.array(z.union([z.string(), z.number()])),
+  context: z.string().optional()
+});
 
 export const invoiceSchema = z.object({
   invoiceNumber: z.string().min(1),
@@ -348,5 +359,6 @@ export const invoiceSchema = z.object({
         .optional()
     })
     .optional(),
+  translationFragments: z.array(translationFragmentSchema).optional(),
   sourceXml: z.string().optional()
 });

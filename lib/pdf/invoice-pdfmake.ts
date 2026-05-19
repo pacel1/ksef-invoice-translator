@@ -355,9 +355,9 @@ function correctionContent(invoice: Invoice, labels: Record<string, string>): Co
   const content: Content[] = [];
   const rows: [string, string][] = [
     [label(labels, "correctedInvoiceNumber", "Corrected invoice number"), correction.correctedInvoiceNumber ?? "-"],
-    [labels.reason, correction.reason ?? "-"],
+    [labels.reason, correction.translatedReason ?? correction.reason ?? "-"],
     [label(labels, "correctionType", "Correction type"), correction.type ?? "-"],
-    [label(labels, "correctionPeriod", "Correction period"), correction.period ?? "-"]
+    [label(labels, "correctionPeriod", "Correction period"), correction.translatedPeriod ?? correction.period ?? "-"]
   ].filter(([, value]) => value !== "-") as [string, string][];
 
   if (rows.length) content.push(keyValueCard(rows));
@@ -390,7 +390,7 @@ function discountCorrectionContent(invoice: Invoice, labels: Record<string, stri
   return [
     keyValueCard([
       [label(labels, "totalDiscountCorrectionValue", "Total discount value"), formatMoney(invoice.totals.gross, invoice.currency)],
-      [label(labels, "correctionPeriod", "Correction period"), invoice.correction?.period ?? "-"]
+      [label(labels, "correctionPeriod", "Correction period"), invoice.correction?.translatedPeriod ?? invoice.correction?.period ?? "-"]
     ]),
     { text: appliesText, margin: [0, 4, 0, 6] },
     dataTable(
