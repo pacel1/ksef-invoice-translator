@@ -69,6 +69,18 @@ describe("official FA(3) renderer static text overrides", () => {
     expect(french["const.fa.additionalBuyer"]).not.toContain("Dodatkowy nabywca");
   });
 
+  it("covers all supported languages for Podmiot3 role dictionary values", () => {
+    supportedLanguages.forEach((language) => {
+      const overrides = getOfficialTextOverrides(language);
+
+      subject3RoleKeys.forEach((key) => {
+        expect(overrides[key], `${language} ${key}`).toBeTruthy();
+        expect(overrides[key], `${language} ${key}`).not.toContain("Dodatkowy nabywca");
+        expect(overrides[key], `${language} ${key}`).not.toContain("w przypadku");
+      });
+    });
+  });
+
   it("localizes official boolean leaves generated as Polish Tak/Nie", () => {
     const docDefinition = {
       content: [
@@ -112,6 +124,45 @@ describe("official FA(3) renderer static text overrides", () => {
     expect(text).not.toContain("Tak");
   });
 });
+
+const supportedLanguages = [
+  "en",
+  "de",
+  "fr",
+  "es",
+  "it",
+  "nl",
+  "pt",
+  "cs",
+  "sk",
+  "hu",
+  "ro",
+  "bg",
+  "hr",
+  "sl",
+  "lt",
+  "lv",
+  "et",
+  "da",
+  "sv",
+  "fi",
+  "no",
+  "el"
+] as const;
+
+const subject3RoleKeys = [
+  "const.fa.factor",
+  "const.fa.recipient",
+  "const.fa.primaryEntity",
+  "const.fa.additionalBuyer",
+  "const.fa.invoiceIssuer",
+  "const.fa.payer",
+  "const.fa.localGovernmentIssuer",
+  "const.fa.localGovernmentRecipient",
+  "const.fa.vatGroupIssuer",
+  "const.fa.vatGroupRecipient",
+  "const.fa.employee"
+] as const;
 
 function correctionXml() {
   return `<?xml version="1.0" encoding="UTF-8"?>
