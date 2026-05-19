@@ -11,6 +11,8 @@ const A4 = { width: 595.28, height: 841.89 };
 const marginX = 46;
 const contentTop = 70;
 const footerY = 18;
+const metadataPaddingX = 8;
+const metadataPaddingY = 7;
 const textColor = rgb(0.12, 0.16, 0.22);
 const mutedColor = rgb(0.39, 0.46, 0.55);
 const accentColor = rgb(0.06, 0.46, 0.56);
@@ -62,10 +64,12 @@ function drawTranslationNoticePages(document: PDFDocument, regularFont: PDFFont,
     const isHeading = isNoticeHeading(paragraph, paragraphIndex);
     const isMetadata = paragraph.includes("\n") && paragraph.includes(":");
     const font = isHeading ? mediumFont : regularFont;
-    const size = isHeading ? 14 : isMetadata ? 9 : 9.5;
-    const lineHeight = isHeading ? 18 : isMetadata ? 12 : 13;
-    const lines = paragraph.split("\n").flatMap((line) => wrapText(line, font, size, maxWidth));
-    const neededHeight = lines.length * lineHeight + (isHeading ? 16 : isMetadata ? 18 : 10);
+    const size = isHeading ? 14 : isMetadata ? 8 : 9.5;
+    const lineHeight = isHeading ? 18 : isMetadata ? 10.5 : 13;
+    const textWidth = isMetadata ? maxWidth - metadataPaddingX * 2 : maxWidth;
+    const lines = paragraph.split("\n").flatMap((line) => wrapText(line, font, size, textWidth));
+    const blockHeight = isMetadata ? lines.length * lineHeight + metadataPaddingY * 2 : lines.length * lineHeight;
+    const neededHeight = blockHeight + (isHeading ? 16 : isMetadata ? 18 : 10);
 
     if (y - neededHeight < 58) {
       page = addNoticePage(document, mediumFont);
@@ -78,10 +82,10 @@ function drawTranslationNoticePages(document: PDFDocument, regularFont: PDFFont,
 
     if (isMetadata) {
       page.drawRectangle({
-        x: marginX - 10,
-        y: y - lines.length * lineHeight - 5,
-        width: maxWidth + 20,
-        height: lines.length * lineHeight + 12,
+        x: marginX,
+        y: y - blockHeight + metadataPaddingY,
+        width: maxWidth,
+        height: blockHeight,
         borderColor: ruleColor,
         borderWidth: 0.7,
         color: rgb(0.98, 0.99, 1)
@@ -89,10 +93,10 @@ function drawTranslationNoticePages(document: PDFDocument, regularFont: PDFFont,
     }
 
     lines.forEach((line) => {
-      page.drawText(line, { x: marginX, y, size, font, color: isHeading ? accentColor : textColor });
+      page.drawText(line, { x: isMetadata ? marginX + metadataPaddingX : marginX, y, size, font, color: isHeading ? accentColor : textColor });
       y -= lineHeight;
     });
-    y -= isHeading ? 10 : isMetadata ? 12 : 6;
+    y -= isHeading ? 10 : isMetadata ? metadataPaddingY + 12 : 6;
   });
 }
 
