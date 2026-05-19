@@ -25,14 +25,35 @@ type TranslationFields = {
 
 type SplitSection = "items" | "notes";
 type TranslationRequestSection = "line_items" | "invoice_annotations";
+type TranslationTaskKind =
+  | "line_item"
+  | "order_line"
+  | "unit"
+  | "annotation_key"
+  | "annotation_value"
+  | "settlement_reason"
+  | "notes"
+  | "footer";
+
+type TranslationTask = {
+  id: string;
+  path: string;
+  kind: TranslationTaskKind;
+  source: string;
+  context?: string;
+};
+
+type TaskTranslationResponse = {
+  translations?: { id?: string; translated?: string }[];
+};
 
 const LINE_ITEMS_SYSTEM_PROMPT =
-  "You translate Polish invoice line-item free-text into the requested target language. Translate item names, order line names, and units using professional invoice terminology. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, company names, product codes, GTU, CN, PKWiU, PKOB, KSeF, or other legal identifiers. Preserve meaning and preserve array lengths exactly. Return JSON only.";
+  'Translate each task.source according to task.kind and context. Use professional invoice terminology. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, company names, product codes, GTU, CN, PKWiU, PKOB, KSeF, or other legal identifiers. Return JSON only: { "translations": [{ "id": string, "translated": string }] }. Do not omit tasks and do not reorder ids.';
 
 const INVOICE_ANNOTATIONS_SYSTEM_PROMPT =
-  "You translate Polish invoice annotations into the requested target language. additionalDescriptions is an array of {key,value}: key is a field label or short descriptor, and value may be a legal clause, address, company name, location, or business description. Translate Polish natural-language keys and values. If any text is already in the target language, keep it unchanged. Do not translate company names, addresses, place names, VAT IDs, NIP, REGON, KRS, IBAN, SWIFT, KSeF, GTU, CN, PKWiU, legal article numbers, EU directive numbers, invoice numbers, dates, amounts, currencies, or tax rates. Preserve professional invoice terminology and preserve array lengths exactly. Return JSON only.";
+  'Translate each task.source according to task.kind and context. Translate Polish natural-language keys and values. If any text is already in the target language, keep it unchanged. Do not translate company names, addresses, place names, VAT IDs, NIP, REGON, KRS, IBAN, SWIFT, KSeF, GTU, CN, PKWiU, legal article numbers, EU directive numbers, invoice numbers, dates, amounts, currencies, or tax rates. Return JSON only: { "translations": [{ "id": string, "translated": string }] }. Do not omit tasks and do not reorder ids.';
 
-const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v7-section-prompts";
+const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v8-atomic-tasks";
 
 export function getTranslationModel() {
   return process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-nano";
@@ -101,23 +122,27 @@ export async function translateInvoiceFreeText(
     language,
     initialItemsMs: initial.timings.itemsMs ?? 0,
     initialNotesMs: initial.timings.notesMs ?? 0,
+    initialTaskCount: initial.taskCount,
     repairIssueCount: issues.length,
     repairIssues: issues.join(" | ").slice(0, 500)
   };
 
   if (issues.length) {
     const repairSections = repairSectionsForIssues(issues);
+    const repairTaskIds = repairTaskIdsForIssues(issues);
     const repair = await requestSplitTranslation(client, targetLanguage, language, fields, {
       repairIssues: issues,
-      sections: repairSections
+      sections: repairSections,
+      taskIds: repairTaskIds
     });
     translated = applyLocalAdditionalDescriptionKeyTranslations(
-      mergeSplitTranslation(translated, repair.translation, repairSections),
+      mergeTaskTranslation(translated, repair.translation, repairTaskIds),
       fields,
       language
     );
     if (repair.timings.itemsMs !== undefined) timings.repairItemsMs = repair.timings.itemsMs;
     if (repair.timings.notesMs !== undefined) timings.repairNotesMs = repair.timings.notesMs;
+    timings.repairTaskCount = repair.taskCount;
   }
   timings.totalMs = elapsedMs(translationStarted);
   console.info("[translation-engine] timings", timings);
@@ -174,15 +199,25 @@ async function requestTranslation(
   client: OpenAI,
   targetLanguage: string,
   language: LanguageCode,
-  fields: Record<string, unknown>,
+  fields: TranslationFields,
   section: TranslationRequestSection,
+  taskIds: Set<string> | undefined,
   repairIssues: string[] = []
-): Promise<TranslationPayload> {
+): Promise<{ translation: TranslationPayload; taskCount: number }> {
   const systemPrompt = section === "line_items" ? LINE_ITEMS_SYSTEM_PROMPT : INVOICE_ANNOTATIONS_SYSTEM_PROMPT;
+  const tasks = buildTranslationTasks(fields, section).filter((task) => !taskIds || taskIds.has(task.id));
+  const payload = {
+    sourceLanguage: "Polish",
+    targetLanguage,
+    targetLanguageCode: language,
+    section,
+    sectionGuidance: sectionGuidance(section),
+    tasks
+  };
   const completion = await client.chat.completions.create({
     model: getTranslationModel(),
     temperature: 0,
-    max_tokens: estimateMaxTokens(fields),
+    max_tokens: estimateMaxTokens(payload),
     response_format: { type: "json_object" },
     messages: [
       {
@@ -193,14 +228,7 @@ async function requestTranslation(
       },
       {
         role: "user",
-        content: JSON.stringify({
-          sourceLanguage: "Polish",
-          targetLanguage,
-          targetLanguageCode: language,
-          section,
-          sectionGuidance: sectionGuidance(section),
-          fields
-        })
+        content: JSON.stringify(payload)
       }
     ]
   });
@@ -211,7 +239,10 @@ async function requestTranslation(
   }
 
   const content = choice?.message.content ?? "{}";
-  return safeJson(content) as TranslationPayload;
+  return {
+    translation: translationPayloadFromTasks(fields, section, tasks, safeJson(content) as TaskTranslationResponse),
+    taskCount: tasks.length
+  };
 }
 
 function estimateMaxTokens(fields: Record<string, unknown>) {
@@ -224,10 +255,10 @@ async function requestSplitTranslation(
   targetLanguage: string,
   language: LanguageCode,
   fields: TranslationFields,
-  options: { repairIssues?: string[]; sections: SplitSection[] }
-): Promise<{ translation: TranslationPayload; timings: { itemsMs?: number; notesMs?: number } }> {
+  options: { repairIssues?: string[]; sections: SplitSection[]; taskIds?: Set<string> }
+): Promise<{ translation: TranslationPayload; timings: { itemsMs?: number; notesMs?: number }; taskCount: number }> {
   const repairIssues = options.repairIssues ?? [];
-  const itemFields = {
+  const itemFields: TranslationFields = {
     items: fields.items,
     orderLines: fields.orderLines,
     units: fields.units,
@@ -236,7 +267,7 @@ async function requestSplitTranslation(
     notes: "",
     footer: ""
   };
-  const noteFields = {
+  const noteFields: TranslationFields = {
     items: [],
     orderLines: [],
     units: [],
@@ -248,14 +279,14 @@ async function requestSplitTranslation(
 
   const [itemResult, noteResult] = await Promise.all([
     options.sections.includes("items")
-      ? timedTranslation(() => requestTranslation(client, targetLanguage, language, itemFields, "line_items", repairIssues))
+      ? timedTranslation(() => requestTranslation(client, targetLanguage, language, itemFields, "line_items", options.taskIds, repairIssues))
       : Promise.resolve(undefined),
     options.sections.includes("notes")
-      ? timedTranslation(() => requestTranslation(client, targetLanguage, language, noteFields, "invoice_annotations", repairIssues))
+      ? timedTranslation(() => requestTranslation(client, targetLanguage, language, noteFields, "invoice_annotations", options.taskIds, repairIssues))
       : Promise.resolve(undefined)
   ]);
-  const itemTranslation = itemResult?.translation;
-  const noteTranslation = noteResult?.translation;
+  const itemTranslation = itemResult?.result.translation;
+  const noteTranslation = noteResult?.result.translation;
 
   return {
     translation: {
@@ -270,8 +301,178 @@ async function requestSplitTranslation(
     timings: {
       itemsMs: itemResult?.elapsedMs,
       notesMs: noteResult?.elapsedMs
-    }
+    },
+    taskCount: (itemResult?.result.taskCount ?? 0) + (noteResult?.result.taskCount ?? 0)
   };
+}
+
+async function timedTranslation<T>(request: () => Promise<T>) {
+  const started = performance.now();
+  return {
+    result: await request(),
+    elapsedMs: elapsedMs(started)
+  };
+}
+
+function buildTranslationTasks(fields: TranslationFields, section: TranslationRequestSection): TranslationTask[] {
+  if (section === "line_items") {
+    return [
+      ...fields.items.map((source, index) => ({
+        id: `items.${index}`,
+        path: `items[${index}]`,
+        kind: "line_item" as const,
+        source,
+        context: "invoice row description; translate if Polish natural language"
+      })),
+      ...fields.orderLines.map((source, index) => ({
+        id: `orderLines.${index}`,
+        path: `orderLines[${index}]`,
+        kind: "order_line" as const,
+        source,
+        context: "order line description; translate if Polish natural language"
+      })),
+      ...fields.units.map((source, index) => ({
+        id: `units.${index}`,
+        path: `units[${index}]`,
+        kind: "unit" as const,
+        source,
+        context: "unit of measure; translate common abbreviations when appropriate"
+      }))
+    ].filter((task) => task.source.trim());
+  }
+
+  return [
+    ...fields.additionalDescriptions.flatMap((entry, index) => [
+      {
+        id: `additionalDescriptions.${index}.key`,
+        path: `additionalDescriptions[${index}].key`,
+        kind: "annotation_key" as const,
+        source: entry.key,
+        context: "field label or short descriptor; translate if Polish"
+      },
+      {
+        id: `additionalDescriptions.${index}.value`,
+        path: `additionalDescriptions[${index}].value`,
+        kind: "annotation_value" as const,
+        source: entry.value,
+        context: "invoice clause, address, company name, location, or business description; translate Polish natural language and preserve identifiers"
+      }
+    ]),
+    ...fields.settlementReasons.map((source, index) => ({
+      id: `settlementReasons.${index}`,
+      path: `settlementReasons[${index}]`,
+      kind: "settlement_reason" as const,
+      source,
+      context: "settlement reason; translate if Polish natural language"
+    })),
+    {
+      id: "notes",
+      path: "notes",
+      kind: "notes" as const,
+      source: fields.notes,
+      context: "invoice notes; translate if Polish natural language"
+    },
+    {
+      id: "footer",
+      path: "footer",
+      kind: "footer" as const,
+      source: fields.footer,
+      context: "invoice footer; translate if Polish natural language"
+    }
+  ].filter((task) => task.source.trim());
+}
+
+function translationPayloadFromTasks(
+  fields: TranslationFields,
+  section: TranslationRequestSection,
+  tasks: TranslationTask[],
+  response: TaskTranslationResponse
+): TranslationPayload {
+  const translations = new Map(
+    (response.translations ?? [])
+      .filter((entry): entry is { id: string; translated: string } => typeof entry.id === "string" && typeof entry.translated === "string")
+      .map((entry) => [entry.id, entry.translated])
+  );
+
+  if (section === "line_items") {
+    const items: string[] = [];
+    const orderLines: string[] = [];
+    const units: Record<string, string> = {};
+    for (const task of tasks) {
+      const translated = translations.get(task.id);
+      if (!translated) continue;
+      const index = taskIndex(task.id);
+      if (task.kind === "line_item") items[index] = translated;
+      if (task.kind === "order_line") orderLines[index] = translated;
+      if (task.kind === "unit") units[fields.units[index]] = translated;
+    }
+    return { items, orderLines, units };
+  }
+
+  const additionalDescriptions: { key?: string; value?: string }[] = [];
+  const settlementReasons: string[] = [];
+  let notes = "";
+  let footer = "";
+
+  for (const task of tasks) {
+    const translated = translations.get(task.id);
+    if (!translated) continue;
+    const index = taskIndex(task.id);
+    if (task.kind === "annotation_key") {
+      additionalDescriptions[index] = { ...additionalDescriptions[index], key: translated };
+    } else if (task.kind === "annotation_value") {
+      additionalDescriptions[index] = { ...additionalDescriptions[index], value: translated };
+    } else if (task.kind === "settlement_reason") {
+      settlementReasons[index] = translated;
+    } else if (task.kind === "notes") {
+      notes = translated;
+    } else if (task.kind === "footer") {
+      footer = translated;
+    }
+  }
+
+  return { additionalDescriptions, settlementReasons, notes, footer };
+}
+
+function mergeTaskTranslation(
+  base: TranslationPayload,
+  repair: TranslationPayload,
+  taskIds: Set<string>
+): TranslationPayload {
+  const merged: TranslationPayload = {
+    ...base,
+    items: [...(base.items ?? [])],
+    orderLines: [...(base.orderLines ?? [])],
+    units: { ...(base.units ?? {}) },
+    additionalDescriptions: [...(base.additionalDescriptions ?? [])],
+    settlementReasons: [...(base.settlementReasons ?? [])]
+  };
+
+  for (const id of taskIds) {
+    const index = taskIndex(id);
+    if (id.startsWith("items.")) merged.items![index] = repair.items?.[index] ?? merged.items![index];
+    if (id.startsWith("orderLines.")) merged.orderLines![index] = repair.orderLines?.[index] ?? merged.orderLines![index];
+    if (id.startsWith("units.")) merged.units = { ...merged.units, ...(repair.units ?? {}) };
+    if (id.endsWith(".key") && id.startsWith("additionalDescriptions.")) {
+      merged.additionalDescriptions![index] = {
+        ...merged.additionalDescriptions![index],
+        key: repair.additionalDescriptions?.[index]?.key ?? merged.additionalDescriptions![index]?.key
+      };
+    }
+    if (id.endsWith(".value") && id.startsWith("additionalDescriptions.")) {
+      merged.additionalDescriptions![index] = {
+        ...merged.additionalDescriptions![index],
+        value: repair.additionalDescriptions?.[index]?.value ?? merged.additionalDescriptions![index]?.value
+      };
+    }
+    if (id.startsWith("settlementReasons.")) {
+      merged.settlementReasons![index] = repair.settlementReasons?.[index] ?? merged.settlementReasons![index];
+    }
+    if (id === "notes") merged.notes = repair.notes ?? merged.notes;
+    if (id === "footer") merged.footer = repair.footer ?? merged.footer;
+  }
+
+  return merged;
 }
 
 function sectionGuidance(section: TranslationRequestSection) {
@@ -281,37 +482,8 @@ function sectionGuidance(section: TranslationRequestSection) {
   return "additionalDescriptions contains {key,value} pairs: key is a label/descriptor and value may be a clause, address, company name, location, or description; notes and footer are invoice text blocks.";
 }
 
-async function timedTranslation(request: () => Promise<TranslationPayload>) {
-  const started = performance.now();
-  return {
-    translation: await request(),
-    elapsedMs: elapsedMs(started)
-  };
-}
-
-function mergeSplitTranslation(
-  base: TranslationPayload,
-  repair: TranslationPayload,
-  sections: SplitSection[]
-): TranslationPayload {
-  return {
-    ...base,
-    ...(sections.includes("items")
-      ? {
-          items: repair.items,
-          orderLines: repair.orderLines,
-          units: repair.units
-        }
-      : {}),
-    ...(sections.includes("notes")
-      ? {
-          additionalDescriptions: repair.additionalDescriptions,
-          settlementReasons: repair.settlementReasons,
-          notes: repair.notes,
-          footer: repair.footer
-        }
-      : {})
-  };
+function taskIndex(id: string) {
+  return Number(id.match(/\.(\d+)(?:\.|$)/)?.[1] ?? 0);
 }
 
 function repairSectionsForIssues(issues: string[]): SplitSection[] {
@@ -321,6 +493,17 @@ function repairSectionsForIssues(issues: string[]): SplitSection[] {
     if (/^(additionalDescriptions|settlementReasons)\[|^(notes|footer)\b/.test(issue)) sections.add("notes");
   }
   return sections.size ? Array.from(sections) : ["items", "notes"];
+}
+
+function repairTaskIdsForIssues(issues: string[]) {
+  return new Set(
+    issues.map((issue) => {
+      const field = issue.split(" still contains untranslated Polish text:")[0] ?? "";
+      return field
+        .replace(/\[(\d+)\]/g, ".$1")
+        .replace(/^\./, "");
+    }).filter(Boolean)
+  );
 }
 
 function applyLocalAdditionalDescriptionKeyTranslations(
