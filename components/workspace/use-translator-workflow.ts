@@ -28,6 +28,21 @@ export interface UseTranslatorWorkflowResult {
   reset(): void;
 }
 
+type JsonObject = Record<string, unknown>;
+
+type UploadPayload = {
+  invoice?: Invoice;
+  invoiceId?: string;
+  warnings?: string[];
+  isNew?: boolean;
+  error?: string;
+};
+
+type TranslatePayload = {
+  invoice?: Invoice;
+  error?: string;
+};
+
 /**
  * Default language is "pl" — the user sees the official MF-compatible Polish
  * layout immediately on upload (no translation cost). They click a language pill
@@ -143,15 +158,19 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
 
       const payload = await readJsonResponse(res);
       if (!res.ok) {
-        throw new Error(payload.error ?? "Upload failed");
+        throw new Error(errorMessage(payload, "Upload failed"));
+      }
+      const uploadPayload = payload as UploadPayload;
+      if (!uploadPayload.invoice || !uploadPayload.invoiceId) {
+        throw new Error("Upload response was incomplete");
       }
 
-      setInvoice(payload.invoice);
-      setSourceInvoice(payload.invoice);
-      setInvoiceId(payload.invoiceId);
-      setMessages(payload.warnings ?? []);
+      setInvoice(uploadPayload.invoice);
+      setSourceInvoice(uploadPayload.invoice);
+      setInvoiceId(uploadPayload.invoiceId);
+      setMessages(uploadPayload.warnings ?? []);
       setCachedLanguages(new Set());
-      if (payload.isNew) {
+      if (uploadPayload.isNew) {
         notifyBalanceChanged();
       }
     } catch (error) {
@@ -198,9 +217,13 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
       });
       const payload = await readJsonResponse(res);
       if (!res.ok) {
-        throw new Error(payload.error ?? "Translation failed");
+        throw new Error(errorMessage(payload, "Translation failed"));
       }
-      setInvoice(payload.invoice);
+      const translatePayload = payload as TranslatePayload;
+      if (!translatePayload.invoice) {
+        throw new Error("Translation response was incomplete");
+      }
+      setInvoice(translatePayload.invoice);
       setCachedLanguages((prev) => {
         const next = new Set(prev);
         next.add(currentLanguage as LanguageCode);
@@ -229,7 +252,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
       });
       if (!res.ok) {
         const payload = await readJsonResponse(res);
-        throw new Error(payload.error ?? "PDF generation failed");
+        throw new Error(errorMessage(payload, "PDF generation failed"));
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -283,16 +306,20 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
   };
 }
 
-async function readJsonResponse(res: Response): Promise<Record<string, any>> {
+async function readJsonResponse(res: Response): Promise<JsonObject> {
   if (typeof res.text !== "function" && typeof res.json === "function") {
-    return res.json();
+    return res.json() as Promise<JsonObject>;
   }
 
   const text = await res.text();
   if (!text.trim()) return {};
   try {
-    return JSON.parse(text) as Record<string, any>;
+    return JSON.parse(text) as JsonObject;
   } catch {
     return { error: `Unexpected non-JSON response (${res.status})` };
   }
+}
+
+function errorMessage(payload: JsonObject, fallback: string) {
+  return typeof payload.error === "string" && payload.error.trim() ? payload.error : fallback;
 }
