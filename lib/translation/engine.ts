@@ -16,7 +16,7 @@ type TranslationPayload = {
 const SYSTEM_PROMPT =
   "You translate Polish invoice free-text into the requested target language. Translate every natural-language business phrase, including short keys and labels supplied by the invoice data such as Lokalizacja, Uwagi, Opis, and Miejsce. Never leave Polish words mixed into the translated result unless they are part of a company name, product code, legal identifier, KSeF, or another proper noun. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, GTU, CN, PKWiU, PKOB, or registry numbers. Preserve meaning, keep professional invoice terminology, and preserve the order and array lengths exactly. Return strict JSON with keys items:string[], orderLines:string[], units:object, additionalDescriptions:{key:string,value:string}[], settlementReasons:string[], notes:string, and footer:string. The units object must map each original unit string exactly to its translation.";
 
-const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v1";
+const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v2-split";
 
 export function getTranslationModel() {
   return process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-mini";
@@ -74,11 +74,11 @@ export async function translateInvoiceFreeText(
   }
 
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  let translated = await requestTranslation(client, targetLanguage, language, fields);
+  let translated = await requestSplitTranslation(client, targetLanguage, language, fields);
   const issues = translationQualityIssues(fields, translated, language);
 
   if (issues.length) {
-    translated = await requestTranslation(client, targetLanguage, language, fields, issues);
+    translated = await requestSplitTranslation(client, targetLanguage, language, fields, issues);
   }
 
   let settlementIndex = 0;
@@ -156,6 +156,56 @@ async function requestTranslation(
 
   const content = completion.choices[0]?.message.content ?? "{}";
   return safeJson(content) as TranslationPayload;
+}
+
+async function requestSplitTranslation(
+  client: OpenAI,
+  targetLanguage: string,
+  language: LanguageCode,
+  fields: {
+    items: string[];
+    orderLines: string[];
+    units: string[];
+    additionalDescriptions: { key: string; value: string }[];
+    settlementReasons: string[];
+    notes: string;
+    footer: string;
+  },
+  repairIssues: string[] = []
+): Promise<TranslationPayload> {
+  const itemFields = {
+    items: fields.items,
+    orderLines: fields.orderLines,
+    units: fields.units,
+    additionalDescriptions: [],
+    settlementReasons: [],
+    notes: "",
+    footer: ""
+  };
+  const noteFields = {
+    items: [],
+    orderLines: [],
+    units: [],
+    additionalDescriptions: fields.additionalDescriptions,
+    settlementReasons: fields.settlementReasons,
+    notes: fields.notes,
+    footer: fields.footer
+  };
+
+  const [itemTranslation, noteTranslation] = await Promise.all([
+    requestTranslation(client, targetLanguage, language, itemFields, repairIssues),
+    requestTranslation(client, targetLanguage, language, noteFields, repairIssues)
+  ]);
+
+  return {
+    items: Array.isArray(itemTranslation.items) ? itemTranslation.items : [],
+    orderLines: Array.isArray(itemTranslation.orderLines) ? itemTranslation.orderLines : [],
+    units: itemTranslation.units && typeof itemTranslation.units === "object" ? itemTranslation.units : {},
+    additionalDescriptions: Array.isArray(noteTranslation.additionalDescriptions) ? noteTranslation.additionalDescriptions : [],
+    settlementReasons: Array.isArray(noteTranslation.settlementReasons) ? noteTranslation.settlementReasons : [],
+    notes: typeof noteTranslation.notes === "string" ? noteTranslation.notes : "",
+    footer: typeof noteTranslation.footer === "string" ? noteTranslation.footer : ""
+  };
 }
 
 function withTranslatedPaymentMethods(invoice: Invoice, language: LanguageCode): Invoice {

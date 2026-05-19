@@ -41,6 +41,23 @@ describe("translateInvoiceFreeText", () => {
                 items: ["Dienstleistung Lokalizacja"],
                 orderLines: [],
                 units: {},
+                additionalDescriptions: [],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: [],
+                orderLines: [],
+                units: {},
                 additionalDescriptions: [{ key: "Lokalizacja", value: "Warszawa" }],
                 settlementReasons: [],
                 notes: "",
@@ -58,6 +75,23 @@ describe("translateInvoiceFreeText", () => {
                 items: ["Dienstleistung am Standort"],
                 orderLines: [],
                 units: {},
+                additionalDescriptions: [],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: [],
+                orderLines: [],
+                units: {},
                 additionalDescriptions: [{ key: "Standort", value: "Warschau" }],
                 settlementReasons: [],
                 notes: "",
@@ -71,10 +105,63 @@ describe("translateInvoiceFreeText", () => {
     const { translateInvoiceFreeText } = await import("@/lib/translation/engine");
     const translated = await translateInvoiceFreeText(invoice(), "de");
 
-    expect(createMock).toHaveBeenCalledTimes(2);
+    expect(createMock).toHaveBeenCalledTimes(4);
     expect(translated.items[0].translatedName).toBe("Dienstleistung am Standort");
     expect(translated.additionalDescriptions?.[0].translatedKey).toBe("Standort");
     expect(translated.additionalDescriptions?.[0].translatedValue).toBe("Warschau");
+  });
+
+  it("translates item and note sections with parallel requests", async () => {
+    createMock
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: ["Service at the location"],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: [],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [{ key: "Location", value: "Warsaw" }],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      });
+
+    const sourceInvoice = invoice();
+    const { translateInvoiceFreeText } = await import("@/lib/translation/engine");
+    const translated = await translateInvoiceFreeText(sourceInvoice, "en");
+
+    expect(createMock).toHaveBeenCalledTimes(2);
+    expect(translated.items[0].translatedName).toBe("Service at the location");
+    expect(translated.additionalDescriptions?.[0].translatedKey).toBe("Location");
+    expect(translated.additionalDescriptions?.[0].translatedValue).toBe("Warsaw");
+
+    const payloads = createMock.mock.calls.map((call) => JSON.parse(call[0].messages[1].content));
+    expect(payloads[0].fields.items).toEqual([sourceInvoice.items[0].name]);
+    expect(payloads[0].fields.additionalDescriptions).toEqual([]);
+    expect(payloads[1].fields.items).toEqual([]);
+    expect(payloads[1].fields.additionalDescriptions).toEqual([{ key: "Lokalizacja", value: "Warszawa" }]);
   });
 });
 
