@@ -37,22 +37,28 @@ export async function POST(request: Request) {
 }
 
 async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
+  const timings: Record<string, number | string | boolean> = {};
+  const routeStarted = performance.now();
   if (!(params.language in supportedLanguages)) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
   }
 
   const supabase = await createSupabaseServerClient();
+  const authStarted = performance.now();
   const { data: userData, error: authError } = await supabase.auth.getUser();
+  timings.authMs = elapsedMs(authStarted);
   if (authError || !userData.user) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
+  const invoiceFetchStarted = performance.now();
   const row = await supabase
     .from("invoices")
     .select("source_data")
     .eq("id", params.invoiceId)
     .is("deleted_at", null)
     .maybeSingle();
+  timings.invoiceFetchMs = elapsedMs(invoiceFetchStarted);
 
   if (!row.data) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
@@ -65,6 +71,13 @@ async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
     language: params.language as LanguageCode,
     bilingual: params.bilingual !== false
   });
+  Object.assign(timings, result.timings, {
+    cached: result.cached,
+    usedAi: result.usedAi,
+    engineVersion: result.engineVersion,
+    totalMs: elapsedMs(routeStarted)
+  });
+  console.info("[api/translate] timings", timings);
 
   return NextResponse.json({
     invoice: result.invoice,
@@ -74,11 +87,20 @@ async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
 }
 
 async function translateInline(params: z.infer<typeof inlineRequestSchema>) {
+  const routeStarted = performance.now();
   if (!(params.language in supportedLanguages)) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
   }
   const invoice = invoiceSchema.parse(params.invoice);
   const usedAi = Boolean(process.env.OPENAI_API_KEY);
   const translated = await translateInvoiceFreeText(invoice, params.language as LanguageCode);
+  console.info("[api/translate] inline timings", {
+    usedAi,
+    totalMs: elapsedMs(routeStarted)
+  });
   return NextResponse.json({ invoice: translated, cached: false, usedAi });
+}
+
+function elapsedMs(started: number) {
+  return Math.round(performance.now() - started);
 }

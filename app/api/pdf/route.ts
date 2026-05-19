@@ -18,6 +18,7 @@ const cachedRequestSchema = z.object({
   language: z.string(),
   bilingual: z.boolean().optional(),
   translated: z.boolean().optional(),
+  preview: z.boolean().optional(),
   reviewedBy: z.string().optional()
 });
 
@@ -26,6 +27,7 @@ const inlineRequestSchema = z.object({
   language: z.string(),
   bilingual: z.boolean().optional(),
   translated: z.boolean().optional(),
+  preview: z.boolean().optional(),
   sourceXml: z.string().optional(),
   reviewedBy: z.string().optional()
 });
@@ -52,17 +54,22 @@ export async function POST(request: Request) {
 }
 
 async function pdfFromCache(params: z.infer<typeof cachedRequestSchema>) {
+  const timings: Record<string, number | string | boolean> = { preview: Boolean(params.preview) };
+  const routeStarted = performance.now();
   const language = normalizedLanguage(params.language);
   if (!language.ok) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
   }
 
   const supabase = await createSupabaseServerClient();
+  const authStarted = performance.now();
   const { data: userData, error: authError } = await supabase.auth.getUser();
+  timings.authMs = elapsedMs(authStarted);
   if (authError || !userData.user) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
+  const fetchStarted = performance.now();
   const [row, profile] = await Promise.all([
     supabase
     .from("invoices")
@@ -76,6 +83,7 @@ async function pdfFromCache(params: z.infer<typeof cachedRequestSchema>) {
       .eq("id", userData.user.id)
       .maybeSingle()
   ]);
+  timings.invoiceAndProfileFetchMs = elapsedMs(fetchStarted);
   if (!row.data) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
@@ -83,25 +91,39 @@ async function pdfFromCache(params: z.infer<typeof cachedRequestSchema>) {
   const sourceInvoice = invoiceSchema.parse(row.data.source_data);
   const translated = params.translated ?? language.translated;
   const bilingual = translated && params.bilingual !== false;
-  const invoice = translated
-    ? (
-        await getOrCreateTranslation({
+  let invoice: Invoice = sourceInvoice;
+  if (translated) {
+    const translationStarted = performance.now();
+    const result = await getOrCreateTranslation({
           supabase: getSupabaseAdminClient(),
           invoice: sourceInvoice,
           invoiceId: params.invoiceId,
           language: language.code,
           bilingual
-        })
-      ).invoice
-    : sourceInvoice;
+    });
+    timings.translationLookupTotalMs = elapsedMs(translationStarted);
+    Object.assign(timings, result.timings, {
+      translationCached: result.cached,
+      usedAi: result.usedAi,
+      engineVersion: result.engineVersion
+    });
+    invoice = result.invoice;
+  }
 
-  return renderPdfResponse(invoice, language.code, bilingual, translated, {
+  const response = await renderPdfResponse(invoice, language.code, bilingual, translated, {
     sourceXml: invoice.sourceXml ?? sourceInvoice.sourceXml,
-    reviewedBy: params.reviewedBy ?? profile.data?.display_name ?? userData.user.email
+    reviewedBy: params.reviewedBy ?? profile.data?.display_name ?? userData.user.email,
+    skipKsefVerification: Boolean(params.preview),
+    timings
   });
+  timings.totalMs = elapsedMs(routeStarted);
+  console.info("[api/pdf] timings", timings);
+  return response;
 }
 
 async function pdfFromInline(params: z.infer<typeof inlineRequestSchema>) {
+  const timings: Record<string, number | string | boolean> = { preview: Boolean(params.preview) };
+  const routeStarted = performance.now();
   const language = normalizedLanguage(params.language);
   if (!language.ok) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
@@ -109,10 +131,15 @@ async function pdfFromInline(params: z.infer<typeof inlineRequestSchema>) {
   const invoice = invoiceSchema.parse(params.invoice);
   const translated = params.translated ?? language.translated;
   const bilingual = translated && params.bilingual !== false;
-  return renderPdfResponse(invoice, language.code, bilingual, translated, {
+  const response = await renderPdfResponse(invoice, language.code, bilingual, translated, {
     sourceXml: params.sourceXml ?? invoice.sourceXml,
-    reviewedBy: params.reviewedBy
+    reviewedBy: params.reviewedBy,
+    skipKsefVerification: Boolean(params.preview),
+    timings
   });
+  timings.totalMs = elapsedMs(routeStarted);
+  console.info("[api/pdf] inline timings", timings);
+  return response;
 }
 
 async function renderPdfResponse(
@@ -123,22 +150,33 @@ async function renderPdfResponse(
   options: {
     sourceXml?: string;
     reviewedBy?: string | null;
+    skipKsefVerification?: boolean;
+    timings?: Record<string, number | string | boolean>;
   }
 ) {
   const verificationUrl = invoice.verification?.qrLink;
-  const verificationResult = verificationUrl
+  const verificationStarted = performance.now();
+  const verificationResult = verificationUrl && !options.skipKsefVerification
     ? await verifyPublicKsefQrUrl(verificationUrl)
     : { confirmed: false as const };
+  options.timings ??= {};
+  options.timings.ksefVerificationMs = elapsedMs(verificationStarted);
+  options.timings.ksefVerificationSkipped = Boolean(verificationUrl && options.skipKsefVerification);
   const invoiceForPdf = invoiceWithConfirmedKsefVerification(invoice, verificationUrl, verificationResult);
+  const renderStarted = performance.now();
   const rendered = options.sourceXml
     ? await renderPdfWithOfficialFallback(options.sourceXml, invoiceForPdf, language, bilingual, translated)
     : { pdf: await renderInvoicePdfMake(invoiceForPdf, language, bilingual), renderer: "legacy-no-source-xml" };
+  options.timings.pdfRenderMs = elapsedMs(renderStarted);
+  options.timings.pdfRenderer = rendered.renderer;
+  const noticeStarted = performance.now();
   const pdf = translated
     ? await applyTranslationNoticesToPdf(rendered.pdf, language, {
         reviewedBy: options.reviewedBy,
         generatedAt: formatGeneratedAt(new Date())
       })
     : rendered.pdf;
+  options.timings.translationNoticeMs = elapsedMs(noticeStarted);
 
   return new Response(new Uint8Array(pdf), {
     headers: {
@@ -220,4 +258,8 @@ function pdfFilename(invoiceNumber: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
   return `ksef-invoice-${safeInvoiceNumber || "invoice"}.pdf`;
+}
+
+function elapsedMs(started: number) {
+  return Math.round(performance.now() - started);
 }

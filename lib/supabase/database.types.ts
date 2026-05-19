@@ -247,6 +247,7 @@ export type Database = {
         Row: {
           bilingual: boolean
           created_at: string
+          engine_version: string
           id: string
           invoice_id: string
           language: string
@@ -256,6 +257,7 @@ export type Database = {
         Insert: {
           bilingual: boolean
           created_at?: string
+          engine_version?: string
           id?: string
           invoice_id: string
           language: string
@@ -265,6 +267,7 @@ export type Database = {
         Update: {
           bilingual?: boolean
           created_at?: string
+          engine_version?: string
           id?: string
           invoice_id?: string
           language?: string

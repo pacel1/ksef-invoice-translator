@@ -8,7 +8,7 @@ const admin = createClient(
 );
 
 describe("translations table", () => {
-  it("enforces unique (invoice_id, language, bilingual)", async () => {
+  it("enforces unique (invoice_id, language, bilingual, engine_version)", async () => {
     const { data: user } = await admin.auth.admin.createUser({
       email: `tr-${Date.now()}@example.test`,
       email_confirm: true
@@ -40,6 +40,11 @@ describe("translations table", () => {
 
     const { error: dup } = await admin.from("translations").insert(row);
     expect(dup?.message ?? "").toMatch(/duplicate|unique/);
+
+    const { error: nextVersion } = await admin
+      .from("translations")
+      .insert({ ...row, engine_version: "free-text-v2:gpt-4.1-mini" });
+    expect(nextVersion).toBeNull();
 
     await admin.auth.admin.deleteUser(userId);
   });

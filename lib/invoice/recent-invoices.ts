@@ -37,7 +37,7 @@ interface RawInvoiceWithTranslations extends InvoiceRow {
 function rowToSummary(row: RawInvoiceWithTranslations): InvoiceSummary {
   const sourceData = row.source_data as unknown as Partial<Invoice> | null;
   const sellerName = sourceData?.seller?.name ?? null;
-  const translatedLanguages = (row.translations ?? []).map((t) => t.language);
+  const translatedLanguages = Array.from(new Set((row.translations ?? []).map((t) => t.language)));
 
   return {
     id: row.id,

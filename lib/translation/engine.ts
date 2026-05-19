@@ -16,6 +16,16 @@ type TranslationPayload = {
 const SYSTEM_PROMPT =
   "You translate Polish invoice free-text into the requested target language. Translate every natural-language business phrase, including short keys and labels supplied by the invoice data such as Lokalizacja, Uwagi, Opis, and Miejsce. Never leave Polish words mixed into the translated result unless they are part of a company name, product code, legal identifier, KSeF, or another proper noun. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, GTU, CN, PKWiU, PKOB, or registry numbers. Preserve meaning, keep professional invoice terminology, and preserve the order and array lengths exactly. Return strict JSON with keys items:string[], orderLines:string[], units:object, additionalDescriptions:{key:string,value:string}[], settlementReasons:string[], notes:string, and footer:string. The units object must map each original unit string exactly to its translation.";
 
+const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v1";
+
+export function getTranslationModel() {
+  return process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-mini";
+}
+
+export function getTranslationEngineVersion() {
+  return `${TRANSLATION_ENGINE_PROMPT_VERSION}:${getTranslationModel()}`;
+}
+
 export async function translateInvoiceFreeText(
   invoice: Invoice,
   language: LanguageCode
@@ -127,7 +137,7 @@ async function requestTranslation(
   repairIssues: string[] = []
 ): Promise<TranslationPayload> {
   const completion = await client.chat.completions.create({
-    model: process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-mini",
+    model: getTranslationModel(),
     temperature: 0,
     response_format: { type: "json_object" },
     messages: [

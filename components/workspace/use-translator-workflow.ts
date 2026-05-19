@@ -77,7 +77,8 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
         invoiceId,
         language: currentLanguage,
         bilingual: currentLanguage !== "pl" && bilingual,
-        translated: currentLanguage !== "pl"
+        translated: currentLanguage !== "pl",
+        preview: true
       }),
       signal: controller.signal
     })

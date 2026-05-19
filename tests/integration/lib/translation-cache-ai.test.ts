@@ -6,6 +6,7 @@ const { translateMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/translation/engine", () => ({
+  getTranslationEngineVersion: () => "free-text-v1:gpt-4.1-mini",
   translateInvoiceFreeText: translateMock
 }));
 
@@ -25,18 +26,21 @@ describe("getOrCreateTranslation with AI", () => {
     }
   });
 
-  it("does not read or write the translations cache when AI is enabled", async () => {
+  it("uses the translations cache when AI is enabled", async () => {
     const source = invoice();
     const translated = { ...source, language: "de" };
     translateMock.mockResolvedValue(translated);
-    const supabase = {
-      from: vi.fn(() => {
-        throw new Error("cache should not be used when AI is enabled");
-      })
-    };
+    const supabase = inMemorySupabase();
 
     const { getOrCreateTranslation } = await import("@/lib/translation/translation-cache");
-    const result = await getOrCreateTranslation({
+    const first = await getOrCreateTranslation({
+      supabase: supabase as never,
+      invoice: source,
+      invoiceId: "00000000-0000-0000-0000-000000000000",
+      language: "de",
+      bilingual: true
+    });
+    const second = await getOrCreateTranslation({
       supabase: supabase as never,
       invoice: source,
       invoiceId: "00000000-0000-0000-0000-000000000000",
@@ -44,11 +48,81 @@ describe("getOrCreateTranslation with AI", () => {
       bilingual: true
     });
 
-    expect(result).toEqual({ invoice: translated, cached: false, usedAi: true });
-    expect(supabase.from).not.toHaveBeenCalled();
-    expect(translateMock).toHaveBeenCalledWith(source, "de");
+    expect(first.cached).toBe(false);
+    expect(second.cached).toBe(true);
+    expect(second.invoice).toEqual(translated);
+    expect(second.engineVersion).toBe("free-text-v1:gpt-4.1-mini");
+    expect(translateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the winner row after a concurrent insert conflict", async () => {
+    const source = invoice();
+    const translated = { ...source, language: "de" };
+    translateMock.mockResolvedValue(translated);
+    const supabase = inMemorySupabase({ failNextInsertWithDuplicate: true, existingOnDuplicate: translated });
+
+    const { getOrCreateTranslation } = await import("@/lib/translation/translation-cache");
+    const result = await getOrCreateTranslation({
+      supabase: supabase as never,
+      invoice: source,
+      invoiceId: "00000000-0000-0000-0000-000000000001",
+      language: "de",
+      bilingual: true
+    });
+
+    expect(result.cached).toBe(true);
+    expect(result.invoice).toEqual(translated);
+    expect(result.timings.cacheRaceLookupMs).toEqual(expect.any(Number));
+    expect(translateMock).toHaveBeenCalledTimes(1);
   });
 });
+
+function inMemorySupabase(options: { failNextInsertWithDuplicate?: boolean; existingOnDuplicate?: Invoice } = {}) {
+  const rows: Array<Record<string, unknown>> = [];
+  let failNextInsertWithDuplicate = Boolean(options.failNextInsertWithDuplicate);
+
+  return {
+    from: vi.fn(() => ({
+      select: () => selectQuery(rows),
+      insert: (row: Record<string, unknown>) => ({
+        select: () => ({
+          single: async () => {
+            if (failNextInsertWithDuplicate) {
+              failNextInsertWithDuplicate = false;
+              if (options.existingOnDuplicate) {
+                rows.push({
+                  ...row,
+                  translated_data: options.existingOnDuplicate,
+                  used_ai: true
+                });
+              }
+              return { data: null, error: { code: "23505", message: "duplicate key" } };
+            }
+            rows.push(row);
+            return { data: { id: "translation-id" }, error: null };
+          }
+        })
+      })
+    }))
+  };
+}
+
+function selectQuery(rows: Array<Record<string, unknown>>) {
+  const filters: Record<string, unknown> = {};
+  const query = {
+    eq: (key: string, value: unknown) => {
+      filters[key] = value;
+      return query;
+    },
+    maybeSingle: async () => {
+      const row = rows.find((candidate) =>
+        Object.entries(filters).every(([key, value]) => candidate[key] === value)
+      );
+      return { data: row ?? null, error: null };
+    }
+  };
+  return query;
+}
 
 function invoice(): Invoice {
   return {
