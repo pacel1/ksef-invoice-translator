@@ -93,6 +93,20 @@ describe("official FA(3) renderer static text overrides", () => {
     });
   });
 
+  it("covers all supported languages for FA(3) official dictionary values", () => {
+    supportedLanguages.forEach((language) => {
+      const overrides = getOfficialTextOverrides(language);
+
+      officialFa3DictionaryKeys.forEach((key) => {
+        const value = overrides[key];
+        expect(value, `${language} ${key}`).toBeTruthy();
+        polishDictionaryResidues.forEach((residue) => {
+          expect(value, `${language} ${key}`).not.toContain(residue);
+        });
+      });
+    });
+  });
+
   it("localizes official boolean leaves generated as Polish Tak/Nie", () => {
     const docDefinition = {
       content: [
@@ -155,6 +169,32 @@ describe("official FA(3) renderer static text overrides", () => {
     expect(text).not.toContain("Korekta skutku");
     expect(text).not.toContain("faktury pierwotnej");
   });
+
+  it("renders Spanish official FA(3) dictionaries without Polish fallback text", async () => {
+    const sourceXml = officialDictionaryXml();
+    const parsed = parseKsefXml(sourceXml);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const pdf = await renderOfficialFa3Pdf({
+      sourceXml,
+      invoice: parsed.invoice,
+      language: "es",
+      bilingual: false,
+      translated: true
+    });
+    const text = normalizePdfText((await pdfParse(pdf)).text);
+
+    expect(text).toContain("Autoridad de ejecucion");
+    expect(text).toContain("Liquidacion");
+    expect(text).toContain("Transporte maritimo");
+    expect(text).toContain("Burbuja");
+    expect(text).toContain("creditos monet");
+    expect(text).toContain("Exento");
+    polishDictionaryResidues.forEach((residue) => {
+      expect(text).not.toContain(residue);
+    });
+  });
 });
 
 const supportedLanguages = [
@@ -200,6 +240,86 @@ const correctionTypeKeys = [
   "const.farr.correctionOriginalDate",
   "const.farr.correctionInvoiceDate",
   "const.fa.correctionOtherDate"
+] as const;
+
+const officialFa3DictionaryKeys = [
+  ...subject3RoleKeys,
+  ...correctionTypeKeys,
+  "const.fa.enforcementAuthority",
+  "const.fa.courtBailiff",
+  "const.fa.taxRepresentative",
+  "const.fa.liquidation",
+  "const.fa.restructuring",
+  "const.fa.bankruptcy",
+  "const.fa.inheritedBusiness",
+  "const.fa.cash",
+  "const.fa.card",
+  "const.fa.voucher",
+  "const.fa.check",
+  "const.fa.credit",
+  "const.fa.transfer",
+  "const.fa.mobile",
+  "const.fa.seaTransport",
+  "const.fa.railTransport",
+  "const.fa.roadTransport",
+  "const.fa.airTransport",
+  "const.fa.postalShipment",
+  "const.fa.fixedPipeline",
+  "const.fa.inlandNavigation",
+  "const.fa.bubble",
+  "const.fa.barrel",
+  "const.fa.cylinder",
+  "const.fa.carton",
+  "const.fa.canister",
+  "const.fa.cage",
+  "const.fa.container",
+  "const.fa.basket",
+  "const.fa.punnet",
+  "const.fa.bulkPackage",
+  "const.fa.package",
+  "const.fa.packet",
+  "const.fa.pallet",
+  "const.fa.bin",
+  "const.fa.bulkSolidContainer",
+  "const.fa.bulkLiquidContainer",
+  "const.fa.box",
+  "const.fa.tin",
+  "const.fa.crate",
+  "const.fa.bag",
+  "const.fa.ownAccountSettlement",
+  "const.fa.ownAccountCollection",
+  "const.fa.ownAccountInternal",
+  "const.fa.taxRate0KR",
+  "const.fa.taxRate0WDT",
+  "const.fa.taxRate0EX",
+  "const.fa.zw",
+  "const.fa.oo",
+  "const.fa.taxRateNpI",
+  "const.fa.taxRateNpII"
+] as const;
+
+const polishDictionaryResidues = [
+  "Dodatkowy nabywca",
+  "w przypadku",
+  "Korekta skutku",
+  "faktury pierwotnej",
+  "Organ egzekucyjny",
+  "Komornik",
+  "Przedstawiciel podatkowy",
+  "Stan likwidacji",
+  "Postepowanie restrukturyzacyjne",
+  "Stan upadlosci",
+  "Przedsiebiorstwo w spadku",
+  "Transport morski",
+  "Transport kolejowy",
+  "Transport drogowy",
+  "Transport lotniczy",
+  "Przesylka pocztowa",
+  "Stale instalacje",
+  "Zegluga",
+  "Rachunek banku",
+  "zwolnione",
+  "odwrotne obciazenie"
 ] as const;
 
 function normalizePdfText(text: string) {
@@ -320,6 +440,51 @@ function correctionEffectXml() {
       <P_11>100</P_11>
       <P_12>23</P_12>
     </FaWiersz>
+  </Fa>
+</Faktura>`;
+}
+
+function officialDictionaryXml() {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Faktura>
+  <Naglowek><KodFormularza kodSystemowy="FA (3)">FA</KodFormularza></Naglowek>
+  <Podmiot1>
+    <DaneIdentyfikacyjne><NIP>1111111111</NIP><Nazwa>Seller</Nazwa></DaneIdentyfikacyjne>
+    <StatusInfoPodatnika>1</StatusInfoPodatnika>
+  </Podmiot1>
+  <Podmiot2><DaneIdentyfikacyjne><NIP>2222222222</NIP><Nazwa>Buyer</Nazwa></DaneIdentyfikacyjne></Podmiot2>
+  <PodmiotUpowazniony>
+    <RolaPU>1</RolaPU>
+    <DaneIdentyfikacyjne><NIP>3333333333</NIP><Nazwa>Authorized</Nazwa></DaneIdentyfikacyjne>
+  </PodmiotUpowazniony>
+  <Fa>
+    <KodWaluty>PLN</KodWaluty>
+    <P_1>2026-05-15</P_1>
+    <P_2>DICT/1</P_2>
+    <P_13_7>100</P_13_7>
+    <P_15>100</P_15>
+    <RodzajFaktury>VAT</RodzajFaktury>
+    <FaWiersz>
+      <NrWierszaFa>1</NrWierszaFa>
+      <P_7>usluga testowa</P_7>
+      <P_8B>1</P_8B>
+      <P_9A>100</P_9A>
+      <P_11>100</P_11>
+      <P_12>zw</P_12>
+    </FaWiersz>
+    <Platnosc>
+      <FormaPlatnosci>6</FormaPlatnosci>
+      <RachunekBankowy>
+        <NrRB>73111111111111111111111111</NrRB>
+        <RachunekWlasnyBanku>1</RachunekWlasnyBanku>
+      </RachunekBankowy>
+    </Platnosc>
+    <WarunkiTransakcji>
+      <Transport>
+        <RodzajTransportu>1</RodzajTransportu>
+        <OpisLadunku>1</OpisLadunku>
+      </Transport>
+    </WarunkiTransakcji>
   </Fa>
 </Faktura>`;
 }
