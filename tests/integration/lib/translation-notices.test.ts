@@ -21,6 +21,9 @@ describe("translation notices", () => {
 
       expect(notices.translationNotice).not.toMatch(/\{reviewedBy\}|\{generatedAt\}|\{visualisationSystem\}/);
       expect(notices.footerNotice).not.toMatch(/\{reviewedBy\}|\{generatedAt\}|\{visualisationSystem\}/);
+      expect(notices.footerNotice).toContain("ACME Sp. z o.o.");
+      expect(notices.translationNotice).toContain("Informacja o tłumaczeniu");
+      expect(notices.translationNotice).toContain("Zweryfikowane i zatwierdzone przez: ACME Sp. z o.o.");
     }
   });
 
@@ -35,6 +38,7 @@ describe("translation notices", () => {
     expect(notices.translationNotice).toContain("Reviewed and approved by: ACME Sp. z o.o.");
     expect(notices.translationNotice).toContain("Generated on: 2026-05-18 14:35");
     expect(notices.translationNotice).toContain("Visualisation system: tlumaczksef.pl");
+    expect(notices.footerNotice).toContain("Reviewed and approved by: ACME Sp. z o.o.");
   });
 
   it("adds final notice pages to generated PDFs", async () => {

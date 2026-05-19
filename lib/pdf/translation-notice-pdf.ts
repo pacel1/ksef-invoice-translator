@@ -11,6 +11,10 @@ const A4 = { width: 595.28, height: 841.89 };
 const marginX = 46;
 const contentTop = 70;
 const footerY = 18;
+const textColor = rgb(0.12, 0.16, 0.22);
+const mutedColor = rgb(0.39, 0.46, 0.55);
+const accentColor = rgb(0.06, 0.46, 0.56);
+const ruleColor = rgb(0.82, 0.87, 0.92);
 
 export async function applyTranslationNoticesToPdf(
   pdf: Buffer | Uint8Array,
@@ -31,17 +35,16 @@ export async function applyTranslationNoticesToPdf(
 }
 
 function drawFooterNoticeOnEveryPage(document: PDFDocument, font: PDFFont, notice: string) {
-  const color = rgb(0.39, 0.46, 0.55);
   for (const page of document.getPages()) {
     const { width } = page.getSize();
-    const lines = wrapText(notice, font, 7, width - marginX * 2).slice(0, 2);
+    const lines = wrapText(notice, font, 6.5, width - marginX * 2).slice(0, 3);
     lines.forEach((line, index) => {
       page.drawText(line, {
         x: marginX,
-        y: footerY + (lines.length - index - 1) * 8,
-        size: 7,
+        y: footerY + (lines.length - index - 1) * 7.5,
+        size: 6.5,
         font,
-        color
+        color: mutedColor
       });
     });
   }
@@ -51,30 +54,68 @@ function drawTranslationNoticePages(document: PDFDocument, regularFont: PDFFont,
   const paragraphs = notice.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
   if (!paragraphs.length) return;
 
-  let page = document.addPage([A4.width, A4.height]);
-  let y = A4.height - contentTop;
+  let page = addNoticePage(document, mediumFont);
+  let y = A4.height - contentTop - 38;
   const maxWidth = A4.width - marginX * 2;
-  const color = rgb(0.12, 0.16, 0.22);
 
   paragraphs.forEach((paragraph, paragraphIndex) => {
-    const isHeading = paragraphIndex === 0;
+    const isHeading = isNoticeHeading(paragraph, paragraphIndex);
+    const isMetadata = paragraph.includes("\n") && paragraph.includes(":");
     const font = isHeading ? mediumFont : regularFont;
-    const size = isHeading ? 14 : 9.5;
-    const lineHeight = isHeading ? 18 : 13;
+    const size = isHeading ? 14 : isMetadata ? 9 : 9.5;
+    const lineHeight = isHeading ? 18 : isMetadata ? 12 : 13;
     const lines = paragraph.split("\n").flatMap((line) => wrapText(line, font, size, maxWidth));
-    const neededHeight = lines.length * lineHeight + (isHeading ? 14 : 9);
+    const neededHeight = lines.length * lineHeight + (isHeading ? 16 : isMetadata ? 18 : 10);
 
     if (y - neededHeight < 58) {
-      page = document.addPage([A4.width, A4.height]);
-      y = A4.height - contentTop;
+      page = addNoticePage(document, mediumFont);
+      y = A4.height - contentTop - 38;
+    }
+
+    if (isHeading && paragraphIndex > 0) {
+      page.drawLine({ start: { x: marginX, y: y + 10 }, end: { x: A4.width - marginX, y: y + 10 }, thickness: 0.8, color: ruleColor });
+    }
+
+    if (isMetadata) {
+      page.drawRectangle({
+        x: marginX - 10,
+        y: y - lines.length * lineHeight - 5,
+        width: maxWidth + 20,
+        height: lines.length * lineHeight + 12,
+        borderColor: ruleColor,
+        borderWidth: 0.7,
+        color: rgb(0.98, 0.99, 1)
+      });
     }
 
     lines.forEach((line) => {
-      page.drawText(line, { x: marginX, y, size, font, color });
+      page.drawText(line, { x: marginX, y, size, font, color: isHeading ? accentColor : textColor });
       y -= lineHeight;
     });
-    y -= isHeading ? 8 : 5;
+    y -= isHeading ? 10 : isMetadata ? 12 : 6;
   });
+}
+
+function addNoticePage(document: PDFDocument, font: PDFFont) {
+  const page = document.addPage([A4.width, A4.height]);
+  page.drawText("Translation notice / Informacja o tłumaczeniu", {
+    x: marginX,
+    y: A4.height - contentTop + 18,
+    size: 9,
+    font,
+    color: mutedColor
+  });
+  page.drawLine({
+    start: { x: marginX, y: A4.height - contentTop + 7 },
+    end: { x: A4.width - marginX, y: A4.height - contentTop + 7 },
+    thickness: 1,
+    color: ruleColor
+  });
+  return page;
+}
+
+function isNoticeHeading(paragraph: string, paragraphIndex: number) {
+  return paragraphIndex === 0 || paragraph === "Informacja o tłumaczeniu";
 }
 
 function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number) {

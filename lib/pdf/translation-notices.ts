@@ -13,6 +13,18 @@ export type TranslationNoticePlaceholderData = {
 
 const DEFAULT_REVIEWED_BY = "User";
 export const DEFAULT_VISUALISATION_SYSTEM = "tlumaczksef.pl";
+export const POLISH_TRANSLATION_NOTICE = `Informacja o tłumaczeniu
+
+Niniejszy dokument został wygenerowany jako pomocnicze polskie tłumaczenie wizualnego przedstawienia faktury ustrukturyzowanej wystawionej w Krajowym Systemie e-Faktur (KSeF). Tłumaczenie ma na celu wyłącznie ułatwienie odbiorcy zrozumienia treści faktury.
+
+Oryginalną i prawnie wiążącą fakturą jest faktura ustrukturyzowana w formacie XML dostępna w KSeF. Niniejszy przetłumaczony dokument nie stanowi odrębnej faktury, duplikatu faktury, tłumaczenia poświadczonego ani samodzielnego dokumentu księgowego.
+
+Zweryfikowane i zatwierdzone przez: {reviewedBy}
+Wygenerowano dnia: {generatedAt}
+Źródło: dane faktury ustrukturyzowanej KSeF
+System wizualizacji: {visualisationSystem}
+Język: polski
+Metoda tłumaczenia: tłumaczenie automatyczne zweryfikowane przez użytkownika`;
 
 export const TRANSLATION_NOTICE_BY_LANGUAGE = {
   "en": {
@@ -121,12 +133,29 @@ export function fillTranslationNoticePlaceholders(text: string, data: Translatio
 
 export function createTranslationNotices(language: string, data: TranslationNoticePlaceholderData): TranslationNoticeConfig {
   const config = getTranslationNoticeConfig(language);
+  const targetNotice = fillTranslationNoticePlaceholders(config.translationNotice, data);
+  const polishNotice = fillTranslationNoticePlaceholders(POLISH_TRANSLATION_NOTICE, data);
   return {
-    translationNotice: fillTranslationNoticePlaceholders(config.translationNotice, data),
-    footerNotice: fillTranslationNoticePlaceholders(config.footerNotice, data)
+    translationNotice: `${targetNotice}\n\n${polishNotice}`,
+    footerNotice: fillTranslationNoticePlaceholders(createFooterNotice(config), data)
   };
 }
 
 function isNoticeLanguage(language: string): language is LanguageCode {
   return language in TRANSLATION_NOTICE_BY_LANGUAGE;
+}
+
+function createFooterNotice(config: TranslationNoticeConfig) {
+  const approvalLine = config.translationNotice
+    .split("\n")
+    .find((line) => line.includes("{reviewedBy}"))
+    ?.trim();
+  if (!approvalLine) return config.footerNotice;
+
+  const sentences = config.footerNotice.match(/[^.!?]+[.!?]+/g)?.map((sentence) => sentence.trim()) ?? [];
+  if (sentences.length < 2) {
+    return `${config.footerNotice.trim()} ${approvalLine}.`;
+  }
+
+  return [sentences[0], `${approvalLine}.`, ...sentences.slice(2)].join(" ");
 }
