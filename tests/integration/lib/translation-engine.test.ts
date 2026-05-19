@@ -274,6 +274,65 @@ describe("translateInvoiceFreeText", () => {
     expect(translated.additionalDescriptions?.[0].translatedKey).toBe("Location");
     expect(translated.additionalDescriptions?.[0].translatedValue).toBe("Warsaw");
   });
+
+  it("does not repair protected business names and addresses", async () => {
+    const addressInvoice = {
+      ...invoice(),
+      additionalDescriptions: [
+        {
+          key: "Lokalizacja",
+          value: "ZOOART MAREK POSTRZECH ; WYSPA WISŁA ; UL. MOSZCZANKA 56A ; RYKI ; 08-500"
+        }
+      ]
+    };
+
+    createMock
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: ["Service at the location"],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: [],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [
+                  {
+                    key: "Location",
+                    value: "ZOOART MAREK POSTRZECH ; WYSPA WISŁA ; UL. MOSZCZANKA 56A ; RYKI ; 08-500"
+                  }
+                ],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      });
+
+    const { translateInvoiceFreeText } = await import("@/lib/translation/engine");
+    const translated = await translateInvoiceFreeText(addressInvoice, "en");
+
+    expect(createMock).toHaveBeenCalledTimes(2);
+    expect(translated.additionalDescriptions?.[0].translatedValue).toBe(addressInvoice.additionalDescriptions[0].value);
+  });
 });
 
 function invoice(): Invoice {
