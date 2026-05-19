@@ -229,6 +229,51 @@ describe("translateInvoiceFreeText", () => {
     expect(payloads[2].fields.items).toEqual([]);
     expect(payloads[2].fields.additionalDescriptions).toEqual([{ key: "Lokalizacja", value: "Warszawa" }]);
   });
+
+  it("uses local translations for common additional description keys before repair", async () => {
+    createMock
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: ["Service at the location"],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: [],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [{ key: "Lokalizacja", value: "Warsaw" }],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      });
+
+    const { translateInvoiceFreeText } = await import("@/lib/translation/engine");
+    const translated = await translateInvoiceFreeText(invoice(), "en");
+
+    expect(createMock).toHaveBeenCalledTimes(2);
+    expect(translated.additionalDescriptions?.[0].translatedKey).toBe("Location");
+    expect(translated.additionalDescriptions?.[0].translatedValue).toBe("Warsaw");
+  });
 });
 
 function invoice(): Invoice {

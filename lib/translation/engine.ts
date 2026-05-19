@@ -28,7 +28,7 @@ type SplitSection = "items" | "notes";
 const SYSTEM_PROMPT =
   "You translate Polish invoice free-text into the requested target language. Translate every natural-language business phrase, including short keys and labels supplied by the invoice data such as Lokalizacja, Uwagi, Opis, and Miejsce. Never leave Polish words mixed into the translated result unless they are part of a company name, product code, legal identifier, KSeF, or another proper noun. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, GTU, CN, PKWiU, PKOB, or registry numbers. Preserve meaning, keep professional invoice terminology, and preserve the order and array lengths exactly. Return strict JSON with keys items:string[], orderLines:string[], units:object, additionalDescriptions:{key:string,value:string}[], settlementReasons:string[], notes:string, and footer:string. The units object must map each original unit string exactly to its translation.";
 
-const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v3-split-repair";
+const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v4-local-keys";
 
 export function getTranslationModel() {
   return process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-mini";
@@ -90,14 +90,15 @@ export async function translateInvoiceFreeText(
   const initial = await requestSplitTranslation(client, targetLanguage, language, fields, {
     sections: ["items", "notes"]
   });
-  let translated = initial.translation;
+  let translated = applyLocalAdditionalDescriptionKeyTranslations(initial.translation, fields, language);
   const issues = translationQualityIssues(fields, translated, language);
   const timings: Record<string, number | string | boolean> = {
     model: getTranslationModel(),
     language,
     initialItemsMs: initial.timings.itemsMs ?? 0,
     initialNotesMs: initial.timings.notesMs ?? 0,
-    repairIssueCount: issues.length
+    repairIssueCount: issues.length,
+    repairIssues: issues.join(" | ").slice(0, 500)
   };
 
   if (issues.length) {
@@ -106,7 +107,11 @@ export async function translateInvoiceFreeText(
       repairIssues: issues,
       sections: repairSections
     });
-    translated = mergeSplitTranslation(translated, repair.translation, repairSections);
+    translated = applyLocalAdditionalDescriptionKeyTranslations(
+      mergeSplitTranslation(translated, repair.translation, repairSections),
+      fields,
+      language
+    );
     if (repair.timings.itemsMs !== undefined) timings.repairItemsMs = repair.timings.itemsMs;
     if (repair.timings.notesMs !== undefined) timings.repairNotesMs = repair.timings.notesMs;
   }
@@ -286,6 +291,50 @@ function repairSectionsForIssues(issues: string[]): SplitSection[] {
   }
   return sections.size ? Array.from(sections) : ["items", "notes"];
 }
+
+function applyLocalAdditionalDescriptionKeyTranslations(
+  translated: TranslationPayload,
+  fields: TranslationFields,
+  language: LanguageCode
+): TranslationPayload {
+  if (!fields.additionalDescriptions.length || !translated.additionalDescriptions?.length) return translated;
+
+  const additionalDescriptions = translated.additionalDescriptions.map((entry, index) => {
+    const sourceKey = fields.additionalDescriptions[index]?.key;
+    const local = localAdditionalDescriptionKeyTranslation(sourceKey, language);
+    if (!local) return entry;
+
+    const translatedKey = entry?.key;
+    if (shouldBeTranslated(sourceKey) && (!translatedKey || unchanged(sourceKey, translatedKey) || hasPolishResidue(translatedKey, language))) {
+      return { ...entry, key: local };
+    }
+    return entry;
+  });
+
+  return { ...translated, additionalDescriptions };
+}
+
+function localAdditionalDescriptionKeyTranslation(source: string | undefined, language: LanguageCode) {
+  if (!source) return undefined;
+  const normalized = source.trim().toLocaleLowerCase("pl-PL");
+  return LOCAL_ADDITIONAL_DESCRIPTION_KEYS[normalized]?.[language];
+}
+
+const LOCAL_ADDITIONAL_DESCRIPTION_KEYS: Record<string, Partial<Record<LanguageCode, string>>> = {
+  lokalizacja: { en: "Location", de: "Standort" },
+  uwagi: { en: "Notes", de: "Anmerkungen" },
+  opis: { en: "Description", de: "Beschreibung" },
+  miejsce: { en: "Place", de: "Ort" },
+  "miejsce wykonania": { en: "Place of performance", de: "Leistungsort" },
+  "warunki płatności": { en: "Payment terms", de: "Zahlungsbedingungen" },
+  "warunki platnosci": { en: "Payment terms", de: "Zahlungsbedingungen" },
+  "opis zakresu": { en: "Scope description", de: "Leistungsbeschreibung" },
+  "uwagi do faktury": { en: "Invoice notes", de: "Rechnungsanmerkungen" },
+  "termin płatności": { en: "Payment due date", de: "Zahlungsfrist" },
+  "termin platnosci": { en: "Payment due date", de: "Zahlungsfrist" },
+  "sposób płatności": { en: "Payment method", de: "Zahlungsart" },
+  "sposob platnosci": { en: "Payment method", de: "Zahlungsart" }
+};
 
 function withTranslatedPaymentMethods(invoice: Invoice, language: LanguageCode): Invoice {
   if (!invoice.payment) return invoice;
