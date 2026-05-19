@@ -114,6 +114,7 @@ async function pdfFromCache(params: z.infer<typeof cachedRequestSchema>) {
     sourceXml: invoice.sourceXml ?? sourceInvoice.sourceXml,
     reviewedBy: params.reviewedBy ?? profile.data?.display_name ?? userData.user.email,
     skipKsefVerification: Boolean(params.preview),
+    preserveUnconfirmedVerification: Boolean(params.preview),
     timings
   });
   timings.totalMs = elapsedMs(routeStarted);
@@ -135,6 +136,7 @@ async function pdfFromInline(params: z.infer<typeof inlineRequestSchema>) {
     sourceXml: params.sourceXml ?? invoice.sourceXml,
     reviewedBy: params.reviewedBy,
     skipKsefVerification: Boolean(params.preview),
+    preserveUnconfirmedVerification: Boolean(params.preview),
     timings
   });
   timings.totalMs = elapsedMs(routeStarted);
@@ -151,6 +153,7 @@ async function renderPdfResponse(
     sourceXml?: string;
     reviewedBy?: string | null;
     skipKsefVerification?: boolean;
+    preserveUnconfirmedVerification?: boolean;
     timings?: Record<string, number | string | boolean>;
   }
 ) {
@@ -162,7 +165,9 @@ async function renderPdfResponse(
   options.timings ??= {};
   options.timings.ksefVerificationMs = elapsedMs(verificationStarted);
   options.timings.ksefVerificationSkipped = Boolean(verificationUrl && options.skipKsefVerification);
-  const invoiceForPdf = invoiceWithConfirmedKsefVerification(invoice, verificationUrl, verificationResult);
+  const invoiceForPdf = invoiceWithConfirmedKsefVerification(invoice, verificationUrl, verificationResult, {
+    preserveUnconfirmed: Boolean(options.preserveUnconfirmedVerification)
+  });
   const renderStarted = performance.now();
   const rendered = options.sourceXml
     ? await renderPdfWithOfficialFallback(options.sourceXml, invoiceForPdf, language, bilingual, translated)
@@ -235,13 +240,30 @@ function encodeHeaderValue(value: string) {
 function invoiceWithConfirmedKsefVerification(
   invoice: Invoice,
   verificationUrl: string | undefined,
-  verificationResult: { confirmed: boolean; ksefNumber?: string }
+  verificationResult: { confirmed: boolean; ksefNumber?: string },
+  options: { preserveUnconfirmed?: boolean } = {}
 ): Invoice {
-  if (!verificationUrl || !verificationResult.confirmed || !verificationResult.ksefNumber) {
+  if (!verificationUrl) {
     const invoiceWithoutVerification = { ...invoice };
     delete invoiceWithoutVerification.verification;
     return invoiceWithoutVerification;
   }
+  if (!verificationResult.confirmed || !verificationResult.ksefNumber) {
+    if (options.preserveUnconfirmed) {
+      return {
+        ...invoice,
+        verification: {
+          ...invoice.verification,
+          qrLink: verificationUrl
+        }
+      };
+    }
+
+    const invoiceWithoutVerification = { ...invoice };
+    delete invoiceWithoutVerification.verification;
+    return invoiceWithoutVerification;
+  }
+
   return {
     ...invoice,
     verification: {

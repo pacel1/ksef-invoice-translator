@@ -49,6 +49,7 @@ type TranslatePayload = {
  * to translate.
  */
 const DEFAULT_LANGUAGE: WorkspaceLanguageCode = "pl";
+const DEFAULT_BILINGUAL = false;
 
 export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -58,7 +59,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
   const [messages, setMessages] = useState<string[]>([]);
   const [insufficientCredit, setInsufficientCredit] = useState(false);
   const [currentLanguage, setCurrentLanguageState] = useState<WorkspaceLanguageCode>(DEFAULT_LANGUAGE);
-  const [bilingual, setBilingualState] = useState(true);
+  const [bilingual, setBilingualState] = useState(DEFAULT_BILINGUAL);
   const [cachedLanguages, setCachedLanguages] = useState<Set<LanguageCode>>(new Set());
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [isPreparingPreview, setIsPreparingPreview] = useState(false);
@@ -280,7 +281,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     setStatus("idle");
     setInsufficientCredit(false);
     setCurrentLanguageState(DEFAULT_LANGUAGE);
-    setBilingualState(true);
+    setBilingualState(DEFAULT_BILINGUAL);
     setCachedLanguages(new Set());
   }
 

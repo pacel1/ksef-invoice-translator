@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useTranslatorWorkflow } from "@/components/workspace/use-translator-workflow";
 
 const fetchMock = vi.fn();
@@ -33,10 +33,10 @@ function defaultPdfPreviewResponse() {
 }
 
 describe("useTranslatorWorkflow", () => {
-  it("defaults currentLanguage to 'pl' and bilingual to true", () => {
+  it("defaults currentLanguage to 'pl' and bilingual to false", () => {
     const { result } = renderHook(() => useTranslatorWorkflow());
     expect(result.current.currentLanguage).toBe("pl");
-    expect(result.current.bilingual).toBe(true);
+    expect(result.current.bilingual).toBe(false);
     expect(result.current.cachedLanguages.size).toBe(0);
   });
 
@@ -51,9 +51,45 @@ describe("useTranslatorWorkflow", () => {
   it("setBilingual updates the value", () => {
     const { result } = renderHook(() => useTranslatorWorkflow());
     act(() => {
-      result.current.setBilingual(false);
+      result.current.setBilingual(true);
     });
-    expect(result.current.bilingual).toBe(false);
+    expect(result.current.bilingual).toBe(true);
+  });
+
+  it("requests mono-language PDF preview by default", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes("/api/upload")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            invoice: { id: "i-preview", invoiceNumber: "F-PREVIEW" },
+            invoiceId: "i-preview",
+            isNew: true,
+            warnings: []
+          })
+        });
+      }
+      return Promise.resolve(defaultPdfPreviewResponse());
+    });
+
+    const { result } = renderHook(() => useTranslatorWorkflow());
+    await act(async () => {
+      await result.current.upload(new File(["<x/>"], "x.xml", { type: "application/xml" }));
+    });
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/pdf"))).toBe(true);
+    });
+    const pdfCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/api/pdf"));
+    const body = JSON.parse(String(pdfCall?.[1]?.body));
+    expect(body).toMatchObject({
+      invoiceId: "i-preview",
+      language: "pl",
+      bilingual: false,
+      translated: false,
+      preview: true
+    });
   });
 
   it("adds a language to cachedLanguages after a successful translate", async () => {
@@ -213,6 +249,7 @@ describe("useTranslatorWorkflow", () => {
     expect(result.current.invoiceId).toBeNull();
     expect(result.current.cachedLanguages.size).toBe(0);
     expect(result.current.currentLanguage).toBe("pl");
+    expect(result.current.bilingual).toBe(false);
   });
 
   it("loadSample fetches the sample XML and calls upload", async () => {

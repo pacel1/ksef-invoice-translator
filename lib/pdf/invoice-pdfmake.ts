@@ -955,7 +955,7 @@ function registryTable(registry: NonNullable<Invoice["footer"]>["registry"], lab
 }
 
 function verificationContent(invoice: Invoice, labels: Record<string, string>, verificationQr?: string): Content[] {
-  if (!invoice.verification?.ksefNumber || !invoice.verification?.qrLink || !verificationQr) return [];
+  if (!invoice.verification?.qrLink || !verificationQr) return [];
   return [
     {
       columns: [
@@ -968,7 +968,7 @@ function verificationContent(invoice: Invoice, labels: Record<string, string>, v
           width: "*",
           stack: [
             keyValueCard([
-              [labels.ksefNumber, invoice.verification.ksefNumber],
+              [labels.ksefNumber, invoice.verification.ksefNumber ?? "-"],
               [labels.verificationLink, invoice.verification.qrLink]
             ]),
             {
