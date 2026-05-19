@@ -52,6 +52,6 @@ describe("translation notices", () => {
     });
 
     const resultDocument = await PDFDocument.load(result);
-    expect(resultDocument.getPageCount()).toBeGreaterThan(1);
+    expect(resultDocument.getPageCount()).toBe(2);
   });
 });

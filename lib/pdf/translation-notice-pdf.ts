@@ -14,6 +14,7 @@ const footerY = 18;
 const metadataPaddingX = 8;
 const metadataPaddingY = 8;
 const afterMetadataGap = 13;
+const secondNoticeGap = 22;
 const textColor = rgb(0.12, 0.16, 0.22);
 const mutedColor = rgb(0.39, 0.46, 0.55);
 const accentColor = rgb(0.06, 0.46, 0.56);
@@ -74,9 +75,11 @@ function drawTranslationNoticePages(document: PDFDocument, regularFont: PDFFont,
     const neededHeight = blockHeight + (isHeading ? 16 : isMetadata ? 18 : 10);
 
     if (isHeading && paragraphIndex > 0) {
-      page = addNoticePage(document, mediumFont);
-      y = A4.height - contentTop - 38;
-    } else if (y - neededHeight < 58) {
+      page.drawLine({ start: { x: marginX, y: y + 7 }, end: { x: A4.width - marginX, y: y + 7 }, thickness: 0.8, color: ruleColor });
+      y -= secondNoticeGap;
+    }
+
+    if (y - neededHeight < 58) {
       page = addNoticePage(document, mediumFont);
       y = A4.height - contentTop - 38;
     }
