@@ -141,7 +141,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
         return;
       }
 
-      const payload = await res.json();
+      const payload = await readJsonResponse(res);
       if (!res.ok) {
         throw new Error(payload.error ?? "Upload failed");
       }
@@ -196,7 +196,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invoiceId, language: currentLanguage, bilingual })
       });
-      const payload = await res.json();
+      const payload = await readJsonResponse(res);
       if (!res.ok) {
         throw new Error(payload.error ?? "Translation failed");
       }
@@ -228,7 +228,7 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
         })
       });
       if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
+        const payload = await readJsonResponse(res);
         throw new Error(payload.error ?? "PDF generation failed");
       }
       const blob = await res.blob();
@@ -281,4 +281,18 @@ export function useTranslatorWorkflow(): UseTranslatorWorkflowResult {
     dismissInsufficientCredit,
     reset
   };
+}
+
+async function readJsonResponse(res: Response): Promise<Record<string, any>> {
+  if (typeof res.text !== "function" && typeof res.json === "function") {
+    return res.json();
+  }
+
+  const text = await res.text();
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text) as Record<string, any>;
+  } catch {
+    return { error: `Unexpected non-JSON response (${res.status})` };
+  }
 }
