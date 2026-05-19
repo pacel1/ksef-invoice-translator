@@ -28,7 +28,7 @@ type SplitSection = "items" | "notes";
 const SYSTEM_PROMPT =
   "You translate Polish invoice free-text into the requested target language. Translate every natural-language business phrase, including short keys and labels supplied by the invoice data such as Lokalizacja, Uwagi, Opis, and Miejsce. Never leave Polish words mixed into the translated result unless they are part of a company name, product code, legal identifier, KSeF, or another proper noun. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, GTU, CN, PKWiU, PKOB, or registry numbers. Preserve meaning, keep professional invoice terminology, and preserve the order and array lengths exactly. Return strict JSON with keys items:string[], orderLines:string[], units:object, additionalDescriptions:{key:string,value:string}[], settlementReasons:string[], notes:string, and footer:string. The units object must map each original unit string exactly to its translation.";
 
-const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v5-business-identifiers";
+const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v6-polish-detection";
 
 export function getTranslationModel() {
   return process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-mini";
@@ -400,8 +400,15 @@ function shouldBeTranslated(value: string | undefined) {
   if (compact.length < 4) return false;
   if (looksLikeProtectedBusinessIdentifier(compact)) return false;
   if (/^[A-Z0-9_./ -]+$/.test(compact)) return false;
-  return /[a-ząćęłńóśźż]|\b(usługa|lokalizacja|opis|uwagi|miejsce|przelewu|faktury|technicznej)\b/i.test(compact);
+  return hasPolishSignals(compact);
 }
+
+function hasPolishSignals(value: string) {
+  return /[ąćęłńóśźż]/i.test(value) || POLISH_FREE_TEXT_WORDS.test(value);
+}
+
+const POLISH_FREE_TEXT_WORDS =
+  /\b(usługa|usluga|usługi|uslugi|lokalizacja|opis|uwagi|miejsce|przelewu|faktury|technicznej|techniczna|przygotowanie|dokumentacji|kontrahenta|podanie|płatność|platnosc|płatności|platnosci|termin|warunki|wykonania|zakresu|rozliczeń|rozliczen|sprzedaż|sprzedaz|dostawa|towarów|towarow|nabywcy|odbiorcy|rachunek|zapłaty|zaplaty)\b/i;
 
 function looksLikeProtectedBusinessIdentifier(value: string) {
   const upperRatio = uppercaseLetterRatio(value);
