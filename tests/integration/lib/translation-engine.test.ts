@@ -163,6 +163,72 @@ describe("translateInvoiceFreeText", () => {
     expect(payloads[1].fields.items).toEqual([]);
     expect(payloads[1].fields.additionalDescriptions).toEqual([{ key: "Lokalizacja", value: "Warszawa" }]);
   });
+
+  it("repairs only the section that failed quality checks", async () => {
+    createMock
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: ["Dienstleistung am Standort"],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: [],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [{ key: "Lokalizacja", value: "Warszawa" }],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: [],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [{ key: "Standort", value: "Warschau" }],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      });
+
+    const { translateInvoiceFreeText } = await import("@/lib/translation/engine");
+    const translated = await translateInvoiceFreeText(invoice(), "de");
+
+    expect(createMock).toHaveBeenCalledTimes(3);
+    expect(translated.items[0].translatedName).toBe("Dienstleistung am Standort");
+    expect(translated.additionalDescriptions?.[0].translatedKey).toBe("Standort");
+
+    const payloads = createMock.mock.calls.map((call) => JSON.parse(call[0].messages[1].content));
+    expect(payloads[2].fields.items).toEqual([]);
+    expect(payloads[2].fields.additionalDescriptions).toEqual([{ key: "Lokalizacja", value: "Warszawa" }]);
+  });
 });
 
 function invoice(): Invoice {

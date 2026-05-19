@@ -13,10 +13,22 @@ type TranslationPayload = {
   footer?: string;
 };
 
+type TranslationFields = {
+  items: string[];
+  orderLines: string[];
+  units: string[];
+  additionalDescriptions: { key: string; value: string }[];
+  settlementReasons: string[];
+  notes: string;
+  footer: string;
+};
+
+type SplitSection = "items" | "notes";
+
 const SYSTEM_PROMPT =
   "You translate Polish invoice free-text into the requested target language. Translate every natural-language business phrase, including short keys and labels supplied by the invoice data such as Lokalizacja, Uwagi, Opis, and Miejsce. Never leave Polish words mixed into the translated result unless they are part of a company name, product code, legal identifier, KSeF, or another proper noun. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, GTU, CN, PKWiU, PKOB, or registry numbers. Preserve meaning, keep professional invoice terminology, and preserve the order and array lengths exactly. Return strict JSON with keys items:string[], orderLines:string[], units:object, additionalDescriptions:{key:string,value:string}[], settlementReasons:string[], notes:string, and footer:string. The units object must map each original unit string exactly to its translation.";
 
-const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v2-split";
+const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v3-split-repair";
 
 export function getTranslationModel() {
   return process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-mini";
@@ -74,12 +86,32 @@ export async function translateInvoiceFreeText(
   }
 
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  let translated = await requestSplitTranslation(client, targetLanguage, language, fields);
+  const translationStarted = performance.now();
+  const initial = await requestSplitTranslation(client, targetLanguage, language, fields, {
+    sections: ["items", "notes"]
+  });
+  let translated = initial.translation;
   const issues = translationQualityIssues(fields, translated, language);
+  const timings: Record<string, number | string | boolean> = {
+    model: getTranslationModel(),
+    language,
+    initialItemsMs: initial.timings.itemsMs ?? 0,
+    initialNotesMs: initial.timings.notesMs ?? 0,
+    repairIssueCount: issues.length
+  };
 
   if (issues.length) {
-    translated = await requestSplitTranslation(client, targetLanguage, language, fields, issues);
+    const repairSections = repairSectionsForIssues(issues);
+    const repair = await requestSplitTranslation(client, targetLanguage, language, fields, {
+      repairIssues: issues,
+      sections: repairSections
+    });
+    translated = mergeSplitTranslation(translated, repair.translation, repairSections);
+    if (repair.timings.itemsMs !== undefined) timings.repairItemsMs = repair.timings.itemsMs;
+    if (repair.timings.notesMs !== undefined) timings.repairNotesMs = repair.timings.notesMs;
   }
+  timings.totalMs = elapsedMs(translationStarted);
+  console.info("[translation-engine] timings", timings);
 
   let settlementIndex = 0;
   return {
@@ -162,17 +194,10 @@ async function requestSplitTranslation(
   client: OpenAI,
   targetLanguage: string,
   language: LanguageCode,
-  fields: {
-    items: string[];
-    orderLines: string[];
-    units: string[];
-    additionalDescriptions: { key: string; value: string }[];
-    settlementReasons: string[];
-    notes: string;
-    footer: string;
-  },
-  repairIssues: string[] = []
-): Promise<TranslationPayload> {
+  fields: TranslationFields,
+  options: { repairIssues?: string[]; sections: SplitSection[] }
+): Promise<{ translation: TranslationPayload; timings: { itemsMs?: number; notesMs?: number } }> {
+  const repairIssues = options.repairIssues ?? [];
   const itemFields = {
     items: fields.items,
     orderLines: fields.orderLines,
@@ -192,20 +217,74 @@ async function requestSplitTranslation(
     footer: fields.footer
   };
 
-  const [itemTranslation, noteTranslation] = await Promise.all([
-    requestTranslation(client, targetLanguage, language, itemFields, repairIssues),
-    requestTranslation(client, targetLanguage, language, noteFields, repairIssues)
+  const [itemResult, noteResult] = await Promise.all([
+    options.sections.includes("items")
+      ? timedTranslation(() => requestTranslation(client, targetLanguage, language, itemFields, repairIssues))
+      : Promise.resolve(undefined),
+    options.sections.includes("notes")
+      ? timedTranslation(() => requestTranslation(client, targetLanguage, language, noteFields, repairIssues))
+      : Promise.resolve(undefined)
   ]);
+  const itemTranslation = itemResult?.translation;
+  const noteTranslation = noteResult?.translation;
 
   return {
-    items: Array.isArray(itemTranslation.items) ? itemTranslation.items : [],
-    orderLines: Array.isArray(itemTranslation.orderLines) ? itemTranslation.orderLines : [],
-    units: itemTranslation.units && typeof itemTranslation.units === "object" ? itemTranslation.units : {},
-    additionalDescriptions: Array.isArray(noteTranslation.additionalDescriptions) ? noteTranslation.additionalDescriptions : [],
-    settlementReasons: Array.isArray(noteTranslation.settlementReasons) ? noteTranslation.settlementReasons : [],
-    notes: typeof noteTranslation.notes === "string" ? noteTranslation.notes : "",
-    footer: typeof noteTranslation.footer === "string" ? noteTranslation.footer : ""
+    translation: {
+      items: Array.isArray(itemTranslation?.items) ? itemTranslation.items : [],
+      orderLines: Array.isArray(itemTranslation?.orderLines) ? itemTranslation.orderLines : [],
+      units: itemTranslation?.units && typeof itemTranslation.units === "object" ? itemTranslation.units : {},
+      additionalDescriptions: Array.isArray(noteTranslation?.additionalDescriptions) ? noteTranslation.additionalDescriptions : [],
+      settlementReasons: Array.isArray(noteTranslation?.settlementReasons) ? noteTranslation.settlementReasons : [],
+      notes: typeof noteTranslation?.notes === "string" ? noteTranslation.notes : "",
+      footer: typeof noteTranslation?.footer === "string" ? noteTranslation.footer : ""
+    },
+    timings: {
+      itemsMs: itemResult?.elapsedMs,
+      notesMs: noteResult?.elapsedMs
+    }
   };
+}
+
+async function timedTranslation(request: () => Promise<TranslationPayload>) {
+  const started = performance.now();
+  return {
+    translation: await request(),
+    elapsedMs: elapsedMs(started)
+  };
+}
+
+function mergeSplitTranslation(
+  base: TranslationPayload,
+  repair: TranslationPayload,
+  sections: SplitSection[]
+): TranslationPayload {
+  return {
+    ...base,
+    ...(sections.includes("items")
+      ? {
+          items: repair.items,
+          orderLines: repair.orderLines,
+          units: repair.units
+        }
+      : {}),
+    ...(sections.includes("notes")
+      ? {
+          additionalDescriptions: repair.additionalDescriptions,
+          settlementReasons: repair.settlementReasons,
+          notes: repair.notes,
+          footer: repair.footer
+        }
+      : {})
+  };
+}
+
+function repairSectionsForIssues(issues: string[]): SplitSection[] {
+  const sections = new Set<SplitSection>();
+  for (const issue of issues) {
+    if (/^(items|orderLines)\[/.test(issue)) sections.add("items");
+    if (/^(additionalDescriptions|settlementReasons)\[|^(notes|footer)\b/.test(issue)) sections.add("notes");
+  }
+  return sections.size ? Array.from(sections) : ["items", "notes"];
 }
 
 function withTranslatedPaymentMethods(invoice: Invoice, language: LanguageCode): Invoice {
@@ -289,4 +368,8 @@ function textAt(values: unknown[] | undefined, index: number, fallback?: string)
 
 function textValue(value: unknown, fallback?: string) {
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function elapsedMs(started: number) {
+  return Math.round(performance.now() - started);
 }
