@@ -13,6 +13,7 @@ const contentTop = 70;
 const footerY = 18;
 const metadataPaddingX = 8;
 const metadataPaddingY = 8;
+const afterMetadataGap = 13;
 const textColor = rgb(0.12, 0.16, 0.22);
 const mutedColor = rgb(0.39, 0.46, 0.55);
 const accentColor = rgb(0.06, 0.46, 0.56);
@@ -105,7 +106,7 @@ function drawTranslationNoticePages(document: PDFDocument, regularFont: PDFFont,
         });
         metadataY -= lineHeight;
       });
-      y = boxBottom - 5;
+      y = boxBottom - afterMetadataGap;
       return;
     }
 
