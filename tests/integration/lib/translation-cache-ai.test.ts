@@ -53,6 +53,10 @@ describe("getOrCreateTranslation with AI", () => {
     expect(second.invoice).toEqual(translated);
     expect(second.engineVersion).toBe("free-text-v1:gpt-4.1-mini");
     expect(translateMock).toHaveBeenCalledTimes(1);
+    expect(supabase.insertedRows).toEqual([
+      expect.not.objectContaining({ engine_version: expect.anything() })
+    ]);
+    expect(supabase.filters).not.toContain("engine_version");
   });
 
   it("reads the winner row after a concurrent insert conflict", async () => {
@@ -74,16 +78,20 @@ describe("getOrCreateTranslation with AI", () => {
     expect(result.invoice).toEqual(translated);
     expect(result.timings.cacheRaceLookupMs).toEqual(expect.any(Number));
     expect(translateMock).toHaveBeenCalledTimes(1);
+    expect(supabase.filters).not.toContain("engine_version");
   });
 });
 
 function inMemorySupabase(options: { failNextInsertWithDuplicate?: boolean; existingOnDuplicate?: Invoice } = {}) {
   const rows: Array<Record<string, unknown>> = [];
+  const filtersSeen: string[] = [];
   let failNextInsertWithDuplicate = Boolean(options.failNextInsertWithDuplicate);
 
   return {
+    insertedRows: rows,
+    filters: filtersSeen,
     from: vi.fn(() => ({
-      select: () => selectQuery(rows),
+      select: () => selectQuery(rows, filtersSeen),
       insert: (row: Record<string, unknown>) => ({
         select: () => ({
           single: async () => {
@@ -107,10 +115,11 @@ function inMemorySupabase(options: { failNextInsertWithDuplicate?: boolean; exis
   };
 }
 
-function selectQuery(rows: Array<Record<string, unknown>>) {
+function selectQuery(rows: Array<Record<string, unknown>>, filtersSeen: string[]) {
   const filters: Record<string, unknown> = {};
   const query = {
     eq: (key: string, value: unknown) => {
+      filtersSeen.push(key);
       filters[key] = value;
       return query;
     },
