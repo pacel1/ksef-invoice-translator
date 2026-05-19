@@ -73,13 +73,12 @@ function drawTranslationNoticePages(document: PDFDocument, regularFont: PDFFont,
     const blockHeight = isMetadata ? metadataTextHeight + metadataPaddingY * 2 : lines.length * lineHeight;
     const neededHeight = blockHeight + (isHeading ? 16 : isMetadata ? 18 : 10);
 
-    if (y - neededHeight < 58) {
+    if (isHeading && paragraphIndex > 0) {
       page = addNoticePage(document, mediumFont);
       y = A4.height - contentTop - 38;
-    }
-
-    if (isHeading && paragraphIndex > 0) {
-      page.drawLine({ start: { x: marginX, y: y + 7 }, end: { x: A4.width - marginX, y: y + 7 }, thickness: 0.8, color: ruleColor });
+    } else if (y - neededHeight < 58) {
+      page = addNoticePage(document, mediumFont);
+      y = A4.height - contentTop - 38;
     }
 
     if (isMetadata) {
