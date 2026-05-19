@@ -9,6 +9,7 @@ type OfficialXmlRecord = Record<string, unknown>;
 
 type OfficialPdfDocument = {
   vfs?: Record<string, string>;
+  docDefinition?: unknown;
   getBuffer: (callback: (buffer: Buffer | Uint8Array) => void) => void;
 };
 
@@ -55,6 +56,9 @@ export async function renderOfficialFa3Pdf({
   configureOfficialTranslations(i18next, language, bilingual, translated);
   await i18next?.changeLanguage?.(officialLanguage(translated));
   const pdf = generateFA3(faktura, officialAdditionalData(invoice));
+  if (translated) {
+    localizeOfficialBooleanTexts(pdf, language, bilingual);
+  }
   ensureRobotoVfs(pdf);
   return createdPdfToBuffer(pdf);
 }
@@ -226,6 +230,62 @@ function officialAdditionalData(invoice: Invoice) {
 function officialLanguage(translated: boolean) {
   if (!translated) return "pl";
   return "app";
+}
+
+const OFFICIAL_BOOLEAN_LABELS: Record<LanguageCode, { yes: string; no: string }> = {
+  en: { yes: "Yes", no: "No" },
+  de: { yes: "Ja", no: "Nein" },
+  fr: { yes: "Oui", no: "Non" },
+  es: { yes: "Si", no: "No" },
+  it: { yes: "Si", no: "No" },
+  nl: { yes: "Ja", no: "Nee" },
+  pt: { yes: "Sim", no: "Nao" },
+  cs: { yes: "Ano", no: "Ne" },
+  sk: { yes: "Ano", no: "Nie" },
+  hu: { yes: "Igen", no: "Nem" },
+  ro: { yes: "Da", no: "Nu" },
+  bg: { yes: "Da", no: "Ne" },
+  hr: { yes: "Da", no: "Ne" },
+  sl: { yes: "Da", no: "Ne" },
+  lt: { yes: "Taip", no: "Ne" },
+  lv: { yes: "Ja", no: "Ne" },
+  et: { yes: "Jah", no: "Ei" },
+  da: { yes: "Ja", no: "Nej" },
+  sv: { yes: "Ja", no: "Nej" },
+  fi: { yes: "Kylla", no: "Ei" },
+  no: { yes: "Ja", no: "Nei" },
+  el: { yes: "Nai", no: "Ochi" }
+};
+
+export function localizeOfficialBooleanTexts(pdf: OfficialPdfDocument, language: LanguageCode, bilingual = false) {
+  const docDefinition = pdf.docDefinition;
+  if (!docDefinition) return;
+
+  const labels = OFFICIAL_BOOLEAN_LABELS[language] ?? OFFICIAL_BOOLEAN_LABELS.en;
+  const yes = bilingual ? `${labels.yes} / Tak` : labels.yes;
+  const no = bilingual ? `${labels.no} / Nie` : labels.no;
+  replaceExactTextLeaves(docDefinition, { Tak: yes, Nie: no });
+}
+
+function replaceExactTextLeaves(node: unknown, replacements: Record<string, string>): unknown {
+  if (typeof node === "string") {
+    return replacements[node] ?? node;
+  }
+
+  if (Array.isArray(node)) {
+    node.forEach((entry, index) => {
+      node[index] = replaceExactTextLeaves(entry, replacements);
+    });
+    return node;
+  }
+
+  const record = asRecord(node);
+  if (!record) return node;
+
+  Object.entries(record).forEach(([key, value]) => {
+    record[key] = replaceExactTextLeaves(value, replacements);
+  });
+  return record;
 }
 
 function officialGenerator(): OfficialGeneratorModule {

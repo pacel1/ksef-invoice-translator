@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
+import pdfParse from "pdf-parse";
 import type { Invoice } from "@/types/invoice";
-import { applyAppFreeTextToOfficialXml, parseOfficialFa3Xml } from "@/lib/mf-fa3/official-renderer";
+import {
+  applyAppFreeTextToOfficialXml,
+  localizeOfficialBooleanTexts,
+  parseOfficialFa3Xml,
+  renderOfficialFa3Pdf
+} from "@/lib/mf-fa3/official-renderer";
+import { getOfficialTextOverrides } from "@/lib/mf-fa3/official-labels";
 import { parseKsefXml } from "@/lib/xml/parser";
 
 describe("official FA(3) renderer fragment substitution", () => {
@@ -45,6 +52,64 @@ describe("official FA(3) renderer fragment substitution", () => {
     attachmentInvoice.translationFragments?.forEach((fragment) => {
       expect(textAtPath(attachmentFaktura, fragment.xmlPath)).toBe(fragment.translated);
     });
+  });
+});
+
+describe("official FA(3) renderer static text overrides", () => {
+  it("provides translated Podmiot3 role values for the app bundle", () => {
+    const german = getOfficialTextOverrides("de");
+    const english = getOfficialTextOverrides("en");
+    const french = getOfficialTextOverrides("fr");
+
+    expect(german["const.fa.additionalBuyer"]).toContain("Weiterer Kaufer");
+    expect(german["const.fa.additionalBuyer"]).not.toContain("Dodatkowy nabywca");
+    expect(english["const.fa.additionalBuyer"]).toContain("Additional buyer");
+    expect(english["const.fa.additionalBuyer"]).not.toContain("Dodatkowy nabywca");
+    expect(french["const.fa.additionalBuyer"]).toContain("Acheteur supplementaire");
+    expect(french["const.fa.additionalBuyer"]).not.toContain("Dodatkowy nabywca");
+  });
+
+  it("localizes official boolean leaves generated as Polish Tak/Nie", () => {
+    const docDefinition = {
+      content: [
+        {
+          table: {
+            body: [
+              [{ text: "Stan przed" }, { text: "Tak" }],
+              [{ text: "Stan przed" }, { text: "Nie" }]
+            ]
+          }
+        }
+      ]
+    };
+
+    localizeOfficialBooleanTexts({ docDefinition, getBuffer: () => undefined }, "de");
+
+    expect(JSON.stringify(docDefinition)).toContain("Ja");
+    expect(JSON.stringify(docDefinition)).toContain("Nein");
+    expect(JSON.stringify(docDefinition)).not.toContain("\"Tak\"");
+    expect(JSON.stringify(docDefinition)).not.toContain("\"Nie\"");
+  });
+
+  it("renders French Podmiot3 role and StanPrzed without Polish fallback text", async () => {
+    const sourceXml = staticOfficialTextXml();
+    const parsed = parseKsefXml(sourceXml);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const pdf = await renderOfficialFa3Pdf({
+      sourceXml,
+      invoice: parsed.invoice,
+      language: "fr",
+      bilingual: false,
+      translated: true
+    });
+    const text = (await pdfParse(pdf)).text;
+
+    expect(text).toContain("Acheteur supplementaire");
+    expect(text).toContain("Oui");
+    expect(text).not.toContain("Dodatkowy nabywca");
+    expect(text).not.toContain("Tak");
   });
 });
 
@@ -97,6 +162,40 @@ function attachmentXml() {
       </Tabela>
     </BlokDanych>
   </Zalacznik>
+</Faktura>`;
+}
+
+function staticOfficialTextXml() {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Faktura>
+  <Naglowek><KodFormularza kodSystemowy="FA (3)">FA</KodFormularza></Naglowek>
+  <Podmiot1><DaneIdentyfikacyjne><NIP>1111111111</NIP><Nazwa>Seller</Nazwa></DaneIdentyfikacyjne></Podmiot1>
+  <Podmiot2><DaneIdentyfikacyjne><NIP>2222222222</NIP><Nazwa>Buyer</Nazwa></DaneIdentyfikacyjne></Podmiot2>
+  <Podmiot3>
+    <DaneIdentyfikacyjne><NIP>3333333333</NIP><Nazwa>F.H.U. Grazyna Kowalska</Nazwa></DaneIdentyfikacyjne>
+    <Rola>4</Rola>
+    <Udzial>50%</Udzial>
+  </Podmiot3>
+  <Fa>
+    <KodWaluty>PLN</KodWaluty>
+    <P_1>2026-05-15</P_1>
+    <P_2>STATIC/1</P_2>
+    <P_13_1>100</P_13_1>
+    <P_14_1>23</P_14_1>
+    <P_15>123</P_15>
+    <RodzajFaktury>KOR</RodzajFaktury>
+    <FaWiersz>
+      <NrWierszaFa>1</NrWierszaFa>
+      <UU_ID>aaaa111133339997</UU_ID>
+      <P_7>usluga testowa</P_7>
+      <P_8A>szt</P_8A>
+      <P_8B>1</P_8B>
+      <P_9A>100</P_9A>
+      <P_11>100</P_11>
+      <P_12>23</P_12>
+      <StanPrzed>1</StanPrzed>
+    </FaWiersz>
+  </Fa>
 </Faktura>`;
 }
 

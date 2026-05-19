@@ -578,6 +578,48 @@ const IT = {
   "invoice.discount.notAll": "Lo sconto non si applica a tutte le cessioni di beni e prestazioni di servizi effettuate a favore di questo acquirente nel periodo indicato."
 };
 
+const SUBJECT3_ROLE_OVERRIDES: Partial<Record<LanguageCode, Record<string, string>>> = {
+  en: {
+    "const.fa.factor": "Factor - where factor data appears on the invoice",
+    "const.fa.recipient": "Recipient - where the invoice includes data of internal units or branches within the buyer that are not buyers within the meaning of the Act",
+    "const.fa.primaryEntity": "Original entity - where the invoice includes data of an acquired or transformed entity that supplied goods or services",
+    "const.fa.additionalBuyer": "Additional buyer - where the invoice contains data of further buyers other than the buyer listed in Podmiot2",
+    "const.fa.invoiceIssuer": "Invoice issuer - where the invoice includes data of the entity issuing the invoice on behalf of the taxpayer",
+    "const.fa.payer": "Payer - where the invoice includes data of the entity settling the obligation instead of the buyer",
+    "const.fa.localGovernmentIssuer": "Local government unit - issuer",
+    "const.fa.localGovernmentRecipient": "Local government unit - recipient",
+    "const.fa.vatGroupIssuer": "VAT group member - issuer",
+    "const.fa.vatGroupRecipient": "VAT group member - recipient",
+    "const.fa.employee": "Employee"
+  },
+  de: {
+    "const.fa.factor": "Factor - wenn die Rechnung Daten des Factors enthaelt",
+    "const.fa.recipient": "Empfaenger - wenn die Rechnung Daten interner Einheiten oder Zweigstellen des Kaufers enthaelt, die selbst keine Kaufer im Sinne des Gesetzes sind",
+    "const.fa.primaryEntity": "Urspruengliche Einheit - wenn die Rechnung Daten einer uebernommenen oder umgewandelten Einheit enthaelt, die Waren geliefert oder Dienstleistungen erbracht hat",
+    "const.fa.additionalBuyer": "Weiterer Kaufer - wenn die Rechnung Daten weiterer Kaufer enthaelt, die nicht in Podmiot2 genannt sind",
+    "const.fa.invoiceIssuer": "Rechnungsaussteller - wenn die Rechnung Daten der Einheit enthaelt, die die Rechnung im Namen des Steuerpflichtigen ausstellt",
+    "const.fa.payer": "Zahlende Einheit - wenn die Rechnung Daten der Einheit enthaelt, die die Verpflichtung anstelle des Kaufers begleicht",
+    "const.fa.localGovernmentIssuer": "Gebietskoerperschaft - Aussteller",
+    "const.fa.localGovernmentRecipient": "Gebietskoerperschaft - Empfaenger",
+    "const.fa.vatGroupIssuer": "Mitglied der MwSt.-Gruppe - Aussteller",
+    "const.fa.vatGroupRecipient": "Mitglied der MwSt.-Gruppe - Empfaenger",
+    "const.fa.employee": "Mitarbeiter"
+  },
+  fr: {
+    "const.fa.factor": "Factor - lorsque la facture contient les donnees du factor",
+    "const.fa.recipient": "Destinataire - lorsque la facture contient les donnees d'unites internes ou de succursales de l'acheteur qui ne sont pas elles-memes des acheteurs au sens de la loi",
+    "const.fa.primaryEntity": "Entite initiale - lorsque la facture contient les donnees d'une entite reprise ou transformee qui a livre des biens ou fourni des services",
+    "const.fa.additionalBuyer": "Acheteur supplementaire - lorsque la facture contient les donnees d'autres acheteurs que celui indique dans Podmiot2",
+    "const.fa.invoiceIssuer": "Emetteur de la facture - lorsque la facture contient les donnees de l'entite qui emet la facture au nom du contribuable",
+    "const.fa.payer": "Payeur - lorsque la facture contient les donnees de l'entite qui regle l'obligation a la place de l'acheteur",
+    "const.fa.localGovernmentIssuer": "Collectivite territoriale - emetteur",
+    "const.fa.localGovernmentRecipient": "Collectivite territoriale - destinataire",
+    "const.fa.vatGroupIssuer": "Membre du groupe TVA - emetteur",
+    "const.fa.vatGroupRecipient": "Membre du groupe TVA - destinataire",
+    "const.fa.employee": "Employe"
+  }
+};
+
 const GENERATED: Record<LanguageCode, Record<string, string>> = {
   en: enGenerated,
   de: deGenerated,
@@ -605,7 +647,7 @@ const GENERATED: Record<LanguageCode, Record<string, string>> = {
 
 export function getOfficialTextOverrides(language: LanguageCode): Record<string, string> {
   const fallback = language === "fr" ? FR : language === "de" ? DE : language === "es" ? ES : language === "it" ? IT : EN;
-  return { ...fallback, ...GENERATED[language], ...paymentMethodOverrides(language) };
+  return { ...fallback, ...GENERATED[language], ...SUBJECT3_ROLE_OVERRIDES[language], ...paymentMethodOverrides(language) };
 }
 
 function paymentMethodOverrides(language: LanguageCode) {
