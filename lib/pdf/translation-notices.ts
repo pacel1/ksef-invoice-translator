@@ -9,6 +9,7 @@ export type TranslationNoticePlaceholderData = {
   reviewedBy?: string | null;
   generatedAt: string;
   visualisationSystem?: string | null;
+  targetLanguageNamePl?: string;
 };
 
 const DEFAULT_REVIEWED_BY = "User";
@@ -23,8 +24,33 @@ Zweryfikowane i zatwierdzone przez: {reviewedBy}
 Wygenerowano dnia: {generatedAt}
 Źródło: dane faktury ustrukturyzowanej KSeF
 System wizualizacji: {visualisationSystem}
-Język: polski
+Język: {targetLanguageNamePl}
 Metoda tłumaczenia: tłumaczenie automatyczne zweryfikowane przez użytkownika`;
+
+const POLISH_LANGUAGE_NAMES: Record<LanguageCode, string> = {
+  en: "angielski",
+  de: "niemiecki",
+  fr: "francuski",
+  es: "hiszpański",
+  it: "włoski",
+  nl: "niderlandzki",
+  pt: "portugalski",
+  cs: "czeski",
+  sk: "słowacki",
+  hu: "węgierski",
+  ro: "rumuński",
+  bg: "bułgarski",
+  hr: "chorwacki",
+  sl: "słoweński",
+  lt: "litewski",
+  lv: "łotewski",
+  et: "estoński",
+  da: "duński",
+  sv: "szwedzki",
+  fi: "fiński",
+  no: "norweski",
+  el: "grecki"
+};
 
 export const TRANSLATION_NOTICE_BY_LANGUAGE = {
   "en": {
@@ -124,20 +150,27 @@ export function getTranslationNoticeConfig(language: string): TranslationNoticeC
 export function fillTranslationNoticePlaceholders(text: string, data: TranslationNoticePlaceholderData) {
   const reviewedBy = data.reviewedBy?.trim() || DEFAULT_REVIEWED_BY;
   const visualisationSystem = data.visualisationSystem?.trim() || DEFAULT_VISUALISATION_SYSTEM;
+  const targetLanguageNamePl = data.targetLanguageNamePl?.trim() || "angielski";
 
   return text
     .replaceAll("{reviewedBy}", reviewedBy)
     .replaceAll("{generatedAt}", data.generatedAt)
-    .replaceAll("{visualisationSystem}", visualisationSystem);
+    .replaceAll("{visualisationSystem}", visualisationSystem)
+    .replaceAll("{targetLanguageNamePl}", targetLanguageNamePl);
 }
 
 export function createTranslationNotices(language: string, data: TranslationNoticePlaceholderData): TranslationNoticeConfig {
-  const config = getTranslationNoticeConfig(language);
-  const targetNotice = fillTranslationNoticePlaceholders(config.translationNotice, data);
-  const polishNotice = fillTranslationNoticePlaceholders(POLISH_TRANSLATION_NOTICE, data);
+  const noticeLanguage = isNoticeLanguage(language) ? language : "en";
+  const config = TRANSLATION_NOTICE_BY_LANGUAGE[noticeLanguage];
+  const placeholderData = {
+    ...data,
+    targetLanguageNamePl: POLISH_LANGUAGE_NAMES[noticeLanguage]
+  };
+  const targetNotice = fillTranslationNoticePlaceholders(config.translationNotice, placeholderData);
+  const polishNotice = fillTranslationNoticePlaceholders(POLISH_TRANSLATION_NOTICE, placeholderData);
   return {
     translationNotice: `${targetNotice}\n\n${polishNotice}`,
-    footerNotice: fillTranslationNoticePlaceholders(createFooterNotice(config), data)
+    footerNotice: fillTranslationNoticePlaceholders(createFooterNotice(config), placeholderData)
   };
 }
 

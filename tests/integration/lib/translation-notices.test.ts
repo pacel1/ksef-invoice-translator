@@ -38,7 +38,23 @@ describe("translation notices", () => {
     expect(notices.translationNotice).toContain("Reviewed and approved by: ACME Sp. z o.o.");
     expect(notices.translationNotice).toContain("Generated on: 2026-05-18 14:35");
     expect(notices.translationNotice).toContain("Visualisation system: tlumaczksef.pl");
+    expect(notices.translationNotice).toContain("Język: angielski");
     expect(notices.footerNotice).toContain("Reviewed and approved by: ACME Sp. z o.o.");
+  });
+
+  it("uses the translated language name in the Polish notice section", () => {
+    const englishNotices = createTranslationNotices("en", {
+      reviewedBy: "ACME Sp. z o.o.",
+      generatedAt: "2026-05-18 14:35"
+    });
+    const germanNotices = createTranslationNotices("de", {
+      reviewedBy: "ACME Sp. z o.o.",
+      generatedAt: "2026-05-18 14:35"
+    });
+
+    expect(englishNotices.translationNotice).toContain("Język: angielski");
+    expect(germanNotices.translationNotice).toContain("Język: niemiecki");
+    expect(englishNotices.translationNotice).not.toContain("Język: polski");
   });
 
   it("adds final notice pages to generated PDFs", async () => {
