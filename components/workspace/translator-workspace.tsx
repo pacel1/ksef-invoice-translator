@@ -16,6 +16,7 @@ export function TranslatorWorkspace({ uiLanguage = "pl" }: TranslatorWorkspacePr
   const t = copy[uiLanguage];
   const {
     invoice,
+    invoiceId,
     status,
     messages,
     insufficientCredit,
@@ -42,14 +43,15 @@ export function TranslatorWorkspace({ uiLanguage = "pl" }: TranslatorWorkspacePr
   const lastTriedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!invoice) return;
+    if (!invoiceId) return;
     if (currentLanguage === "pl") return;
     if (cachedLanguages.has(currentLanguage)) return;
     if (status !== "idle") return;
-    const key = `${invoice ? "x" : ""}:${currentLanguage}`;
+    const key = `${invoiceId}:${currentLanguage}:${bilingual ? "bilingual" : "translated"}`;
     if (lastTriedRef.current === key) return;
     lastTriedRef.current = key;
     void translateCurrent();
-  }, [invoice, currentLanguage, cachedLanguages, status, translateCurrent]);
+  }, [invoice, invoiceId, currentLanguage, bilingual, cachedLanguages, status, translateCurrent]);
 
   const onboardingItems = [
     String(t.onboardingItem1),
