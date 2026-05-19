@@ -163,10 +163,78 @@ describe("translateInvoiceFreeText", () => {
     expect(translated.additionalDescriptions?.[0].translatedValue).toBe("Warsaw");
 
     const payloads = createMock.mock.calls.map((call) => JSON.parse(call[0].messages[1].content));
+    expect(payloads[0].section).toBe("line_items");
     expect(payloads[0].fields.items).toEqual([sourceInvoice.items[0].name]);
     expect(payloads[0].fields.additionalDescriptions).toEqual([]);
+    expect(payloads[1].section).toBe("invoice_annotations");
     expect(payloads[1].fields.items).toEqual([]);
     expect(payloads[1].fields.additionalDescriptions).toEqual([{ key: "Lokalizacja", value: "Warszawa" }]);
+  });
+
+  it("translates invoice annotation keys and values on the first pass", async () => {
+    const sourceInvoice = {
+      ...invoice(),
+      additionalDescriptions: [
+        {
+          key: "Informacja o przedmiocie sprzedaży",
+          value: "Świadczenie usług na rzecz podatnika VAT UE"
+        }
+      ]
+    };
+
+    createMock
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: ["Service at the location"],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: [],
+                orderLines: [],
+                units: {},
+                additionalDescriptions: [
+                  {
+                    key: "Information about the subject of sale",
+                    value: "Provision of services to an EU VAT taxpayer"
+                  }
+                ],
+                settlementReasons: [],
+                notes: "",
+                footer: ""
+              })
+            }
+          }
+        ]
+      });
+
+    const { translateInvoiceFreeText } = await import("@/lib/translation/engine");
+    const translated = await translateInvoiceFreeText(sourceInvoice, "en");
+
+    expect(createMock).toHaveBeenCalledTimes(2);
+    expect(translated.additionalDescriptions?.[0].translatedKey).toBe("Information about the subject of sale");
+    expect(translated.additionalDescriptions?.[0].translatedValue).toBe("Provision of services to an EU VAT taxpayer");
+
+    const payloads = createMock.mock.calls.map((call) => JSON.parse(call[0].messages[1].content));
+    expect(payloads[1]).toMatchObject({
+      section: "invoice_annotations",
+      sectionGuidance: expect.stringContaining("additionalDescriptions contains {key,value} pairs")
+    });
   });
 
   it("repairs only the section that failed quality checks", async () => {

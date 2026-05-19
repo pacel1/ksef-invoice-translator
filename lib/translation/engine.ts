@@ -24,11 +24,15 @@ type TranslationFields = {
 };
 
 type SplitSection = "items" | "notes";
+type TranslationRequestSection = "line_items" | "invoice_annotations";
 
-const SYSTEM_PROMPT =
-  "You translate Polish invoice free-text into the requested target language. Translate every natural-language business phrase, including short keys and labels supplied by the invoice data such as Lokalizacja, Uwagi, Opis, and Miejsce. Never leave Polish words mixed into the translated result unless they are part of a company name, product code, legal identifier, KSeF, or another proper noun. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, bank account numbers, company names, product codes, GTU, CN, PKWiU, PKOB, or registry numbers. Preserve meaning, keep professional invoice terminology, and preserve the order and array lengths exactly. Return JSON only.";
+const LINE_ITEMS_SYSTEM_PROMPT =
+  "You translate Polish invoice line-item free-text into the requested target language. Translate item names, order line names, and units using professional invoice terminology. Do not translate invoice numbers, dates, currencies, tax rates, amounts, VAT IDs, registration numbers, IBAN, SWIFT, company names, product codes, GTU, CN, PKWiU, PKOB, KSeF, or other legal identifiers. Preserve meaning and preserve array lengths exactly. Return JSON only.";
 
-const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v6-polish-detection";
+const INVOICE_ANNOTATIONS_SYSTEM_PROMPT =
+  "You translate Polish invoice annotations into the requested target language. additionalDescriptions is an array of {key,value}: key is a field label or short descriptor, and value may be a legal clause, address, company name, location, or business description. Translate Polish natural-language keys and values. If any text is already in the target language, keep it unchanged. Do not translate company names, addresses, place names, VAT IDs, NIP, REGON, KRS, IBAN, SWIFT, KSeF, GTU, CN, PKWiU, legal article numbers, EU directive numbers, invoice numbers, dates, amounts, currencies, or tax rates. Preserve professional invoice terminology and preserve array lengths exactly. Return JSON only.";
+
+const TRANSLATION_ENGINE_PROMPT_VERSION = "free-text-v7-section-prompts";
 
 export function getTranslationModel() {
   return process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-nano";
@@ -171,8 +175,10 @@ async function requestTranslation(
   targetLanguage: string,
   language: LanguageCode,
   fields: Record<string, unknown>,
+  section: TranslationRequestSection,
   repairIssues: string[] = []
 ): Promise<TranslationPayload> {
+  const systemPrompt = section === "line_items" ? LINE_ITEMS_SYSTEM_PROMPT : INVOICE_ANNOTATIONS_SYSTEM_PROMPT;
   const completion = await client.chat.completions.create({
     model: getTranslationModel(),
     temperature: 0,
@@ -182,12 +188,19 @@ async function requestTranslation(
       {
         role: "system",
         content: repairIssues.length
-          ? `${SYSTEM_PROMPT} This is a repair attempt. Fix these quality issues: ${repairIssues.join("; ")}.`
-          : SYSTEM_PROMPT
+          ? `${systemPrompt} This is a repair attempt for the same section. Fix these quality issues: ${repairIssues.join("; ")}.`
+          : systemPrompt
       },
       {
         role: "user",
-        content: JSON.stringify({ sourceLanguage: "Polish", targetLanguage, targetLanguageCode: language, fields })
+        content: JSON.stringify({
+          sourceLanguage: "Polish",
+          targetLanguage,
+          targetLanguageCode: language,
+          section,
+          sectionGuidance: sectionGuidance(section),
+          fields
+        })
       }
     ]
   });
@@ -235,10 +248,10 @@ async function requestSplitTranslation(
 
   const [itemResult, noteResult] = await Promise.all([
     options.sections.includes("items")
-      ? timedTranslation(() => requestTranslation(client, targetLanguage, language, itemFields, repairIssues))
+      ? timedTranslation(() => requestTranslation(client, targetLanguage, language, itemFields, "line_items", repairIssues))
       : Promise.resolve(undefined),
     options.sections.includes("notes")
-      ? timedTranslation(() => requestTranslation(client, targetLanguage, language, noteFields, repairIssues))
+      ? timedTranslation(() => requestTranslation(client, targetLanguage, language, noteFields, "invoice_annotations", repairIssues))
       : Promise.resolve(undefined)
   ]);
   const itemTranslation = itemResult?.translation;
@@ -259,6 +272,13 @@ async function requestSplitTranslation(
       notesMs: noteResult?.elapsedMs
     }
   };
+}
+
+function sectionGuidance(section: TranslationRequestSection) {
+  if (section === "line_items") {
+    return "items and orderLines are invoice row descriptions; units maps each original unit string to its translation.";
+  }
+  return "additionalDescriptions contains {key,value} pairs: key is a label/descriptor and value may be a clause, address, company name, location, or description; notes and footer are invoice text blocks.";
 }
 
 async function timedTranslation(request: () => Promise<TranslationPayload>) {
