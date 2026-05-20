@@ -14,6 +14,8 @@
 
 After auditing `app/(protected)/app/page.tsx`, `components/workspace/translator-workspace.tsx`, `use-translator-workflow.ts`, `workspace-empty-state.tsx`, `workspace-invoice-view.tsx`, and `workspace-toolbar.tsx`:
 
+> **Decisions log:** §12 carries the open questions; resolutions made during planning are captured inline at the spot they affect (§3.5 cancel button, §3.6 recent-row click + re-translate) so the source of truth lives next to the wireframes, not in a separate appendix.
+
 | # | Defect | User-visible consequence |
 |---|--------|---------------------------|
 | 1 | Default `currentLanguage === "pl"` after upload — the app immediately renders the Polish source as the "preview" | The Polish-speaking user uploaded a Polish invoice and is now staring at a Polish invoice. Zero value delivered. The product *is* a translator; the first frame must reflect that. |
@@ -250,7 +252,7 @@ Single (idle) and multiple variants render through the **same** component — on
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  Tłumaczę 7 faktur na angielski (dwujęzycznie)                   │
+│  Tłumaczę 7 faktur na angielski (dwujęzycznie)     [Zatrzymaj]   │
 │                                                                  │
 │  ████████████████████░░░░░░░░░░  4 / 7 ukończonych  ~32 s        │
 │                                                                  │
@@ -270,6 +272,15 @@ Single (idle) and multiple variants render through the **same** component — on
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+**Mid-batch cancel (resolved 2026-05-20):** The **"Zatrzymaj"** control sits top-right of the progress card. Click semantics:
+
+- AbortController abort fires on every in-flight `translate` fetch — in-flight items transition to `error` with reason "Anulowano przez użytkownika"
+- `queued` items never start — they transition straight to the same `error` state, no credit consumed
+- `done` items remain available and downloadable
+- The top CTA strip swaps to **"Wznów"** (re-queues the non-`done` items, fresh AbortController) + the existing **"Nowe tłumaczenie"** / **"Pobierz wszystkie (.zip)"**
+- Server-side: `/api/translate` already supports the refund path (§6.3); the client just lets in-flight calls error out — the server's refund logic handles the credit reversal
+- Implementation note for PR #B: `useTranslationWizard` owns an `AbortController` per active job; `cancelBatch()` calls `.abort()` and transitions the state machine.
+
 **Per-row error handling:**
 
 ```
@@ -280,9 +291,24 @@ Failure of one row does NOT halt the batch. Successful rows remain downloadable.
 
 **Concurrency:** sequential ❌ (too slow) → cap at **3 parallel translate calls** (matches OpenAI rate budget; configurable via env). Honors `prefers-reduced-motion` for the progress bar animation.
 
-### 3.6 Re-entering the wizard from history
+### 3.6 Re-entering the wizard from history / Recent (resolved 2026-05-20)
 
-`/translate/history` rows get a new "↻ Tłumacz ponownie" action that pre-populates Step 2 with the previous language + bilingual choice. This is a follow-up improvement (not in v1 if scope pressure forces a cut), but the data plumbing in §6.4 makes it trivial.
+**Decision:** Clicking any row in the "Ostatnie" sidebar or `/translate/history` jumps **straight to Step 3** with the cached translation rendered, when one exists. If no translation exists for that invoice yet (older row, never translated), the click lands on **Step 2** with the invoice pre-attached so the user picks a language without re-uploading.
+
+State-machine plumbing (PR #B):
+
+- Recent/history row link → `/translate?invoiceId=<uuid>` (server reads it in `app/(protected)/translate/page.tsx`)
+- Server fetches the invoice's most recent translation (if any) and hydrates `<TranslatorWizard initialInvoiceId, initialLanguage?, initialBilingual?>`
+- `useTranslationWizard` initialization branches:
+  - Has cached translation → seed state in `{ step: "delivery", jobItems: [{invoiceId, status: "done", ...}] }` and skip Steps 1+2
+  - No translation → seed state in `{ step: "language", files: [{invoiceId, status: "ready"}], language: null }`
+- No credit consumed in either case (cached re-render is free; the "no translation yet" case just pre-attaches the invoice — credit consumes only at Step 2 → 3 click)
+
+**Re-translating the same set in another language ("Tłumacz ten zestaw w innym języku") — shipping in PR #D:**
+
+The CTA at the bottom of Step 3 (delivery) calls `goBack("language")` on the wizard, keeping the same `files` (and their `invoiceId`s) but resetting `language` and `bilingual`. Step 2 cost preview correctly recalculates against the new (language, bilingual) tuple — if the new combo has cached translations, those rows show "Z cache — bez opłaty" and don't count toward cost.
+
+A history-row "↻ Tłumacz ponownie" affordance ships in PR #D alongside this — same code path, just initialized with one row instead of N.
 
 ---
 
