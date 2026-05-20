@@ -17,6 +17,11 @@
   --accent-soft: 244 78% 96%;
   --success: 148 45% 45%;
   --danger: 346 60% 52%;
+  /* Warning — amber-500 family. Added 2026-05-20 for the Tłumacz redesign:
+     used by the per-file "duplicate" state in the upload step and any UI
+     state that asks for attention without being an outright error. */
+  --warning: 38 92% 50%;
+  --warning-soft: 38 92% 95%;
 }
 
 * {
