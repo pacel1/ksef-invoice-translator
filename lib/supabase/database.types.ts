@@ -305,6 +305,10 @@ export type Database = {
         Args: { p_amount: number; p_purchase: string; p_user: string }
         Returns: undefined
       }
+      refund_translation_credit: {
+        Args: { p_invoice: string; p_user: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
