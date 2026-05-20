@@ -40,9 +40,10 @@ describe("<TranslatorWizard>", () => {
     render(
       <TranslatorWizard uiLanguage="pl" initialBalance={5} api={makeStubApi()} />
     );
-    expect(screen.getByText("Wybierz pliki")).toBeInTheDocument();
-    expect(screen.getByText("Język i format")).toBeInTheDocument();
-    expect(screen.getByText("Tłumaczenie")).toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: /Postęp/i });
+    expect(within(nav).getByText("Wybierz pliki")).toBeInTheDocument();
+    expect(within(nav).getByText("Język i format")).toBeInTheDocument();
+    expect(within(nav).getByText("Tłumaczenie")).toBeInTheDocument();
   });
 
   it("uses the Polish step labels when uiLanguage='pl'", () => {
