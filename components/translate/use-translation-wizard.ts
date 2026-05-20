@@ -17,6 +17,10 @@ export interface FileSlot {
   invoiceNumber?: string;
   errorMessage?: string;
   warnings?: ReadonlyArray<string>;
+  /** True iff the upload deduped against an existing invoice (content_hash match). */
+  isContentDuplicate?: boolean;
+  /** Count of other invoices in the user's archive with the same invoice_number. */
+  otherWithSameNumber?: number;
 }
 
 export type JobItemStatus = "queued" | "translating" | "done" | "error";
@@ -57,6 +61,9 @@ export type UploadBatchResult =
       invoiceNumber: string;
       warnings: ReadonlyArray<string>;
       isNew: boolean;
+      /** Count of other invoices for this user with the same invoice_number.
+       * 0 by default for backward compat with older default-api impls. */
+      otherWithSameNumber?: number;
     }
   | {
       ok: false;
@@ -329,14 +336,25 @@ export function useTranslationWizard({
           continue;
         }
         if (result.ok) {
+          // Duplicate detection — surface either signal as the 'duplicate'
+          // visual state on the file row. Doesn't block translation; the
+          // user can proceed (adding a new language is still useful) but
+          // they're warned BEFORE the translate click consumes a credit.
+          //   isNew === false              → content_hash matched (same file)
+          //   otherWithSameNumber > 0      → another invoice has the same
+          //                                  invoice_number from this user
+          const otherCount = result.otherWithSameNumber ?? 0;
+          const isDuplicate = !result.isNew || otherCount > 0;
           dispatch({
             type: "patchFileSlot",
             localId: slot.localId,
             patch: {
-              status: "ready",
+              status: isDuplicate ? "duplicate" : "ready",
               invoiceId: result.invoiceId,
               invoiceNumber: result.invoiceNumber,
-              warnings: result.warnings ?? []
+              warnings: result.warnings ?? [],
+              isContentDuplicate: !result.isNew,
+              otherWithSameNumber: otherCount
             }
           });
         } else {

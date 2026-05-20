@@ -25,10 +25,23 @@ const itemEditSchema = z.object({
   translatedUnit: z.union([z.string(), z.null()]).optional()
 });
 
+const additionalDescriptionEditSchema = z.object({
+  index: z.number().int().min(0),
+  translatedKey: z.union([z.string(), z.null()]).optional(),
+  translatedValue: z.union([z.string(), z.null()]).optional()
+});
+
 const editsSchema = z.object({
   items: z.array(itemEditSchema).optional(),
   translatedNotes: z.union([z.string(), z.null()]).optional(),
-  footerText: z.union([z.string(), z.null()]).optional()
+  footerText: z.union([z.string(), z.null()]).optional(),
+  additionalDescriptions: z.array(additionalDescriptionEditSchema).optional(),
+  correction: z
+    .object({
+      translatedReason: z.union([z.string(), z.null()]).optional(),
+      translatedPeriod: z.union([z.string(), z.null()]).optional()
+    })
+    .optional()
 });
 
 const requestSchema = z.object({

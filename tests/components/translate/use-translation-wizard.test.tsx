@@ -165,6 +165,68 @@ describe("useTranslationWizard — Step 1 upload", () => {
     expect(result.current.state.files[1].errorMessage).toBe("Bad XML");
   });
 
+  it("marks a content-deduped result (isNew: false) as 'duplicate' status", async () => {
+    const api = makeStubApi({
+      uploadBatch: vi.fn(async (files: ReadonlyArray<File>) => ({
+        results: files.map(
+          (file): UploadBatchResult => ({
+            ok: true,
+            fileName: file.name,
+            invoiceId: "inv-1",
+            invoiceNumber: "FA-2026-0001",
+            warnings: [],
+            isNew: false,
+            otherWithSameNumber: 0
+          })
+        )
+      }))
+    });
+
+    const { result } = renderHook(() => useTranslationWizard({ api }));
+    await act(async () => {
+      await result.current.addFiles([makeFile("a.xml")]);
+    });
+
+    expect(result.current.state.files[0].status).toBe("duplicate");
+    expect(result.current.state.files[0].isContentDuplicate).toBe(true);
+  });
+
+  it("marks a fresh upload as 'duplicate' when otherWithSameNumber > 0", async () => {
+    const api = makeStubApi({
+      uploadBatch: vi.fn(async (files: ReadonlyArray<File>) => ({
+        results: files.map(
+          (file): UploadBatchResult => ({
+            ok: true,
+            fileName: file.name,
+            invoiceId: "inv-1",
+            invoiceNumber: "FA-2026-0001",
+            warnings: [],
+            isNew: true,
+            otherWithSameNumber: 2
+          })
+        )
+      }))
+    });
+
+    const { result } = renderHook(() => useTranslationWizard({ api }));
+    await act(async () => {
+      await result.current.addFiles([makeFile("a.xml")]);
+    });
+
+    expect(result.current.state.files[0].status).toBe("duplicate");
+    expect(result.current.state.files[0].isContentDuplicate).toBe(false);
+    expect(result.current.state.files[0].otherWithSameNumber).toBe(2);
+  });
+
+  it("keeps 'ready' status when truly unique (isNew + 0 same-number)", async () => {
+    const api = makeStubApi();
+    const { result } = renderHook(() => useTranslationWizard({ api }));
+    await act(async () => {
+      await result.current.addFiles([makeFile("a.xml")]);
+    });
+    expect(result.current.state.files[0].status).toBe("ready");
+  });
+
   it("removeFile drops only the targeted slot, preserves order", async () => {
     const api = makeStubApi();
     const { result } = renderHook(() => useTranslationWizard({ api }));

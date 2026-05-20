@@ -12,10 +12,26 @@ export interface ItemEdit {
   translatedUnit?: string | null;
 }
 
+export interface AdditionalDescriptionEdit {
+  /** 0-based index into invoice.additionalDescriptions */
+  index: number;
+  translatedKey?: string | null;
+  translatedValue?: string | null;
+}
+
+export interface CorrectionEdits {
+  translatedReason?: string | null;
+  translatedPeriod?: string | null;
+}
+
 export interface TranslationEdits {
   items?: ReadonlyArray<ItemEdit>;
   translatedNotes?: string | null;
   footerText?: string | null;
+  /** Per-row edits to invoice.additionalDescriptions (key/value pairs). */
+  additionalDescriptions?: ReadonlyArray<AdditionalDescriptionEdit>;
+  /** Edits to invoice.correction translations (corrected invoices only). */
+  correction?: CorrectionEdits;
 }
 
 /**
@@ -73,6 +89,56 @@ export function applyTranslationEdits(
       nextFooter.translatedText = edits.footerText;
     }
     next.footer = nextFooter;
+  }
+
+  if (edits.additionalDescriptions && edits.additionalDescriptions.length > 0) {
+    const source = next.additionalDescriptions ?? [];
+    const updated = source.map((entry, idx) => {
+      const edit = edits.additionalDescriptions?.find((e) => e.index === idx);
+      if (!edit) return entry;
+      const nextEntry = { ...entry };
+      if (edit.translatedKey !== undefined) {
+        if (edit.translatedKey === null || edit.translatedKey.trim() === "") {
+          delete nextEntry.translatedKey;
+        } else {
+          nextEntry.translatedKey = edit.translatedKey;
+        }
+      }
+      if (edit.translatedValue !== undefined) {
+        if (edit.translatedValue === null || edit.translatedValue.trim() === "") {
+          delete nextEntry.translatedValue;
+        } else {
+          nextEntry.translatedValue = edit.translatedValue;
+        }
+      }
+      return nextEntry;
+    });
+    next.additionalDescriptions = updated;
+  }
+
+  if (edits.correction && next.correction) {
+    const nextCorrection = { ...next.correction };
+    if (edits.correction.translatedReason !== undefined) {
+      if (
+        edits.correction.translatedReason === null ||
+        edits.correction.translatedReason.trim() === ""
+      ) {
+        delete nextCorrection.translatedReason;
+      } else {
+        nextCorrection.translatedReason = edits.correction.translatedReason;
+      }
+    }
+    if (edits.correction.translatedPeriod !== undefined) {
+      if (
+        edits.correction.translatedPeriod === null ||
+        edits.correction.translatedPeriod.trim() === ""
+      ) {
+        delete nextCorrection.translatedPeriod;
+      } else {
+        nextCorrection.translatedPeriod = edits.correction.translatedPeriod;
+      }
+    }
+    next.correction = nextCorrection;
   }
 
   return next;

@@ -120,13 +120,33 @@ function SecondaryLine({ slot, copy }: { slot: FileSlot; copy: Copy }) {
     case "error":
       return <>{slot.errorMessage ?? "Translation failed"}</>;
     case "duplicate":
-      return <>{String(copy.duplicateRow)}</>;
+      return <>{duplicateMessage(slot, copy)}</>;
     default: {
       const _exhaustive: never = slot.status;
       void _exhaustive;
       return null;
     }
   }
+}
+
+/**
+ * Pick the right duplicate message for the file row:
+ *   - content_hash matched     → "Identyczna faktura była już wgrana…"
+ *   - invoice_number matched   → "Możliwy duplikat: faktura {N} była już
+ *                                  wgrana N razy"
+ *   - both                     → content-hash takes precedence (stronger signal)
+ *   - neither (status alone)   → fall back to the generic duplicate copy
+ */
+function duplicateMessage(slot: FileSlot, copy: Copy): string {
+  if (slot.isContentDuplicate) {
+    return String(copy.duplicateContentRow);
+  }
+  if ((slot.otherWithSameNumber ?? 0) > 0) {
+    return String(copy.duplicateNumberRow)
+      .replace("{count}", String(slot.otherWithSameNumber))
+      .replace("{invoiceNumber}", slot.invoiceNumber ?? "—");
+  }
+  return String(copy.duplicateRow);
 }
 
 function formatBytes(bytes: number): string {

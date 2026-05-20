@@ -106,6 +106,60 @@ describe("applyTranslationEdits", () => {
     expect(updated.footer?.text).toBe("Spółka wpisana do KRS");
   });
 
+  it("updates additionalDescriptions translatedKey + translatedValue per row", () => {
+    const base = {
+      ...makeInvoice(),
+      additionalDescriptions: [
+        { key: "Pieczęć", value: "Dział finansowy", translatedKey: "Stamp", translatedValue: "Finance dept" },
+        { key: "Uwagi", value: "Płatność przelewem", translatedKey: undefined, translatedValue: undefined }
+      ]
+    } as unknown as Invoice;
+
+    const updated = applyTranslationEdits(base, {
+      additionalDescriptions: [
+        { index: 0, translatedValue: "Finance department" },
+        { index: 1, translatedKey: "Notes", translatedValue: "Bank transfer payment" }
+      ]
+    });
+
+    expect(updated.additionalDescriptions?.[0].translatedValue).toBe("Finance department");
+    expect(updated.additionalDescriptions?.[0].translatedKey).toBe("Stamp");
+    expect(updated.additionalDescriptions?.[1].translatedKey).toBe("Notes");
+    expect(updated.additionalDescriptions?.[1].translatedValue).toBe(
+      "Bank transfer payment"
+    );
+  });
+
+  it("updates correction.translatedReason + translatedPeriod when correction exists", () => {
+    const base = {
+      ...makeInvoice(),
+      correction: {
+        reason: "Błędna stawka VAT",
+        period: "2026-04",
+        translatedReason: undefined,
+        translatedPeriod: undefined
+      }
+    } as unknown as Invoice;
+
+    const updated = applyTranslationEdits(base, {
+      correction: {
+        translatedReason: "Incorrect VAT rate",
+        translatedPeriod: "April 2026"
+      }
+    });
+
+    expect(updated.correction?.translatedReason).toBe("Incorrect VAT rate");
+    expect(updated.correction?.translatedPeriod).toBe("April 2026");
+    expect(updated.correction?.reason).toBe("Błędna stawka VAT");
+  });
+
+  it("ignores correction edits when invoice has no correction block", () => {
+    const updated = applyTranslationEdits(makeInvoice(), {
+      correction: { translatedReason: "shouldn't apply" }
+    });
+    expect(updated.correction).toBeUndefined();
+  });
+
   it("returns an invoice with a different items reference (no mutation)", () => {
     const original = makeInvoice();
     const updated = applyTranslationEdits(original, {

@@ -22,6 +22,12 @@ interface DraftState {
   itemUnits: Record<number, string>;
   notes: string;
   footer: string;
+  /** Per-row edits to invoice.additionalDescriptions (key/value pairs). */
+  additionalKeys: Record<number, string>;
+  additionalValues: Record<number, string>;
+  /** invoice.correction.translatedReason and translatedPeriod. */
+  correctionReason: string;
+  correctionPeriod: string;
 }
 
 /**
@@ -50,7 +56,11 @@ export function TranslationEditor({
     itemNames: {},
     itemUnits: {},
     notes: "",
-    footer: ""
+    footer: "",
+    additionalKeys: {},
+    additionalValues: {},
+    correctionReason: "",
+    correctionPeriod: ""
   });
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -81,7 +91,21 @@ export function TranslationEditor({
             (loaded.items ?? []).map((item, i) => [i, item.translatedUnit ?? ""])
           ),
           notes: loaded.translatedNotes ?? "",
-          footer: loaded.footer?.translatedText ?? ""
+          footer: loaded.footer?.translatedText ?? "",
+          additionalKeys: Object.fromEntries(
+            (loaded.additionalDescriptions ?? []).map((entry, i) => [
+              i,
+              entry.translatedKey ?? ""
+            ])
+          ),
+          additionalValues: Object.fromEntries(
+            (loaded.additionalDescriptions ?? []).map((entry, i) => [
+              i,
+              entry.translatedValue ?? ""
+            ])
+          ),
+          correctionReason: loaded.correction?.translatedReason ?? "",
+          correctionPeriod: loaded.correction?.translatedPeriod ?? ""
         });
       })
       .catch((err) => {
@@ -101,6 +125,19 @@ export function TranslationEditor({
         translatedName: draft.itemNames[i] ?? null,
         translatedUnit: draft.itemUnits[i] ?? null
       }));
+      const additionalDescriptions = (invoice.additionalDescriptions ?? []).map(
+        (_, i) => ({
+          index: i,
+          translatedKey: draft.additionalKeys[i] ?? null,
+          translatedValue: draft.additionalValues[i] ?? null
+        })
+      );
+      const correction = invoice.correction
+        ? {
+            translatedReason: draft.correctionReason,
+            translatedPeriod: draft.correctionPeriod
+          }
+        : undefined;
       const res = await fetch("/api/translate/edit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -111,7 +148,9 @@ export function TranslationEditor({
           edits: {
             items,
             translatedNotes: draft.notes,
-            footerText: invoice.footer ? draft.footer : undefined
+            footerText: invoice.footer ? draft.footer : undefined,
+            additionalDescriptions: additionalDescriptions.length > 0 ? additionalDescriptions : undefined,
+            correction
           }
         })
       });
@@ -242,6 +281,9 @@ interface EditorFieldsProps {
 function EditorFields({ invoice, draft, setDraft, copy }: EditorFieldsProps) {
   const hasItems = (invoice.items ?? []).length > 0;
   const hasFooter = Boolean(invoice.footer);
+  const additionalDescriptions = invoice.additionalDescriptions ?? [];
+  const hasAdditional = additionalDescriptions.length > 0;
+  const hasCorrection = Boolean(invoice.correction);
 
   return (
     <div className="flex flex-col gap-6">
@@ -338,6 +380,117 @@ function EditorFields({ invoice, draft, setDraft, copy }: EditorFieldsProps) {
               className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </label>
+        </section>
+      ) : null}
+
+      {hasAdditional ? (
+        <section className="flex flex-col gap-3">
+          <h3 className="text-small font-semibold text-text-strong">
+            {String(copy.editorAdditionalLabel)}
+          </h3>
+          <ul className="flex flex-col gap-3">
+            {additionalDescriptions.map((entry, idx) => (
+              <li
+                key={`${entry.lineNumber ?? idx}-${idx}`}
+                className="rounded-lg border border-border bg-surface p-3"
+              >
+                <p className="mb-2 text-micro text-text-muted">
+                  {entry.key ? (
+                    <span className="font-medium">{entry.key}: </span>
+                  ) : null}
+                  {entry.value}
+                </p>
+                <label className="block">
+                  <span className="text-micro text-text-muted">
+                    {String(copy.editorAdditionalKeyLabel)}
+                  </span>
+                  <input
+                    type="text"
+                    value={draft.additionalKeys[idx] ?? ""}
+                    onChange={(e) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        additionalKeys: {
+                          ...prev.additionalKeys,
+                          [idx]: e.target.value
+                        }
+                      }))
+                    }
+                    className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </label>
+                <label className="mt-3 block">
+                  <span className="text-micro text-text-muted">
+                    {String(copy.editorAdditionalValueLabel)}
+                  </span>
+                  <textarea
+                    value={draft.additionalValues[idx] ?? ""}
+                    onChange={(e) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        additionalValues: {
+                          ...prev.additionalValues,
+                          [idx]: e.target.value
+                        }
+                      }))
+                    }
+                    rows={2}
+                    className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </label>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {hasCorrection ? (
+        <section className="flex flex-col gap-3">
+          <h3 className="text-small font-semibold text-text-strong">
+            {String(copy.editorCorrectionLabel)}
+          </h3>
+          {invoice.correction?.reason ? (
+            <label className="block">
+              <span className="text-micro text-text-muted">
+                {String(copy.editorCorrectionReasonLabel)}
+              </span>
+              <span className="mt-1 block text-micro text-text-muted">
+                {invoice.correction.reason}
+              </span>
+              <textarea
+                value={draft.correctionReason}
+                onChange={(e) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    correctionReason: e.target.value
+                  }))
+                }
+                rows={2}
+                className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+            </label>
+          ) : null}
+          {invoice.correction?.period ? (
+            <label className="block">
+              <span className="text-micro text-text-muted">
+                {String(copy.editorCorrectionPeriodLabel)}
+              </span>
+              <span className="mt-1 block text-micro text-text-muted">
+                {invoice.correction.period}
+              </span>
+              <input
+                type="text"
+                value={draft.correctionPeriod}
+                onChange={(e) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    correctionPeriod: e.target.value
+                  }))
+                }
+                className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+            </label>
+          ) : null}
         </section>
       ) : null}
     </div>
