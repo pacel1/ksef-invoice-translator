@@ -43,7 +43,7 @@ export default async function TranslatePage({
   const sidebarStartsCollapsed = Boolean(preloaded);
 
   return (
-    <div className="-mx-5 -my-8 flex min-h-[calc(100vh-72px)] md:-mx-8">
+    <div className="-mx-5 -my-8 flex md:-mx-8">
       <RecentInvoicesSidebar
         userId={user.id}
         uiLanguage={uiLanguage}

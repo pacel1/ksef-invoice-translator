@@ -24,7 +24,7 @@ export default async function TranslateHistoryRoute() {
   });
 
   return (
-    <div className="-mx-5 -my-8 flex min-h-[calc(100vh-72px)] md:-mx-8">
+    <div className="-mx-5 -my-8 flex md:-mx-8">
       <RecentInvoicesSidebar userId={user.id} uiLanguage={uiLanguage} />
       <main className="flex-1 overflow-x-hidden px-5 py-8 md:px-8">
         <HistoryPage initialData={initialData} locale={uiLanguage} />
