@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Download, Languages, Pencil, Plus } from "lucide-react";
+import { TranslationEditor } from "./translation-editor";
 import type { Copy } from "@/lib/workspace/copy";
 import { languageNamesByUi } from "@/lib/translation/languages";
 import type { LanguageCode } from "@/types/invoice";
@@ -52,6 +53,11 @@ function DeliverySingle(props: DeliveryStepProps) {
   const langLabel =
     (languageNamesByUi.pl as Record<string, string>)[language] ?? language;
 
+  const [editorOpen, setEditorOpen] = useState(false);
+  // Bumped after every Save in the editor — keys the iframe so it
+  // remounts with a fresh PDF blob URL.
+  const [previewVersion, setPreviewVersion] = useState(0);
+
   const download = useCallback(async () => {
     if (!item) return;
     const blob = await api.generatePdf(item.invoiceId, language, bilingual);
@@ -99,16 +105,14 @@ function DeliverySingle(props: DeliveryStepProps) {
             <Download className="h-4 w-4" aria-hidden="true" />
             {String(copy.downloadPdfCta)}
           </button>
-          {props.onEdit ? (
-            <button
-              type="button"
-              onClick={() => props.onEdit?.(item.invoiceId)}
-              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-5 text-small font-medium text-text-strong shadow-sm hover:bg-surface-muted"
-            >
-              <Pencil className="h-4 w-4" aria-hidden="true" />
-              {String(copy.editTranslationCta)}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => setEditorOpen(true)}
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-5 text-small font-medium text-text-strong shadow-sm hover:bg-surface-muted"
+          >
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+            {String(copy.editTranslationCta)}
+          </button>
           <button
             type="button"
             onClick={props.onChangeLanguage}
@@ -129,10 +133,28 @@ function DeliverySingle(props: DeliveryStepProps) {
       </header>
 
       {/* Preview fills the remaining viewport height. The iframe inside
-          gets browser-native PDF controls (zoom, page nav, print, save). */}
+          gets browser-native PDF controls (zoom, page nav, print, save).
+          The previewVersion key forces a remount after every editor save
+          so the iframe re-fetches the regenerated PDF. */}
       <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-surface-muted shadow-sm">
-        <PdfPreview api={api} item={item} language={language} bilingual={bilingual} />
+        <PdfPreview
+          key={previewVersion}
+          api={api}
+          item={item}
+          language={language}
+          bilingual={bilingual}
+        />
       </div>
+
+      <TranslationEditor
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        invoiceId={item.invoiceId}
+        language={language}
+        bilingual={bilingual}
+        copy={copy}
+        onSaved={() => setPreviewVersion((v) => v + 1)}
+      />
     </div>
   );
 }
