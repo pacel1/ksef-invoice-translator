@@ -140,28 +140,21 @@ export function createDefaultWizardApi(): WizardApi {
       language: LanguageCode,
       bilingual: boolean
     ): Promise<Blob> {
-      // PR #B fallback: fetch every PDF in parallel and concatenate.
-      // PR #C replaces this with a server-side /api/translate/zip endpoint
-      // that streams a real ZIP archive.
-      const blobs = await Promise.all(
-        invoiceIds.map(async (id) => {
-          const res = await fetch("/api/pdf", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              invoiceId: id,
-              language,
-              bilingual,
-              translated: true
-            })
-          });
-          if (!res.ok) throw new Error("PDF generation failed");
-          return res.blob();
+      // Real server-side ZIP endpoint (PR #D). Posts the invoice id list,
+      // server fetches+translates+renders+zips, returns the archive blob.
+      const res = await fetch("/api/translate/zip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceIds: [...invoiceIds],
+          language,
+          bilingual
         })
-      );
-      // Cheap "zip" placeholder: just return the first PDF so the caller
-      // gets *something* downloadable. The real zip lands in PR #C.
-      return blobs[0] ?? new Blob();
+      });
+      if (!res.ok) {
+        throw new Error(`Zip download failed (${res.status})`);
+      }
+      return res.blob();
     }
   };
 }

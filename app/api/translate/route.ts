@@ -9,7 +9,8 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   InsufficientCreditError,
   assertCreditAvailable,
-  consumeCreditForInvoice
+  consumeCreditForInvoice,
+  refundTranslationCredit
 } from "@/lib/billing/credit-enforcement";
 import type { Invoice, LanguageCode } from "@/types/invoice";
 
@@ -113,13 +114,25 @@ async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
     }
   }
 
-  const result = await getOrCreateTranslation({
-    supabase: admin,
-    invoice: row.data.source_data as unknown as Invoice,
-    invoiceId: params.invoiceId,
-    language: params.language as LanguageCode,
-    bilingual: params.bilingual !== false
-  });
+  let result;
+  try {
+    result = await getOrCreateTranslation({
+      supabase: admin,
+      invoice: row.data.source_data as unknown as Invoice,
+      invoiceId: params.invoiceId,
+      language: params.language as LanguageCode,
+      bilingual: params.bilingual !== false
+    });
+  } catch (translationError) {
+    // Translation engine failed — under TRANSLATE_V2, no credit has been
+    // consumed yet (consume runs only AFTER the engine returns), so no
+    // refund needed here.
+    console.error("[api/translate] translation engine failed:", translationError);
+    return NextResponse.json(
+      { error: "Translation failed", code: "translation_failed" },
+      { status: 502 }
+    );
+  }
 
   // Consume credit on cache-miss only. Cache hits stay free — that's the
   // "Z cache — bez opłaty" badge in the wizard UI.
@@ -132,15 +145,29 @@ async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
       });
     } catch (error) {
       if (error instanceof InsufficientCreditError) {
+        // Race: balance drained between pre-check and consume. The
+        // translation already ran (and was cached); we refund the implicit
+        // free use by deleting the translation row would be wrong (someone
+        // else might consume it). Just surface the 402 — the work is
+        // effectively donated.
         return NextResponse.json(
           { error: "Out of credits", code: "insufficient_credit" },
           { status: 402 }
         );
       }
       console.error("[api/translate] credit consumption failed:", error);
-      // The translation itself succeeded — return it. Future: PR #D adds
-      // explicit refund-on-failure via a dedicated SQL function so the
-      // consume + AI call can be reversed atomically on engine failure.
+
+      // Best-effort refund of any partial state — the consume call may have
+      // half-completed (insert + update split). The refund function is
+      // idempotent so this is safe to call even when nothing was consumed.
+      await refundTranslationCredit({
+        supabase: admin,
+        userId: userData.user.id,
+        invoiceId: params.invoiceId
+      }).catch((refundError) => {
+        console.error("[api/translate] refund attempt failed:", refundError);
+      });
+      // The translation itself succeeded — return it; we won't double-bill.
     }
   }
 

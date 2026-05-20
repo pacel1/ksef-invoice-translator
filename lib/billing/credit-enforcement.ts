@@ -74,3 +74,39 @@ export async function consumeCreditForInvoice({
     throw new Error("Failed to consume credit");
   }
 }
+
+export interface RefundOptions {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  invoiceId: string;
+}
+
+/**
+ * Reverses a per-invoice consume by inserting a refund ledger row and
+ * restoring the bucket the consume hit (free or paid).
+ *
+ * Idempotent at the SQL level — the function checks for a prior
+ * 'refund_translation' row for the same (user, invoice) pair and no-ops
+ * if found. Returns `true` if a refund was applied, `false` if the call
+ * was a no-op (already refunded, or no matching consume).
+ *
+ * Used by /api/translate when the translation engine fails after retries
+ * — the user shouldn't pay for an OpenAI 500.
+ */
+export async function refundTranslationCredit({
+  supabase,
+  userId,
+  invoiceId
+}: RefundOptions): Promise<boolean> {
+  const result = await supabase.rpc("refund_translation_credit", {
+    p_user: userId,
+    p_invoice: invoiceId
+  });
+
+  if (result.error) {
+    console.error("[credit] refund_translation_credit failed:", result.error);
+    throw new Error("Failed to refund credit");
+  }
+  // The SQL function returns boolean; PostgREST surfaces it as `data`.
+  return result.data === true;
+}
