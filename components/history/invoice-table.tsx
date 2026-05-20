@@ -17,9 +17,12 @@ export interface InvoiceTableProps {
   labels: InvoiceTableLabels;
 }
 
-function formatAmount(cents: number | null, currency: string | null): string {
-  if (cents === null || currency === null) return "—";
-  return `${(cents / 100).toFixed(2).replace(".", ",")} ${currency}`;
+function formatAmount(value: number | null, currency: string | null): string {
+  // invoices.total_gross is stored as the actual decimal PLN amount
+  // (e.g. 18597.60), NOT as integer cents — unlike the marketing
+  // pricing tables which use cents for Stripe rounding. No /100 here.
+  if (value === null || currency === null) return "—";
+  return `${value.toFixed(2).replace(".", ",")} ${currency}`;
 }
 
 export function InvoiceTable({ rows, labels }: InvoiceTableProps) {

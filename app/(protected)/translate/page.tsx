@@ -58,7 +58,13 @@ export default async function TranslatePage({
           buyLabel={String(t.buyCredits)}
           closeLabel={String(t.close)}
         />
+        {/* Keying by invoiceId (or 'fresh') forces a remount whenever the
+            user navigates between /translate and /translate?invoiceId=…
+            URLs — useReducer's lazy initial state only fires on mount, so
+            without the key the wizard would keep the previous step state
+            even though a new preloaded prop arrived. */}
         <TranslatorWizardClient
+          key={preloaded?.invoiceId ?? "fresh"}
           uiLanguage={uiLanguage}
           initialBalance={totalCredits}
           preloaded={preloaded}
