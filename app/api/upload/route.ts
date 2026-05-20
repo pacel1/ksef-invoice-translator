@@ -10,6 +10,17 @@ import {
 
 export const runtime = "nodejs";
 
+/**
+ * Tłumacz redesign flag (spec §6.2). When set to "1":
+ *   - This endpoint stops consuming credit at upload time.
+ *   - /api/translate consumes one credit per cache-miss instead.
+ *
+ * Off by default → behavior identical to pre-redesign so the legacy
+ * /app workspace keeps working unchanged. PR #E flips this flag on
+ * permanently and then deletes the conditional below.
+ */
+const TRANSLATE_V2 = process.env.NEXT_PUBLIC_TRANSLATE_V2 === "1";
+
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const { data: userData, error: authError } = await supabase.auth.getUser();
@@ -20,17 +31,21 @@ export async function POST(request: NextRequest) {
   const admin = getSupabaseAdminClient();
 
   // Pre-check: refuse fast (HTTP 402) if the user has zero credits, before parsing.
-  try {
-    await assertCreditAvailable({ supabase: admin, userId: userData.user.id });
-  } catch (error) {
-    if (error instanceof InsufficientCreditError) {
-      return NextResponse.json(
-        { error: "Out of credits", code: "insufficient_credit" },
-        { status: 402 }
-      );
+  // Under TRANSLATE_V2 the gate moves to /api/translate (consumption is metered
+  // there), so we skip the pre-check entirely — uploading is free reconnaissance.
+  if (!TRANSLATE_V2) {
+    try {
+      await assertCreditAvailable({ supabase: admin, userId: userData.user.id });
+    } catch (error) {
+      if (error instanceof InsufficientCreditError) {
+        return NextResponse.json(
+          { error: "Out of credits", code: "insufficient_credit" },
+          { status: 402 }
+        );
+      }
+      console.error("[api/upload] credit pre-check failed:", error);
+      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
-    console.error("[api/upload] credit pre-check failed:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 
   let formData: FormData;
@@ -61,7 +76,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Only consume a credit for genuinely new invoices. Dedupe hits cost nothing.
-  if (result.isNew) {
+  // Under TRANSLATE_V2 the consumption moves to /api/translate cache-miss, so
+  // this block is skipped (upload is now free; translation pays).
+  if (!TRANSLATE_V2 && result.isNew) {
     try {
       await consumeCreditForInvoice({
         supabase: admin,
