@@ -26,24 +26,29 @@ const sample: InvoiceSummary[] = [
   }
 ];
 
+// Post-cutover labels (PR #E) — sidebar now points at /translate.
 const baseLabels = {
-  newInvoiceLabel: "+ Nowa faktura",
+  newInvoiceLabel: "+ Nowe tłumaczenie",
   recentHeading: "Ostatnie",
-  allArchive: "Cały archiwum",
+  allArchive: "Historia",
   helpLabel: "Pomoc",
   contactLabel: "Kontakt"
 };
 
 describe("<RecentInvoicesSidebarView>", () => {
-  it("renders the New Invoice CTA", () => {
+  it("renders the New Translation CTA pointing at /translate", () => {
     render(<RecentInvoicesSidebarView invoices={[]} labels={baseLabels} />);
-    expect(screen.getByRole("link", { name: /Nowa faktura/i })).toHaveAttribute("href", "/app");
+    expect(
+      screen.getByRole("link", { name: /Nowe tłumaczenie/i })
+    ).toHaveAttribute("href", "/translate");
   });
 
-  it("renders the Recent heading + Full archive link", () => {
+  it("renders the Recent heading + Historia link pointing at /translate/history", () => {
     render(<RecentInvoicesSidebarView invoices={sample} labels={baseLabels} />);
     expect(screen.getByText(/Ostatnie/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Cały archiwum/i })).toHaveAttribute("href", "/app/history");
+    expect(
+      screen.getByRole("link", { name: /Historia/i })
+    ).toHaveAttribute("href", "/translate/history");
   });
 
   it("renders each invoice with number and translated language pills", () => {

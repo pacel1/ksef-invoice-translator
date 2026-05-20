@@ -2,22 +2,13 @@ import path from "node:path";
 import { admin, expect, signIn, test } from "./helpers/auth";
 
 /**
- * E2E happy paths for the new Tłumacz wizard (spec §10).
- *
- * Runs require NEXT_PUBLIC_TRANSLATE_V2=1 in the env so /translate doesn't
- * redirect to /app. The Playwright config spawns npm run dev, which reads
- * process.env at boot — set the flag before invoking `npm run test:e2e`.
- *
- * Each test skips gracefully if the flag isn't set so the suite stays
- * green for contributors who haven't opted in.
+ * E2E happy paths for the Tłumacz wizard (spec §10). Post-cutover (PR #E)
+ * the flag is gone and /translate is the canonical authoring surface.
  */
 
 const samplePath = path.resolve(process.cwd(), "sample-data/sample-fa3-invoice.xml");
-const FLAG_ON = process.env.NEXT_PUBLIC_TRANSLATE_V2 === "1";
 
 test.describe("Tłumacz wizard — happy paths", () => {
-  test.skip(!FLAG_ON, "NEXT_PUBLIC_TRANSLATE_V2=1 not set; wizard route redirects to /app");
-
   test("Step 1 → Step 2 → Step 3 single-file flow", async ({ page, testUser }) => {
     await signIn(page, testUser.email);
     await page.goto("/translate");

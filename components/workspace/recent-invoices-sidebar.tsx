@@ -27,19 +27,23 @@ const RECENT_LIMIT = 5;
  */
 export async function RecentInvoicesSidebar({ userId, uiLanguage }: RecentInvoicesSidebarProps) {
   const invoices = await getRecentInvoices(userId, RECENT_LIMIT);
+  // Cutover relabels (spec §4) — sidebar now points at /translate, with
+  // the action-oriented "Nowe tłumaczenie" replacing "Nowa faktura" and
+  // a clean "Historia" (was "Cały archiwum" which had a Polish grammar
+  // bug — neuter noun "archiwum" needed neuter "Całe").
   const labels: RecentInvoicesSidebarLabels =
     uiLanguage === "pl"
       ? {
-          newInvoiceLabel: "+ Nowa faktura",
+          newInvoiceLabel: "+ Nowe tłumaczenie",
           recentHeading: "Ostatnie",
-          allArchive: "Cały archiwum",
+          allArchive: "Historia",
           helpLabel: "Pomoc",
           contactLabel: "Kontakt"
         }
       : {
-          newInvoiceLabel: "+ New invoice",
+          newInvoiceLabel: "+ New translation",
           recentHeading: "Recent",
-          allArchive: "Full archive",
+          allArchive: "History",
           helpLabel: "Help",
           contactLabel: "Contact"
         };
@@ -55,8 +59,8 @@ export function RecentInvoicesSidebarView({ invoices, labels }: RecentInvoicesSi
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface-muted/60 py-6 md:flex">
       <div className="px-4">
         <Link
-          href="/app"
-          className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md bg-accent px-4 text-small font-semibold text-white shadow-sm transition-colors duration-hover ease-out hover:bg-accent-hover"
+          href="/translate"
+          className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1 rounded-md bg-accent px-4 text-small font-semibold text-white shadow-sm transition-colors duration-hover ease-out hover:bg-accent-hover"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           {labels.newInvoiceLabel.replace(/^\+\s*/, "")}
@@ -94,8 +98,8 @@ export function RecentInvoicesSidebarView({ invoices, labels }: RecentInvoicesSi
         </ul>
         <div className="mt-4">
           <Link
-            href="/app/history"
-            className="inline-flex text-small font-medium text-accent hover:text-accent-hover"
+            href="/translate/history"
+            className="inline-flex cursor-pointer text-small font-medium text-accent hover:text-accent-hover"
           >
             {labels.allArchive} →
           </Link>

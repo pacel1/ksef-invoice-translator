@@ -12,7 +12,10 @@ async function generateTokenHash(email: string): Promise<string> {
   return data.properties.hashed_token;
 }
 
-test("sign in via magic link lands on /app", async ({ page, testUser }) => {
+test("sign in via magic link lands on /translate (post-cutover)", async ({
+  page,
+  testUser
+}) => {
   // Intercept the Supabase OTP request so the form sees a success response
   // without requiring a resolvable email domain on the remote project.
   await page.route(/\/auth\/v1\/otp/, async (route) => {
@@ -32,11 +35,12 @@ test("sign in via magic link lands on /app", async ({ page, testUser }) => {
 
   // Generate the token hash admin-side and navigate to /auth/callback with it.
   // The callback route calls verifyOtp(token_hash) server-side, which sets the
-  // session cookie and redirects to /app — exercising the full auth middleware.
+  // session cookie and redirects to /app — which now permanent-redirects to
+  // /translate post-cutover (PR #E). Accept either landing URL.
   const tokenHash = await generateTokenHash(testUser.email);
   await page.goto(`/auth/callback?token_hash=${tokenHash}&type=email`);
 
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL(/\/(app|translate)$/);
   await expect(page.getByText(testUser.email)).toBeVisible();
 });
 

@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { TranslatorWizardClient } from "@/components/translate/translator-wizard-client";
 import { LowBalanceBanner } from "@/components/billing/low-balance-banner";
 import { RecentInvoicesSidebar } from "@/components/workspace/recent-invoices-sidebar";
@@ -8,16 +7,13 @@ import { getCurrentBalance } from "@/lib/billing/get-current-balance";
 import { copy } from "@/lib/workspace/copy";
 
 /**
- * New Tłumacz wizard route — see specs/2026-05-20-tlumacz-workspace-redesign.md.
+ * Tłumacz wizard route — see specs/2026-05-20-tlumacz-workspace-redesign.md.
  *
- * Flag-gated under NEXT_PUBLIC_TRANSLATE_V2. Off by default — falls back to
- * the legacy /app workspace until the cutover PR (#E) flips it on.
+ * Cutover landed in PR #E (2026-05-20): the NEXT_PUBLIC_TRANSLATE_V2 flag
+ * is gone, this is the canonical authoring surface, and /app now permanent-
+ * redirects here.
  */
-const FLAG_ON = process.env.NEXT_PUBLIC_TRANSLATE_V2 === "1";
-
 export default async function TranslatePage() {
-  if (!FLAG_ON) redirect("/app");
-
   const user = await requireUser();
   const { uiLanguage } = await getCurrentProfile(user.id);
   const balance = await getCurrentBalance(user.id);

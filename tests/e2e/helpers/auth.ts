@@ -40,7 +40,10 @@ export async function signIn(page: Page, email: string) {
   await page.goto(
     `/auth/callback?token_hash=${data.properties.hashed_token}&type=email`
   );
-  await expect(page).toHaveURL(/\/app$/);
+  // Post-callback the middleware lands authenticated users at /app — which
+  // now permanent-redirects to /translate after the Tłumacz cutover (PR #E).
+  // Accept either while the redirect is in flight.
+  await expect(page).toHaveURL(/\/(app|translate)$/);
 }
 
 /**
