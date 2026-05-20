@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, Languages, Plus } from "lucide-react";
+import { Download, Languages, Pencil, Plus } from "lucide-react";
+import { TranslationEditor } from "./translation-editor";
+import { TranslationProgress } from "./translation-progress";
 import type { Copy } from "@/lib/workspace/copy";
 import { languageNamesByUi } from "@/lib/translation/languages";
 import type { LanguageCode } from "@/types/invoice";
@@ -20,6 +22,8 @@ export interface DeliveryStepProps {
   onRetryItem: (fileSlotId: string) => Promise<void> | void;
   onChangeLanguage: () => void;
   onNewTranslation: () => void;
+  /** Optional — when provided, the single-file view renders an "Edytuj" CTA. */
+  onEdit?: (invoiceId: string) => void;
 }
 
 /**
@@ -50,6 +54,11 @@ function DeliverySingle(props: DeliveryStepProps) {
   const langLabel =
     (languageNamesByUi.pl as Record<string, string>)[language] ?? language;
 
+  const [editorOpen, setEditorOpen] = useState(false);
+  // Bumped after every Save in the editor — keys the iframe so it
+  // remounts with a fresh PDF blob URL.
+  const [previewVersion, setPreviewVersion] = useState(0);
+
   const download = useCallback(async () => {
     if (!item) return;
     const blob = await api.generatePdf(item.invoiceId, language, bilingual);
@@ -67,53 +76,119 @@ function DeliverySingle(props: DeliveryStepProps) {
     );
   }
 
+  // While the translation is in flight (or has just errored) we don't
+  // have a stable PDF to preview yet. Swap in <TranslationProgress>
+  // which shows an indeterminate bar + elapsed counter + cancel CTA.
+  // Only render the iframe path once the item is fully 'done'.
+  if (item.status === "queued" || item.status === "translating") {
+    return (
+      <TranslationProgress
+        item={item}
+        copy={copy}
+        languageLabel={langLabel}
+        bilingual={bilingual}
+        onCancel={props.onCancelBatch}
+        onRetry={(slotId) => void props.onRetryItem(slotId)}
+        onChangeLanguage={props.onChangeLanguage}
+        onNewTranslation={props.onNewTranslation}
+      />
+    );
+  }
+  if (item.status === "error") {
+    return (
+      <TranslationProgress
+        item={item}
+        copy={copy}
+        languageLabel={langLabel}
+        bilingual={bilingual}
+        onCancel={props.onCancelBatch}
+        onRetry={(slotId) => void props.onRetryItem(slotId)}
+        onChangeLanguage={props.onChangeLanguage}
+        onNewTranslation={props.onNewTranslation}
+      />
+    );
+  }
+
   return (
-    <div data-testid="delivery-single" className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <h1 className="text-h2 text-text-strong">
-            {String(copy.deliveryReadyTitle)}
-          </h1>
-          <p className="text-small text-text-muted">
+    <div
+      data-testid="delivery-single"
+      className="flex h-[calc(100vh-9rem)] flex-col gap-3"
+    >
+      {/* Sticky action bar — title + CTAs above the fold. The preview
+          scrolls inside the next container, so these buttons remain
+          accessible regardless of how long the invoice runs. */}
+      <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface pb-3">
+        <div className="min-w-0">
+          <h1 className="truncate text-h3 text-text-strong">
             {item.invoiceNumber} · {langLabel}
             {bilingual ? ` ${String(copy.deliveryBatchBilingual)}` : ""}
+          </h1>
+          <p className="text-small text-text-muted">
+            {String(copy.deliveryReadyTitle)} ·{" "}
+            <span className="text-success">
+              ✓ {String(copy.deliveryReadySaved)}
+            </span>
           </p>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-3 py-1 text-small font-medium text-success">
-          ✓ {String(copy.deliveryReadySaved)}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void download()}
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-accent px-5 text-small font-semibold text-white shadow-sm hover:bg-accent-hover"
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+            {String(copy.downloadPdfCta)}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditorOpen(true)}
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-5 text-small font-medium text-text-strong shadow-sm hover:bg-surface-muted"
+          >
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+            {String(copy.editTranslationCta)}
+          </button>
+          <button
+            type="button"
+            onClick={props.onChangeLanguage}
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-5 text-small font-medium text-text-strong shadow-sm hover:bg-surface-muted"
+          >
+            <Languages className="h-4 w-4" aria-hidden="true" />
+            {String(copy.changeLanguageCta)}
+          </button>
+          <button
+            type="button"
+            onClick={props.onNewTranslation}
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-5 text-small font-medium text-text-muted shadow-sm hover:bg-surface-muted"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            {String(copy.newTranslationCta)}
+          </button>
+        </div>
       </header>
 
-      <div className="aspect-[1/1.414] w-full max-w-3xl rounded-xl border border-border bg-surface-muted shadow-sm">
-        <PdfPreview api={api} item={item} language={language} bilingual={bilingual} />
+      {/* Preview fills the remaining viewport height. The iframe inside
+          gets browser-native PDF controls (zoom, page nav, print, save).
+          The previewVersion key forces a remount after every editor save
+          so the iframe re-fetches the regenerated PDF. */}
+      <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-surface-muted shadow-sm">
+        <PdfPreview
+          key={previewVersion}
+          api={api}
+          item={item}
+          language={language}
+          bilingual={bilingual}
+        />
       </div>
 
-      <footer className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => void download()}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-accent px-5 text-small font-semibold text-white shadow-sm hover:bg-accent-hover"
-        >
-          <Download className="h-4 w-4" aria-hidden="true" />
-          {String(copy.downloadPdfCta)}
-        </button>
-        <button
-          type="button"
-          onClick={props.onChangeLanguage}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-5 text-small font-medium text-text-strong shadow-sm hover:bg-surface-muted"
-        >
-          <Languages className="h-4 w-4" aria-hidden="true" />
-          {String(copy.changeLanguageCta)}
-        </button>
-        <button
-          type="button"
-          onClick={props.onNewTranslation}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-5 text-small font-medium text-text-muted shadow-sm hover:bg-surface-muted"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          {String(copy.newTranslationCta)}
-        </button>
-      </footer>
+      <TranslationEditor
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        invoiceId={item.invoiceId}
+        language={language}
+        bilingual={bilingual}
+        copy={copy}
+        onSaved={() => setPreviewVersion((v) => v + 1)}
+      />
     </div>
   );
 }
@@ -185,47 +260,78 @@ function DeliveryBatch(props: DeliveryStepProps) {
 
   return (
     <div data-testid="delivery-batch" className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-h2 text-text-strong">
-          {title}
-          {bilingual ? ` ${String(copy.deliveryBatchBilingual)}` : ""}
-        </h1>
-        {inflight ? (
+      {/* Sticky-feeling action bar: title + global controls grouped at the
+          top so the user doesn't have to scroll past every row to find
+          'Pobierz wszystkie' or 'Nowe tłumaczenie'. */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+        <div className="min-w-0">
+          <h1 className="truncate text-h3 text-text-strong">
+            {title}
+            {bilingual ? ` ${String(copy.deliveryBatchBilingual)}` : ""}
+          </h1>
+          <p className="text-small text-text-muted">{progressCopy}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {inflight ? (
+            <button
+              type="button"
+              onClick={props.onCancelBatch}
+              className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-danger bg-surface px-4 text-small font-medium text-danger hover:bg-danger/5"
+            >
+              {String(copy.cancelBatchCta)}
+            </button>
+          ) : cancelled ? (
+            <button
+              type="button"
+              onClick={() => void props.onResumeBatch()}
+              className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-accent bg-surface px-4 text-small font-medium text-accent hover:bg-accent-soft"
+            >
+              {String(copy.resumeBatchCta)}
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={props.onCancelBatch}
-            className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-danger bg-surface px-4 text-small font-medium text-danger hover:bg-danger/5"
+            onClick={() => void downloadZip()}
+            disabled={done === 0}
+            className={cn(
+              "inline-flex h-10 items-center gap-2 rounded-md bg-accent px-5 text-small font-semibold text-white shadow-sm hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-border disabled:text-text-muted",
+              done > 0 && "cursor-pointer"
+            )}
           >
-            {String(copy.cancelBatchCta)}
+            <Download className="h-4 w-4" aria-hidden="true" />
+            {String(copy.downloadAllZipCta)}
           </button>
-        ) : cancelled ? (
           <button
             type="button"
-            onClick={() => void props.onResumeBatch()}
-            className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-accent bg-surface px-4 text-small font-medium text-accent hover:bg-accent-soft"
+            onClick={props.onChangeLanguage}
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-5 text-small font-medium text-text-strong shadow-sm hover:bg-surface-muted"
           >
-            {String(copy.resumeBatchCta)}
+            <Languages className="h-4 w-4" aria-hidden="true" />
+            {String(copy.translateAgainCta)}
           </button>
-        ) : null}
+          <button
+            type="button"
+            onClick={props.onNewTranslation}
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-5 text-small font-medium text-text-muted shadow-sm hover:bg-surface-muted"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            {String(copy.newTranslationCta)}
+          </button>
+        </div>
       </header>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between text-small text-text-muted">
-          <span>{progressCopy}</span>
-        </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
-          <div
-            className="h-full bg-accent transition-all"
-            style={{
-              width: total === 0 ? "0%" : `${Math.round((done / total) * 100)}%`
-            }}
-            role="progressbar"
-            aria-valuenow={done}
-            aria-valuemin={0}
-            aria-valuemax={total}
-            aria-valuetext={progressCopy}
-          />
-        </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
+        <div
+          className="h-full bg-accent transition-all"
+          style={{
+            width: total === 0 ? "0%" : `${Math.round((done / total) * 100)}%`
+          }}
+          role="progressbar"
+          aria-valuenow={done}
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuetext={progressCopy}
+        />
       </div>
 
       <ul className="flex flex-col gap-2">
@@ -241,36 +347,6 @@ function DeliveryBatch(props: DeliveryStepProps) {
         ))}
       </ul>
 
-      <footer className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => void downloadZip()}
-          disabled={done === 0}
-          className={cn(
-            "inline-flex h-10 items-center gap-2 rounded-md bg-accent px-5 text-small font-semibold text-white shadow-sm hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-border disabled:text-text-muted",
-            done > 0 && "cursor-pointer"
-          )}
-        >
-          <Download className="h-4 w-4" aria-hidden="true" />
-          {String(copy.downloadAllZipCta)}
-        </button>
-        <button
-          type="button"
-          onClick={props.onChangeLanguage}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-5 text-small font-medium text-text-strong shadow-sm hover:bg-surface-muted"
-        >
-          <Languages className="h-4 w-4" aria-hidden="true" />
-          {String(copy.translateAgainCta)}
-        </button>
-        <button
-          type="button"
-          onClick={props.onNewTranslation}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-5 text-small font-medium text-text-muted shadow-sm hover:bg-surface-muted"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          {String(copy.newTranslationCta)}
-        </button>
-      </footer>
     </div>
   );
 }

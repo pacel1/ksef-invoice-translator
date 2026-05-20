@@ -4,6 +4,8 @@ import { RecentInvoicesSidebar } from "@/components/workspace/recent-invoices-si
 import { requireUser } from "@/lib/auth/require-user";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { getCurrentBalance } from "@/lib/billing/get-current-balance";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { loadPreloadedInvoice } from "@/lib/invoice/preloaded-invoice";
 import { copy } from "@/lib/workspace/copy";
 
 /**
@@ -13,7 +15,11 @@ import { copy } from "@/lib/workspace/copy";
  * is gone, this is the canonical authoring surface, and /app now permanent-
  * redirects here.
  */
-export default async function TranslatePage() {
+export default async function TranslatePage({
+  searchParams
+}: {
+  searchParams?: Promise<{ invoiceId?: string }>;
+}) {
   const user = await requireUser();
   const { uiLanguage } = await getCurrentProfile(user.id);
   const balance = await getCurrentBalance(user.id);
@@ -22,9 +28,27 @@ export default async function TranslatePage() {
   // Total credits the user has access to right now (free remainder + paid pool).
   const totalCredits = balance.freeCreditsRemaining + balance.paidCredits;
 
+  // ?invoiceId=… → user clicked a row in the Recent sidebar or History page
+  // and wants to jump back into a saved translation. The wizard hydrates
+  // into Step 3 if a cached translation exists, else Step 2 with the file
+  // pre-attached. Either way, give the sidebar's collapse default a hint
+  // so the preview gets full width by default.
+  const params = (await searchParams) ?? {};
+  const candidateInvoiceId = params.invoiceId?.match(/^[0-9a-f-]{36}$/i)
+    ? params.invoiceId
+    : undefined;
+  const preloaded = candidateInvoiceId
+    ? await loadPreloadedInvoice(await createSupabaseServerClient(), candidateInvoiceId)
+    : null;
+  const sidebarStartsCollapsed = Boolean(preloaded);
+
   return (
     <div className="-mx-5 -my-8 flex min-h-[calc(100vh-72px)] md:-mx-8">
-      <RecentInvoicesSidebar userId={user.id} uiLanguage={uiLanguage} />
+      <RecentInvoicesSidebar
+        userId={user.id}
+        uiLanguage={uiLanguage}
+        defaultCollapsed={sidebarStartsCollapsed}
+      />
       <main className="flex-1 overflow-x-hidden px-5 py-8 md:px-8">
         <LowBalanceBanner
           initialFree={balance.freeCreditsRemaining}
@@ -37,6 +61,7 @@ export default async function TranslatePage() {
         <TranslatorWizardClient
           uiLanguage={uiLanguage}
           initialBalance={totalCredits}
+          preloaded={preloaded}
         />
       </main>
     </div>

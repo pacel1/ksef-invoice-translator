@@ -451,6 +451,13 @@ export function useTranslationWizard({
           durationMs: Date.now() - startedAt,
           creditConsumed: !result.cacheHit
         });
+        // Tell the topbar BalanceChip + any other listener to refetch the
+        // balance — fresh translations (cache miss) consume one credit
+        // server-side; UI needs to know to update. Cache hits don't bill
+        // so we skip the event for those.
+        if (!result.cacheHit && typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("credit-balance-changed"));
+        }
       } else {
         patchJobItem(item.fileSlotId, {
           status: "error",

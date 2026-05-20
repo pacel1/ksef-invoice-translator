@@ -88,8 +88,8 @@ export function InvoiceTable({ rows, labels }: InvoiceTableProps) {
               </td>
               <td className="px-5 py-3 text-right">
                 <Link
-                  href="/app"
-                  className="text-small font-medium text-accent hover:text-accent-hover"
+                  href={`/translate?invoiceId=${row.id}`}
+                  className="cursor-pointer text-small font-medium text-accent hover:text-accent-hover"
                 >
                   {labels.openLabel} →
                 </Link>

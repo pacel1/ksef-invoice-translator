@@ -71,6 +71,20 @@ const config: Config = {
         small: ["14px", { lineHeight: "20px", fontWeight: "400" }],
         micro: ["12px", { lineHeight: "16px", fontWeight: "500" }],
         "number-xl": ["56px", { lineHeight: "64px", fontWeight: "600" }]
+      },
+      // Indeterminate progress bar used by <TranslationProgress> on the
+      // single-file delivery view (spec follow-up 2026-05-20). Slides a
+      // 1/3-width bar across the track repeatedly — clearer "activity"
+      // signal than a spinner alone when waiting on long translations.
+      keyframes: {
+        "translate-progress": {
+          "0%": { transform: "translateX(-100%)" },
+          "60%": { transform: "translateX(220%)" },
+          "100%": { transform: "translateX(220%)" }
+        }
+      },
+      animation: {
+        "translate-progress": "translate-progress 1.6s ease-in-out infinite"
       }
     }
   },
