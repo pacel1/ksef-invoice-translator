@@ -2,25 +2,19 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { uploadInvoiceForUser, UploadError } from "@/lib/invoice/upload-service";
-import {
-  InsufficientCreditError,
-  assertCreditAvailable,
-  consumeCreditForInvoice
-} from "@/lib/billing/credit-enforcement";
 
 export const runtime = "nodejs";
 
 /**
- * Tłumacz redesign flag (spec §6.2). When set to "1":
- *   - This endpoint stops consuming credit at upload time.
- *   - /api/translate consumes one credit per cache-miss instead.
+ * Single-file upload endpoint. Kept for backward compatibility with
+ * anything still posting to /api/upload directly (mobile clients,
+ * webhooks, the legacy /app code path that the cutover redirected away
+ * from). New code should use POST /api/upload-batch — even with a single
+ * file — for consistency with the wizard.
  *
- * Off by default → behavior identical to pre-redesign so the legacy
- * /app workspace keeps working unchanged. PR #E flips this flag on
- * permanently and then deletes the conditional below.
+ * Per the Tłumacz redesign cutover (PR #E), this endpoint no longer
+ * consumes credit. Credit consumption lives at /api/translate cache-miss.
  */
-const TRANSLATE_V2 = process.env.NEXT_PUBLIC_TRANSLATE_V2 === "1";
-
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const { data: userData, error: authError } = await supabase.auth.getUser();
@@ -29,24 +23,6 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = getSupabaseAdminClient();
-
-  // Pre-check: refuse fast (HTTP 402) if the user has zero credits, before parsing.
-  // Under TRANSLATE_V2 the gate moves to /api/translate (consumption is metered
-  // there), so we skip the pre-check entirely — uploading is free reconnaissance.
-  if (!TRANSLATE_V2) {
-    try {
-      await assertCreditAvailable({ supabase: admin, userId: userData.user.id });
-    } catch (error) {
-      if (error instanceof InsufficientCreditError) {
-        return NextResponse.json(
-          { error: "Out of credits", code: "insufficient_credit" },
-          { status: 402 }
-        );
-      }
-      console.error("[api/upload] credit pre-check failed:", error);
-      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
-    }
-  }
 
   let formData: FormData;
   try {
@@ -75,34 +51,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 
-  // Only consume a credit for genuinely new invoices. Dedupe hits cost nothing.
-  // Under TRANSLATE_V2 the consumption moves to /api/translate cache-miss, so
-  // this block is skipped (upload is now free; translation pays).
-  if (!TRANSLATE_V2 && result.isNew) {
-    try {
-      await consumeCreditForInvoice({
-        supabase: admin,
-        userId: userData.user.id,
-        invoiceId: result.invoiceId
-      });
-    } catch (error) {
-      if (error instanceof InsufficientCreditError) {
-        // Race: another concurrent upload drained the balance between our pre-check
-        // and the consume. Soft-delete the just-inserted row so the user can retry
-        // cleanly after topping up.
-        await admin
-          .from("invoices")
-          .update({ deleted_at: new Date().toISOString() })
-          .eq("id", result.invoiceId);
-        return NextResponse.json(
-          { error: "Out of credits", code: "insufficient_credit" },
-          { status: 402 }
-        );
-      }
-      console.error("[api/upload] credit consumption failed:", error);
-      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
-    }
-  }
-
+  // Credit consumption moved to /api/translate cache-miss in PR #C and made
+  // permanent in PR #E. Upload is now free reconnaissance — parsing succeeds
+  // before any meter starts.
   return NextResponse.json(result);
 }

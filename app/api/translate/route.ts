@@ -15,16 +15,13 @@ import {
 import type { Invoice, LanguageCode } from "@/types/invoice";
 
 /**
- * Tłumacz redesign flag (spec §6.2). When "1":
- *   - This endpoint pre-checks credit before translating
- *   - Consumes exactly one credit per fresh translation (cache hits are
- *     still free — `cacheHit: true` in the response)
- *   - /api/upload stops consuming credit (credit lives here instead)
- *
- * Off by default → behavior identical to today (translation always free,
- * upload pays).
+ * Tłumacz redesign behavior (spec §6.2), made permanent in PR #E:
+ *   - Pre-checks credit before translating (fast 402 on dry)
+ *   - Consumes exactly one credit per fresh translation (cache hits stay
+ *     free — `cacheHit: true` in the response)
+ *   - /api/upload no longer consumes credit (the meter lives here)
+ *   - Refund on consume failure via refund_translation_credit SQL function
  */
-const TRANSLATE_V2 = process.env.NEXT_PUBLIC_TRANSLATE_V2 === "1";
 
 const cachedRequestSchema = z.object({
   invoiceId: z.string().uuid(),
@@ -86,32 +83,24 @@ async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
 
   // ─── Tłumacz credit gate ─────────────────────────────────────────────
   //
-  // When TRANSLATE_V2 is on, this endpoint is the metered surface. We
-  // pre-check balance BEFORE calling the (potentially slow) translation
-  // engine so the user gets a fast 402 instead of an OpenAI bill.
+  // This endpoint is the metered surface. Pre-check balance BEFORE calling
+  // the (potentially slow) translation engine so the user gets a fast 402
+  // instead of an OpenAI bill.
   //
-  // Consumption happens AFTER the cache lookup but BEFORE the AI call:
-  //   - cache hit  → no consume (response.cacheHit = true)
-  //   - cache miss → consume one credit, then translate
-  //
-  // The cache check is fast (single SELECT against translations table),
-  // and `getOrCreateTranslation` returns cached translations idempotently,
-  // so we run it twice when needed: once probing for cache (free), once
-  // for the actual work (paid). The translation-cache helper short-circuits
-  // on hit so the second call is essentially a no-op.
-  if (TRANSLATE_V2) {
-    try {
-      await assertCreditAvailable({ supabase: admin, userId: userData.user.id });
-    } catch (error) {
-      if (error instanceof InsufficientCreditError) {
-        return NextResponse.json(
-          { error: "Out of credits", code: "insufficient_credit" },
-          { status: 402 }
-        );
-      }
-      console.error("[api/translate] credit pre-check failed:", error);
-      return NextResponse.json({ error: "Translation failed" }, { status: 500 });
+  // Consumption happens AFTER getOrCreateTranslation returns — cache hits
+  // stay free (response.cacheHit=true), cache misses consume one credit
+  // and refund via refund_translation_credit on consume failure.
+  try {
+    await assertCreditAvailable({ supabase: admin, userId: userData.user.id });
+  } catch (error) {
+    if (error instanceof InsufficientCreditError) {
+      return NextResponse.json(
+        { error: "Out of credits", code: "insufficient_credit" },
+        { status: 402 }
+      );
     }
+    console.error("[api/translate] credit pre-check failed:", error);
+    return NextResponse.json({ error: "Translation failed" }, { status: 500 });
   }
 
   let result;
@@ -136,7 +125,7 @@ async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
 
   // Consume credit on cache-miss only. Cache hits stay free — that's the
   // "Z cache — bez opłaty" badge in the wizard UI.
-  if (TRANSLATE_V2 && !result.cached) {
+  if (!result.cached) {
     try {
       await consumeCreditForInvoice({
         supabase: admin,
