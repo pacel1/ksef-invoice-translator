@@ -11,65 +11,73 @@ import type { LanguageCode } from "@/types/invoice";
 /**
  * Production WizardApi wiring.
  *
- * PR #B ships this against the existing single-file endpoints:
- *   - `POST /api/upload`     for each file in a batch (sequential — PR #C
- *                            adds /api/upload-batch with parallel + 20-file cap)
- *   - `POST /api/translate`  → consumes credit, returns the invoice
- *   - `POST /api/pdf`        → returns the rendered PDF blob
- *   - downloadZip            → falls back to N individual downloads
- *
- * PR #C swaps `uploadBatch` + `downloadZip` for the real batch endpoints
- * and keeps the public interface stable.
+ * Endpoints (PR #C):
+ *   - `POST /api/upload-batch`  → multi-file multipart, per-file results,
+ *                                 cap of 20 files per call, no credit charge
+ *   - `POST /api/translate`     → consumes credit on cache-miss when
+ *                                 TRANSLATE_V2 is on; returns cacheHit flag
+ *   - `POST /api/pdf`           → returns the rendered PDF blob
+ *   - downloadZip               → temporary fallback (returns first PDF blob).
+ *                                 Replaced with `/api/translate/zip` in PR #D
+ *                                 once a zip dependency is added deliberately.
  */
 export function createDefaultWizardApi(): WizardApi {
   return {
     async uploadBatch(files): Promise<UploadBatchResponse> {
-      const results: UploadBatchResult[] = [];
+      // Single multipart POST — every file rides in one round-trip and
+      // the server returns per-file results so partial success doesn't
+      // poison the batch.
+      const fd = new FormData();
       for (const file of files) {
-        try {
-          const fd = new FormData();
-          fd.append("file", file);
-          const res = await fetch("/api/upload", { method: "POST", body: fd });
-          if (res.status === 402) {
-            results.push({
-              ok: false,
-              fileName: file.name,
-              error: "Insufficient credit"
-            });
-            continue;
-          }
-          const payload = (await res.json()) as {
-            invoiceId?: string;
-            invoice?: { invoiceNumber?: string };
-            warnings?: ReadonlyArray<string>;
-            isNew?: boolean;
-            error?: string;
-          };
-          if (!res.ok || !payload.invoiceId) {
-            results.push({
-              ok: false,
-              fileName: file.name,
-              error: payload.error ?? "Upload failed"
-            });
-            continue;
-          }
-          results.push({
-            ok: true,
-            fileName: file.name,
-            invoiceId: payload.invoiceId,
-            invoiceNumber: payload.invoice?.invoiceNumber ?? "",
-            warnings: payload.warnings ?? [],
-            isNew: payload.isNew ?? false
-          });
-        } catch (error) {
-          results.push({
-            ok: false,
-            fileName: file.name,
-            error: error instanceof Error ? error.message : "Upload failed"
-          });
-        }
+        fd.append("file", file);
       }
-      return { results };
+
+      let res: Response;
+      try {
+        res = await fetch("/api/upload-batch", {
+          method: "POST",
+          body: fd
+        });
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "Network error";
+        return {
+          results: files.map(
+            (file): UploadBatchResult => ({
+              ok: false,
+              fileName: file.name,
+              error: reason
+            })
+          )
+        };
+      }
+
+      if (res.status === 413) {
+        return {
+          results: files.map(
+            (file): UploadBatchResult => ({
+              ok: false,
+              fileName: file.name,
+              error: "Batch too large (max 20 files)"
+            })
+          )
+        };
+      }
+
+      if (!res.ok) {
+        const reason = `Upload failed (${res.status})`;
+        return {
+          results: files.map(
+            (file): UploadBatchResult => ({
+              ok: false,
+              fileName: file.name,
+              error: reason
+            })
+          )
+        };
+      }
+
+      const payload = (await res.json()) as UploadBatchResponse;
+      return payload;
     },
 
     async translate(
