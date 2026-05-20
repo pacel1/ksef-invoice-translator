@@ -14,13 +14,15 @@ const labels = {
   emptyMessage: "Brak faktur do wyświetlenia."
 };
 
+// invoices.total_gross is stored as a decimal PLN amount (not cents),
+// so a real-world '123.29 PLN' row stores total_gross = 123.29.
 const sample: InvoiceSummary[] = [
   {
     id: "i1",
     invoiceNumber: "F/24/0148",
     issueDate: "2026-05-12",
     sellerName: "ACME Sp. z o.o.",
-    totalGross: 12300,
+    totalGross: 18597.6,
     currency: "PLN",
     createdAt: "2026-05-12T10:00:00Z",
     translatedLanguages: ["en", "de"]
@@ -68,6 +70,14 @@ describe("<InvoiceTable>", () => {
     render(<InvoiceTable rows={sample} labels={labels} />);
     // Row 2 has nulls for sellerName, totalGross, currency
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+  });
+
+  it("renders the amount as stored (decimal PLN, NOT divided by 100)", () => {
+    // Regression test for the /100 bug that made 18597.60 render as 185.98
+    // — invoices.total_gross is decimal, not cents.
+    render(<InvoiceTable rows={sample} labels={labels} />);
+    expect(screen.getByText("18597,60 PLN")).toBeInTheDocument();
+    expect(screen.queryByText("185,98 PLN")).toBeNull();
   });
 
   it("renders an Open link per row pointing at /translate?invoiceId=...", () => {

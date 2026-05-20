@@ -43,7 +43,7 @@ export default async function TranslatePage({
   const sidebarStartsCollapsed = Boolean(preloaded);
 
   return (
-    <div className="-mx-5 -my-8 flex min-h-[calc(100vh-72px)] md:-mx-8">
+    <div className="-mx-5 -my-8 flex md:-mx-8">
       <RecentInvoicesSidebar
         userId={user.id}
         uiLanguage={uiLanguage}
@@ -58,7 +58,13 @@ export default async function TranslatePage({
           buyLabel={String(t.buyCredits)}
           closeLabel={String(t.close)}
         />
+        {/* Keying by invoiceId (or 'fresh') forces a remount whenever the
+            user navigates between /translate and /translate?invoiceId=…
+            URLs — useReducer's lazy initial state only fires on mount, so
+            without the key the wizard would keep the previous step state
+            even though a new preloaded prop arrived. */}
         <TranslatorWizardClient
+          key={preloaded?.invoiceId ?? "fresh"}
           uiLanguage={uiLanguage}
           initialBalance={totalCredits}
           preloaded={preloaded}
