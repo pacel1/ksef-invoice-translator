@@ -71,7 +71,7 @@ export function InvoiceTable({ rows, labels }: InvoiceTableProps) {
               <td className="px-5 py-3 text-small text-text">
                 {row.sellerName ?? "—"}
               </td>
-              <td className="px-5 py-3 text-right text-small tabular-nums text-text">
+              <td className="whitespace-nowrap px-5 py-3 text-right text-small tabular-nums text-text">
                 {formatAmount(row.totalGross, row.currency)}
               </td>
               <td className="px-5 py-3">
@@ -89,7 +89,7 @@ export function InvoiceTable({ rows, labels }: InvoiceTableProps) {
                   ))}
                 </div>
               </td>
-              <td className="px-5 py-3 text-right">
+              <td className="whitespace-nowrap px-5 py-3 text-right">
                 <Link
                   href={`/translate?invoiceId=${row.id}`}
                   className="cursor-pointer text-small font-medium text-accent hover:text-accent-hover"
