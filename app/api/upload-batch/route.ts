@@ -31,6 +31,16 @@ interface SuccessResult {
   invoiceNumber: string;
   warnings: ReadonlyArray<string>;
   isNew: boolean;
+  /**
+   * Count of OTHER invoices (excluding this one) the user has uploaded
+   * with the same invoice_number. > 0 means there's a possible duplicate
+   * — the wizard surfaces it as a warning on the file row so the user
+   * can double-check before consuming a credit.
+   *
+   * 0 means either truly unique, or invoice_number couldn't be parsed
+   * (in which case we don't speculate).
+   */
+  otherWithSameNumber: number;
 }
 
 interface FailureResult {
@@ -87,13 +97,37 @@ export async function POST(request: NextRequest) {
         file,
         supabase: admin
       });
+
+      // Same-invoice-number lookup: for genuinely-new uploads we count
+      // other invoices the user has with the same invoice_number. A hit
+      // means "you've sent us this number before from a different file"
+      // — likely a duplicate, possibly a correction, worth flagging
+      // BEFORE the user pays for translation.
+      //
+      // For isNew=false (content_hash matched) we don't run the lookup
+      // — the wizard already shows a 'duplicate' message via the isNew
+      // flag, so the extra DB read would be redundant.
+      let otherWithSameNumber = 0;
+      const number = result.invoice.invoiceNumber;
+      if (result.isNew && typeof number === "string" && number.length > 0) {
+        const others = await admin
+          .from("invoices")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userData.user.id)
+          .eq("invoice_number", number)
+          .is("deleted_at", null)
+          .neq("id", result.invoiceId);
+        otherWithSameNumber = others.count ?? 0;
+      }
+
       results.push({
         ok: true,
         fileName: file.name,
         invoiceId: result.invoiceId,
-        invoiceNumber: result.invoice.invoiceNumber ?? "",
+        invoiceNumber: number ?? "",
         warnings: result.warnings ?? [],
-        isNew: result.isNew
+        isNew: result.isNew,
+        otherWithSameNumber
       });
     } catch (error) {
       if (error instanceof UploadError) {
