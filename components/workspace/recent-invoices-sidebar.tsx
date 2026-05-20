@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { Plus, HelpCircle, Mail } from "lucide-react";
 import { getRecentInvoices, type InvoiceSummary } from "@/lib/invoice/recent-invoices";
+import { CollapsibleSidebar } from "./collapsible-sidebar";
 
 export interface RecentInvoicesSidebarProps {
   userId: string;
   uiLanguage: "pl" | "en";
+  /** Pass true when the user lands directly into Step 3 so the sidebar
+   * starts collapsed and the preview gets full width. */
+  defaultCollapsed?: boolean;
 }
 
 export interface RecentInvoicesSidebarLabels {
@@ -20,12 +24,18 @@ export interface RecentInvoicesSidebarViewProps {
   labels: RecentInvoicesSidebarLabels;
 }
 
-const RECENT_LIMIT = 5;
+const RECENT_LIMIT = 8;
 
 /**
- * Server-rendered sidebar wrapper — fetches recent invoices then delegates to View.
+ * Server-rendered sidebar wrapper — fetches recent invoices, picks a
+ * locale-appropriate label set, then hands the rendered tree to
+ * <CollapsibleSidebar> (client) for the collapse/expand control.
  */
-export async function RecentInvoicesSidebar({ userId, uiLanguage }: RecentInvoicesSidebarProps) {
+export async function RecentInvoicesSidebar({
+  userId,
+  uiLanguage,
+  defaultCollapsed = false
+}: RecentInvoicesSidebarProps) {
   const invoices = await getRecentInvoices(userId, RECENT_LIMIT);
   // Cutover relabels (spec §4) — sidebar now points at /translate, with
   // the action-oriented "Nowe tłumaczenie" replacing "Nowa faktura" and
@@ -48,15 +58,38 @@ export async function RecentInvoicesSidebar({ userId, uiLanguage }: RecentInvoic
           contactLabel: "Contact"
         };
 
-  return <RecentInvoicesSidebarView invoices={invoices} labels={labels} />;
+  const collapseLabel =
+    uiLanguage === "pl" ? "Zwiń pasek boczny" : "Collapse sidebar";
+  const expandLabel =
+    uiLanguage === "pl" ? "Rozwiń pasek boczny" : "Expand sidebar";
+
+  return (
+    <CollapsibleSidebar
+      defaultCollapsed={defaultCollapsed}
+      labels={{
+        newInvoiceLabel: labels.newInvoiceLabel,
+        recentHeading: labels.recentHeading,
+        allArchive: labels.allArchive,
+        helpLabel: labels.helpLabel,
+        collapseLabel,
+        expandLabel
+      }}
+    >
+      <RecentInvoicesSidebarView invoices={invoices} labels={labels} />
+    </CollapsibleSidebar>
+  );
 }
 
 /**
  * Pure presentational sidebar. Exported separately for unit testing without a DB.
  */
 export function RecentInvoicesSidebarView({ invoices, labels }: RecentInvoicesSidebarViewProps) {
+  // Visibility (hidden md:flex) and width (w-60) live on this aside even
+  // though the CollapsibleSidebar wraps it. When expanded, the wrapper
+  // renders this aside directly; when collapsed, it renders an icon rail
+  // instead.
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface-muted/60 py-6 md:flex">
+    <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-surface-muted/60 py-6">
       <div className="px-4">
         <Link
           href="/translate"
@@ -73,26 +106,33 @@ export function RecentInvoicesSidebarView({ invoices, labels }: RecentInvoicesSi
         </h2>
         <ul className="mt-3 space-y-3">
           {invoices.map((invoice) => (
-            <li key={invoice.id} className="rounded-md border border-border bg-surface p-3 shadow-sm">
-              <p className="font-mono text-small text-text-strong">
-                {invoice.invoiceNumber ?? "—"}
-              </p>
-              {invoice.issueDate ? (
-                <p className="mt-0.5 text-micro text-text-muted">{invoice.issueDate}</p>
-              ) : null}
-              <div className="mt-2 flex flex-wrap gap-1">
-                <span className="inline-flex h-5 items-center rounded-full bg-accent-soft px-2 text-[10px] font-semibold uppercase tracking-wide text-accent">
-                  PL
-                </span>
-                {invoice.translatedLanguages.map((lang) => (
-                  <span
-                    key={lang}
-                    className="inline-flex h-5 items-center rounded-full bg-surface-muted px-2 text-[10px] font-semibold tracking-wide text-text"
-                  >
-                    {lang.toUpperCase()}
+            <li key={invoice.id}>
+              <Link
+                href={`/translate?invoiceId=${invoice.id}`}
+                className="block cursor-pointer rounded-md border border-border bg-surface p-3 shadow-sm transition-colors duration-hover hover:border-accent hover:bg-accent-soft/40"
+              >
+                <p className="font-mono text-small text-text-strong">
+                  {invoice.invoiceNumber ?? "—"}
+                </p>
+                {invoice.issueDate ? (
+                  <p className="mt-0.5 text-micro text-text-muted">
+                    {invoice.issueDate}
+                  </p>
+                ) : null}
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <span className="inline-flex h-5 items-center rounded-full bg-accent-soft px-2 text-[10px] font-semibold uppercase tracking-wide text-accent">
+                    PL
                   </span>
-                ))}
-              </div>
+                  {invoice.translatedLanguages.map((lang) => (
+                    <span
+                      key={lang}
+                      className="inline-flex h-5 items-center rounded-full bg-surface-muted px-2 text-[10px] font-semibold tracking-wide text-text"
+                    >
+                      {lang.toUpperCase()}
+                    </span>
+                  ))}
+                </div>
+              </Link>
             </li>
           ))}
         </ul>

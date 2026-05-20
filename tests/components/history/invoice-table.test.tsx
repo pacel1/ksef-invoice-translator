@@ -70,11 +70,18 @@ describe("<InvoiceTable>", () => {
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 
-  it("renders an Open link per row pointing at /app", () => {
+  it("renders an Open link per row pointing at /translate?invoiceId=...", () => {
     render(<InvoiceTable rows={sample} labels={labels} />);
     const links = screen.getAllByRole("link", { name: /Otwórz/i });
     expect(links.length).toBe(2);
-    expect(links[0]).toHaveAttribute("href", "/app");
+    expect(links[0]).toHaveAttribute(
+      "href",
+      `/translate?invoiceId=${sample[0].id}`
+    );
+    expect(links[1]).toHaveAttribute(
+      "href",
+      `/translate?invoiceId=${sample[1].id}`
+    );
   });
 
   it("renders the empty state when rows is empty", () => {
