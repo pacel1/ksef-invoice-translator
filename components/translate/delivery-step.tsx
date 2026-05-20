@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Languages, Pencil, Plus } from "lucide-react";
 import { TranslationEditor } from "./translation-editor";
+import { TranslationProgress } from "./translation-progress";
 import type { Copy } from "@/lib/workspace/copy";
 import { languageNamesByUi } from "@/lib/translation/languages";
 import type { LanguageCode } from "@/types/invoice";
@@ -72,6 +73,39 @@ function DeliverySingle(props: DeliveryStepProps) {
       <div data-testid="delivery-single" className="rounded-xl border border-border bg-surface p-6">
         <p className="text-body text-text-muted">{String(copy.deliveryReadyTitle)}</p>
       </div>
+    );
+  }
+
+  // While the translation is in flight (or has just errored) we don't
+  // have a stable PDF to preview yet. Swap in <TranslationProgress>
+  // which shows an indeterminate bar + elapsed counter + cancel CTA.
+  // Only render the iframe path once the item is fully 'done'.
+  if (item.status === "queued" || item.status === "translating") {
+    return (
+      <TranslationProgress
+        item={item}
+        copy={copy}
+        languageLabel={langLabel}
+        bilingual={bilingual}
+        onCancel={props.onCancelBatch}
+        onRetry={(slotId) => void props.onRetryItem(slotId)}
+        onChangeLanguage={props.onChangeLanguage}
+        onNewTranslation={props.onNewTranslation}
+      />
+    );
+  }
+  if (item.status === "error") {
+    return (
+      <TranslationProgress
+        item={item}
+        copy={copy}
+        languageLabel={langLabel}
+        bilingual={bilingual}
+        onCancel={props.onCancelBatch}
+        onRetry={(slotId) => void props.onRetryItem(slotId)}
+        onChangeLanguage={props.onChangeLanguage}
+        onNewTranslation={props.onNewTranslation}
+      />
     );
   }
 
