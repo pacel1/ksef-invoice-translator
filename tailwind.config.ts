@@ -24,6 +24,11 @@ const config: Config = {
         },
         success: "hsl(var(--success))",
         danger: "hsl(var(--danger))",
+        // Warning — added 2026-05-20 for the Tłumacz redesign (spec §5).
+        // Use for "needs attention" states that aren't outright errors,
+        // e.g. duplicate file detected during batch upload.
+        warning: "hsl(var(--warning))",
+        "warning-soft": "hsl(var(--warning-soft))",
         // Legacy shadcn aliases kept for the existing protected layout until Sprint 2/3 replace them.
         // Remove in Sprint 4 cleanup.
         input: "hsl(var(--border))",
