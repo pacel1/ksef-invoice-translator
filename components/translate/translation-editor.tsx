@@ -28,6 +28,14 @@ interface DraftState {
   /** invoice.correction.translatedReason and translatedPeriod. */
   correctionReason: string;
   correctionPeriod: string;
+  /** Per-order-line edits, keyed by "orderIndex.lineIndex". */
+  orderLineNames: Record<string, string>;
+  orderLineUnits: Record<string, string>;
+  /** Per-charge/deduction translated reasons, keyed by index. */
+  settlementChargeReasons: Record<number, string>;
+  settlementDeductionReasons: Record<number, string>;
+  /** Per-translation-fragment translated text, keyed by fragment id. */
+  fragmentTranslations: Record<string, string>;
 }
 
 /**
@@ -60,7 +68,12 @@ export function TranslationEditor({
     additionalKeys: {},
     additionalValues: {},
     correctionReason: "",
-    correctionPeriod: ""
+    correctionPeriod: "",
+    orderLineNames: {},
+    orderLineUnits: {},
+    settlementChargeReasons: {},
+    settlementDeductionReasons: {},
+    fragmentTranslations: {}
   });
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -105,7 +118,41 @@ export function TranslationEditor({
             ])
           ),
           correctionReason: loaded.correction?.translatedReason ?? "",
-          correctionPeriod: loaded.correction?.translatedPeriod ?? ""
+          correctionPeriod: loaded.correction?.translatedPeriod ?? "",
+          orderLineNames: Object.fromEntries(
+            (loaded.orders ?? []).flatMap((order, oIdx) =>
+              (order.lines ?? []).map((line, lIdx) => [
+                `${oIdx}.${lIdx}`,
+                line.translatedName ?? ""
+              ])
+            )
+          ),
+          orderLineUnits: Object.fromEntries(
+            (loaded.orders ?? []).flatMap((order, oIdx) =>
+              (order.lines ?? []).map((line, lIdx) => [
+                `${oIdx}.${lIdx}`,
+                line.translatedUnit ?? ""
+              ])
+            )
+          ),
+          settlementChargeReasons: Object.fromEntries(
+            (loaded.settlements?.charges ?? []).map((line, i) => [
+              i,
+              line.translatedReason ?? ""
+            ])
+          ),
+          settlementDeductionReasons: Object.fromEntries(
+            (loaded.settlements?.deductions ?? []).map((line, i) => [
+              i,
+              line.translatedReason ?? ""
+            ])
+          ),
+          fragmentTranslations: Object.fromEntries(
+            (loaded.translationFragments ?? []).map((fragment) => [
+              fragment.id,
+              fragment.translated ?? ""
+            ])
+          )
         });
       })
       .catch((err) => {
@@ -138,6 +185,34 @@ export function TranslationEditor({
             translatedPeriod: draft.correctionPeriod
           }
         : undefined;
+
+      const orderLines = (invoice.orders ?? []).flatMap((order, oIdx) =>
+        (order.lines ?? []).map((_, lIdx) => ({
+          orderIndex: oIdx,
+          lineIndex: lIdx,
+          translatedName: draft.orderLineNames[`${oIdx}.${lIdx}`] ?? null,
+          translatedUnit: draft.orderLineUnits[`${oIdx}.${lIdx}`] ?? null
+        }))
+      );
+      const settlementCharges = (invoice.settlements?.charges ?? []).map(
+        (_, i) => ({
+          index: i,
+          translatedReason: draft.settlementChargeReasons[i] ?? null
+        })
+      );
+      const settlementDeductions = (invoice.settlements?.deductions ?? []).map(
+        (_, i) => ({
+          index: i,
+          translatedReason: draft.settlementDeductionReasons[i] ?? null
+        })
+      );
+      const translationFragments = (invoice.translationFragments ?? []).map(
+        (fragment) => ({
+          id: fragment.id,
+          translated: draft.fragmentTranslations[fragment.id] ?? null
+        })
+      );
+
       const res = await fetch("/api/translate/edit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -150,7 +225,11 @@ export function TranslationEditor({
             translatedNotes: draft.notes,
             footerText: invoice.footer ? draft.footer : undefined,
             additionalDescriptions: additionalDescriptions.length > 0 ? additionalDescriptions : undefined,
-            correction
+            correction,
+            orderLines: orderLines.length > 0 ? orderLines : undefined,
+            settlementCharges: settlementCharges.length > 0 ? settlementCharges : undefined,
+            settlementDeductions: settlementDeductions.length > 0 ? settlementDeductions : undefined,
+            translationFragments: translationFragments.length > 0 ? translationFragments : undefined
           }
         })
       });
@@ -284,6 +363,20 @@ function EditorFields({ invoice, draft, setDraft, copy }: EditorFieldsProps) {
   const additionalDescriptions = invoice.additionalDescriptions ?? [];
   const hasAdditional = additionalDescriptions.length > 0;
   const hasCorrection = Boolean(invoice.correction);
+  const orders = invoice.orders ?? [];
+  const hasOrderLines = orders.some((o) => (o.lines ?? []).length > 0);
+  const charges = invoice.settlements?.charges ?? [];
+  const deductions = invoice.settlements?.deductions ?? [];
+  const hasSettlements = charges.length > 0 || deductions.length > 0;
+  // Fragments backing correction reason/period are already exposed via
+  // the dedicated Correction section above. Avoid double-editing by
+  // hiding those specific kinds from the generic fragments block.
+  const fragments = (invoice.translationFragments ?? []).filter(
+    (fragment) =>
+      fragment.kind !== "correction_reason" &&
+      fragment.kind !== "correction_period"
+  );
+  const hasFragments = fragments.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -491,6 +584,188 @@ function EditorFields({ invoice, draft, setDraft, copy }: EditorFieldsProps) {
               />
             </label>
           ) : null}
+        </section>
+      ) : null}
+
+      {hasOrderLines ? (
+        <section className="flex flex-col gap-3">
+          <h3 className="text-small font-semibold text-text-strong">
+            {String(copy.editorOrdersLabel)}
+          </h3>
+          {orders.map((order, oIdx) => {
+            const lines = order.lines ?? [];
+            if (lines.length === 0) return null;
+            return (
+              <div key={`order-${oIdx}`} className="flex flex-col gap-2">
+                <p className="text-micro text-text-muted">
+                  {String(copy.editorOrderLabel)} {oIdx + 1}
+                  {order.orderNumber ? ` · ${order.orderNumber}` : ""}
+                </p>
+                <ul className="flex flex-col gap-3">
+                  {lines.map((line, lIdx) => {
+                    const key = `${oIdx}.${lIdx}`;
+                    return (
+                      <li
+                        key={`order-line-${oIdx}-${lIdx}`}
+                        className="rounded-lg border border-border bg-surface p-3"
+                      >
+                        <p className="mb-2 text-micro text-text-muted">
+                          {lIdx + 1}. {line.name ?? "—"}
+                        </p>
+                        <label className="block">
+                          <span className="text-micro text-text-muted">
+                            {String(copy.editorOrderLineNameLabel)}
+                          </span>
+                          <input
+                            type="text"
+                            value={draft.orderLineNames[key] ?? ""}
+                            onChange={(e) =>
+                              setDraft((prev) => ({
+                                ...prev,
+                                orderLineNames: {
+                                  ...prev.orderLineNames,
+                                  [key]: e.target.value
+                                }
+                              }))
+                            }
+                            className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                          />
+                        </label>
+                        <label className="mt-3 block">
+                          <span className="text-micro text-text-muted">
+                            {String(copy.editorOrderLineUnitLabel)} ({line.unit ?? "—"})
+                          </span>
+                          <input
+                            type="text"
+                            value={draft.orderLineUnits[key] ?? ""}
+                            onChange={(e) =>
+                              setDraft((prev) => ({
+                                ...prev,
+                                orderLineUnits: {
+                                  ...prev.orderLineUnits,
+                                  [key]: e.target.value
+                                }
+                              }))
+                            }
+                            className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                          />
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
+        </section>
+      ) : null}
+
+      {hasSettlements ? (
+        <section className="flex flex-col gap-3">
+          <h3 className="text-small font-semibold text-text-strong">
+            {String(copy.editorSettlementsLabel)}
+          </h3>
+          {charges.length > 0 ? (
+            <ul className="flex flex-col gap-3">
+              {charges.map((charge, idx) => (
+                <li
+                  key={`charge-${idx}`}
+                  className="rounded-lg border border-border bg-surface p-3"
+                >
+                  <p className="mb-2 text-micro text-text-muted">
+                    {idx + 1}. {charge.reason ?? "—"}
+                  </p>
+                  <label className="block">
+                    <span className="text-micro text-text-muted">
+                      {String(copy.editorSettlementChargeLabel)}
+                    </span>
+                    <textarea
+                      value={draft.settlementChargeReasons[idx] ?? ""}
+                      onChange={(e) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          settlementChargeReasons: {
+                            ...prev.settlementChargeReasons,
+                            [idx]: e.target.value
+                          }
+                        }))
+                      }
+                      rows={2}
+                      className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                  </label>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {deductions.length > 0 ? (
+            <ul className="flex flex-col gap-3">
+              {deductions.map((deduction, idx) => (
+                <li
+                  key={`deduction-${idx}`}
+                  className="rounded-lg border border-border bg-surface p-3"
+                >
+                  <p className="mb-2 text-micro text-text-muted">
+                    {idx + 1}. {deduction.reason ?? "—"}
+                  </p>
+                  <label className="block">
+                    <span className="text-micro text-text-muted">
+                      {String(copy.editorSettlementDeductionLabel)}
+                    </span>
+                    <textarea
+                      value={draft.settlementDeductionReasons[idx] ?? ""}
+                      onChange={(e) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          settlementDeductionReasons: {
+                            ...prev.settlementDeductionReasons,
+                            [idx]: e.target.value
+                          }
+                        }))
+                      }
+                      rows={2}
+                      className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                  </label>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+
+      {hasFragments ? (
+        <section className="flex flex-col gap-3">
+          <h3 className="text-small font-semibold text-text-strong">
+            {String(copy.editorFragmentsLabel)}
+          </h3>
+          <ul className="flex flex-col gap-3">
+            {fragments.map((fragment) => (
+              <li
+                key={`fragment-${fragment.id}`}
+                className="rounded-lg border border-border bg-surface p-3"
+              >
+                <p className="mb-2 text-micro text-text-muted">
+                  <span className="font-medium">{fragment.kind}</span>:{" "}
+                  {fragment.source}
+                </p>
+                <textarea
+                  value={draft.fragmentTranslations[fragment.id] ?? ""}
+                  onChange={(e) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      fragmentTranslations: {
+                        ...prev.fragmentTranslations,
+                        [fragment.id]: e.target.value
+                      }
+                    }))
+                  }
+                  rows={2}
+                  className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
     </div>

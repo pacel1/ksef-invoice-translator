@@ -305,6 +305,69 @@ describe("useTranslationWizard — step navigation", () => {
     expect(result.current.state.step).toBe("upload");
   });
 
+  it("goNext from upload → language step when only file is 'duplicate' (content-hash hit)", async () => {
+    // Regression: the upload-step UI counts 'duplicate' as ready (the user
+    // is warned but can continue, e.g. to add a new language), but goNext
+    // previously checked only status === 'ready' and silently blocked the
+    // transition — the visible Dalej button did nothing.
+    const api = makeStubApi({
+      uploadBatch: vi.fn(async (files: ReadonlyArray<File>) => ({
+        results: files.map(
+          (file): UploadBatchResult => ({
+            ok: true,
+            fileName: file.name,
+            invoiceId: "inv-1",
+            invoiceNumber: "FA-2026-0001",
+            warnings: [],
+            isNew: false,
+            otherWithSameNumber: 0
+          })
+        )
+      }))
+    });
+
+    const { result } = renderHook(() => useTranslationWizard({ api }));
+
+    await act(async () => {
+      await result.current.addFiles([makeFile("a.xml")]);
+    });
+
+    expect(result.current.state.files[0].status).toBe("duplicate");
+
+    act(() => result.current.goNext());
+    expect(result.current.state.step).toBe("language");
+  });
+
+  it("goNext from upload → language step when only file is 'duplicate' (number match)", async () => {
+    // Same regression as above, but for the otherWithSameNumber > 0 branch.
+    const api = makeStubApi({
+      uploadBatch: vi.fn(async (files: ReadonlyArray<File>) => ({
+        results: files.map(
+          (file): UploadBatchResult => ({
+            ok: true,
+            fileName: file.name,
+            invoiceId: "inv-1",
+            invoiceNumber: "FA-2026-0001",
+            warnings: [],
+            isNew: true,
+            otherWithSameNumber: 3
+          })
+        )
+      }))
+    });
+
+    const { result } = renderHook(() => useTranslationWizard({ api }));
+
+    await act(async () => {
+      await result.current.addFiles([makeFile("a.xml")]);
+    });
+
+    expect(result.current.state.files[0].status).toBe("duplicate");
+
+    act(() => result.current.goNext());
+    expect(result.current.state.step).toBe("language");
+  });
+
   it("goNext from upload → language step when ≥1 ready file exists", async () => {
     const api = makeStubApi();
     const { result } = renderHook(() => useTranslationWizard({ api }));
@@ -384,6 +447,40 @@ describe("useTranslationWizard — step navigation", () => {
     });
 
     expect(result.current.state.step).toBe("delivery");
+    expect(result.current.state.jobItems).toHaveLength(2);
+    expect(result.current.state.jobItems.every((j) => j.status === "done")).toBe(true);
+  });
+
+  it("startTranslation includes 'duplicate' files in the job batch", async () => {
+    // Duplicates are accepted by the upload-step CTA, so startTranslation
+    // must also include them — otherwise the user "advances" with N files
+    // in the wizard but ends up with zero job rows on delivery.
+    const api = makeStubApi({
+      uploadBatch: vi.fn(async (files: ReadonlyArray<File>) => ({
+        results: files.map(
+          (file, i): UploadBatchResult => ({
+            ok: true,
+            fileName: file.name,
+            invoiceId: `inv-${i + 1}`,
+            invoiceNumber: `FA-${i + 1}`,
+            warnings: [],
+            isNew: false,
+            otherWithSameNumber: 0
+          })
+        )
+      }))
+    });
+    const { result } = renderHook(() => useTranslationWizard({ api }));
+
+    await act(async () => {
+      await result.current.addFiles([makeFile("a.xml"), makeFile("b.xml")]);
+    });
+    expect(result.current.state.files.every((f) => f.status === "duplicate")).toBe(true);
+
+    act(() => result.current.goNext());
+    act(() => result.current.setLanguage("en"));
+    await act(async () => result.current.startTranslation());
+
     expect(result.current.state.jobItems).toHaveLength(2);
     expect(result.current.state.jobItems.every((j) => j.status === "done")).toBe(true);
   });
@@ -623,6 +720,31 @@ describe("useTranslationWizard — immutability", () => {
 });
 
 describe("useTranslationWizard — cost computation", () => {
+  it("cost counts 'duplicate' files alongside 'ready' (duplicates still translate)", async () => {
+    const api = makeStubApi({
+      uploadBatch: vi.fn(async (files: ReadonlyArray<File>) => ({
+        results: files.map(
+          (file, i): UploadBatchResult => ({
+            ok: true,
+            fileName: file.name,
+            invoiceId: `inv-${i + 1}`,
+            invoiceNumber: `FA-${i + 1}`,
+            warnings: [],
+            isNew: false,
+            otherWithSameNumber: 0
+          })
+        )
+      }))
+    });
+    const { result } = renderHook(() => useTranslationWizard({ api }));
+
+    await act(async () => {
+      await result.current.addFiles([makeFile("a.xml"), makeFile("b.xml")]);
+    });
+
+    expect(result.current.cost).toBe(2);
+  });
+
   it("cost equals the number of ready files at Step 2", async () => {
     const api = makeStubApi({
       uploadBatch: vi.fn(async (files: File[]) => ({

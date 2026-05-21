@@ -31,6 +31,23 @@ const additionalDescriptionEditSchema = z.object({
   translatedValue: z.union([z.string(), z.null()]).optional()
 });
 
+const orderLineEditSchema = z.object({
+  orderIndex: z.number().int().min(0),
+  lineIndex: z.number().int().min(0),
+  translatedName: z.union([z.string(), z.null()]).optional(),
+  translatedUnit: z.union([z.string(), z.null()]).optional()
+});
+
+const settlementLineEditSchema = z.object({
+  index: z.number().int().min(0),
+  translatedReason: z.union([z.string(), z.null()]).optional()
+});
+
+const translationFragmentEditSchema = z.object({
+  id: z.string().min(1),
+  translated: z.union([z.string(), z.null()]).optional()
+});
+
 const editsSchema = z.object({
   items: z.array(itemEditSchema).optional(),
   translatedNotes: z.union([z.string(), z.null()]).optional(),
@@ -41,7 +58,11 @@ const editsSchema = z.object({
       translatedReason: z.union([z.string(), z.null()]).optional(),
       translatedPeriod: z.union([z.string(), z.null()]).optional()
     })
-    .optional()
+    .optional(),
+  orderLines: z.array(orderLineEditSchema).optional(),
+  settlementCharges: z.array(settlementLineEditSchema).optional(),
+  settlementDeductions: z.array(settlementLineEditSchema).optional(),
+  translationFragments: z.array(translationFragmentEditSchema).optional()
 });
 
 const requestSchema = z.object({

@@ -10,6 +10,12 @@ export interface InvoiceTableLabels {
   actionsHeader: string;
   openLabel: string;
   emptyMessage: string;
+  /**
+   * Template for the duplicate-copies badge; "{count}" is replaced with
+   * the number of other invoices the user has with the same
+   * invoice_number (e.g. "+2 kopie", "+1 copy").
+   */
+  duplicatesBadge?: string;
 }
 
 export interface InvoiceTableProps {
@@ -63,7 +69,20 @@ export function InvoiceTable({ rows, labels }: InvoiceTableProps) {
           {rows.map((row) => (
             <tr key={row.id} className="hover:bg-surface-muted">
               <td className="px-5 py-3 font-mono text-small text-text-strong">
-                {row.invoiceNumber ?? "—"}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>{row.invoiceNumber ?? "—"}</span>
+                  {row.duplicateCount > 0 && labels.duplicatesBadge ? (
+                    <span
+                      className="inline-flex h-5 items-center rounded-full bg-warning/15 px-2 text-[10px] font-semibold tracking-wide text-warning"
+                      data-testid="duplicate-badge"
+                    >
+                      {labels.duplicatesBadge.replace(
+                        "{count}",
+                        String(row.duplicateCount)
+                      )}
+                    </span>
+                  ) : null}
+                </div>
               </td>
               <td className="px-5 py-3 text-small text-text">
                 {row.issueDate ?? "—"}

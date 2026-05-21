@@ -25,7 +25,8 @@ const sample: InvoiceSummary[] = [
     totalGross: 18597.6,
     currency: "PLN",
     createdAt: "2026-05-12T10:00:00Z",
-    translatedLanguages: ["en", "de"]
+    translatedLanguages: ["en", "de"],
+    duplicateCount: 0
   },
   {
     id: "i2",
@@ -35,7 +36,8 @@ const sample: InvoiceSummary[] = [
     totalGross: null,
     currency: null,
     createdAt: "2026-05-11T10:00:00Z",
-    translatedLanguages: []
+    translatedLanguages: [],
+    duplicateCount: 0
   }
 ];
 
@@ -97,5 +99,34 @@ describe("<InvoiceTable>", () => {
   it("renders the empty state when rows is empty", () => {
     render(<InvoiceTable rows={[]} labels={labels} />);
     expect(screen.getByText(/Brak faktur do wyświetlenia/i)).toBeInTheDocument();
+  });
+
+  it("shows a duplicate badge when an invoice has copies", () => {
+    const dupes: InvoiceSummary[] = [
+      {
+        id: "i1",
+        invoiceNumber: "F/24/0148",
+        issueDate: "2026-05-12",
+        sellerName: "ACME",
+        totalGross: 100,
+        currency: "PLN",
+        createdAt: "2026-05-12T10:00:00Z",
+        translatedLanguages: [],
+        duplicateCount: 2
+      }
+    ];
+    render(
+      <InvoiceTable
+        rows={dupes}
+        labels={{ ...labels, duplicatesBadge: "+{count} kopie" }}
+      />
+    );
+    expect(screen.getByText("+2 kopie")).toBeInTheDocument();
+  });
+
+  it("does NOT show a duplicate badge when duplicateCount is 0", () => {
+    render(<InvoiceTable rows={sample} labels={labels} />);
+    // sample rows have no duplicateCount set (treated as 0).
+    expect(screen.queryByText(/\+\d+ kopi/)).toBeNull();
   });
 });

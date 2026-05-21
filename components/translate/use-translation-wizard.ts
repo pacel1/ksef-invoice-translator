@@ -279,9 +279,15 @@ export function useTranslationWizard({
     dispatch({ type: "patchJobItem", fileSlotId, patch });
   }
 
-  // Cost preview — counts only files that successfully uploaded.
+  // Cost preview — counts files that successfully uploaded, including
+  // duplicates. The user is warned about duplicates but can still
+  // proceed (e.g. to add a new language); the server will charge per
+  // cache rules in /api/translate.
   const cost = useMemo(
-    () => state.files.filter((slot) => slot.status === "ready").length,
+    () =>
+      state.files.filter(
+        (slot) => slot.status === "ready" || slot.status === "duplicate"
+      ).length,
     [state.files]
   );
 
@@ -395,10 +401,15 @@ export function useTranslationWizard({
   const goNext = useCallback(() => {
     const current = stateRef.current;
     if (current.step === "upload") {
-      // Allow advancement iff at least one file is ready. Files in `error`
-      // are tolerated — they keep their slot for the user to remove.
-      const anyReady = current.files.some((slot) => slot.status === "ready");
-      if (!anyReady) return;
+      // Allow advancement iff at least one file is ready OR a duplicate.
+      // Duplicates are accepted by the UI — the user gets a warning but
+      // can still proceed (adding a language is still useful). Files in
+      // `error` or `parsing` are tolerated — they keep their slot for
+      // the user to remove or wait on.
+      const anyAdvanceable = current.files.some(
+        (slot) => slot.status === "ready" || slot.status === "duplicate"
+      );
+      if (!anyAdvanceable) return;
       dispatch({ type: "goStep", step: "language" });
       return;
     }
@@ -517,9 +528,16 @@ export function useTranslationWizard({
     if (current.language === null) return;
     if (current.step !== "language") return;
 
-    // Build jobItems from the ready files.
+    // Build jobItems from the ready and duplicate files. Duplicates have
+    // a valid invoiceId — they translate against an existing invoice row
+    // (cache-hit if the same language was already translated, otherwise
+    // a fresh translate billed normally).
     const items: JobItem[] = current.files
-      .filter((slot) => slot.status === "ready" && slot.invoiceId)
+      .filter(
+        (slot) =>
+          (slot.status === "ready" || slot.status === "duplicate") &&
+          slot.invoiceId
+      )
       .map((slot) => ({
         fileSlotId: slot.localId,
         invoiceId: slot.invoiceId!,

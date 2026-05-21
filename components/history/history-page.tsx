@@ -29,7 +29,8 @@ const COPY = {
     tableLanguagesHeader: "Języki",
     tableActionsHeader: "Akcje",
     tableOpenLabel: "Otwórz",
-    tableEmptyMessage: "Brak faktur do wyświetlenia."
+    tableEmptyMessage: "Brak faktur do wyświetlenia.",
+    tableDuplicatesBadge: "+{count} kopie"
   },
   en: {
     heading: "Invoice history",
@@ -46,7 +47,8 @@ const COPY = {
     tableLanguagesHeader: "Languages",
     tableActionsHeader: "Actions",
     tableOpenLabel: "Open",
-    tableEmptyMessage: "No invoices to show."
+    tableEmptyMessage: "No invoices to show.",
+    tableDuplicatesBadge: "+{count} copies"
   }
 } as const;
 
@@ -98,7 +100,8 @@ export function HistoryPage({ initialData, locale }: HistoryPageProps) {
           languagesHeader: t.tableLanguagesHeader,
           actionsHeader: t.tableActionsHeader,
           openLabel: t.tableOpenLabel,
-          emptyMessage: t.tableEmptyMessage
+          emptyMessage: t.tableEmptyMessage,
+          duplicatesBadge: t.tableDuplicatesBadge
         }}
       />
       {data.totalCount > data.perPage ? (
