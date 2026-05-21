@@ -12,7 +12,8 @@ const sampleRows: InvoiceSummary[] = [
     totalGross: 12300,
     currency: "PLN",
     createdAt: "2026-05-12T10:00:00Z",
-    translatedLanguages: ["en"]
+    translatedLanguages: ["en"],
+    duplicateCount: 0
   }
 ];
 

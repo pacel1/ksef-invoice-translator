@@ -12,7 +12,8 @@ const sample: InvoiceSummary[] = [
     totalGross: 12300,
     currency: "PLN",
     createdAt: "2026-05-12T10:00:00Z",
-    translatedLanguages: ["en", "de"]
+    translatedLanguages: ["en", "de"],
+    duplicateCount: 0
   },
   {
     id: "i2",
@@ -22,7 +23,8 @@ const sample: InvoiceSummary[] = [
     totalGross: 4567,
     currency: "PLN",
     createdAt: "2026-05-11T10:00:00Z",
-    translatedLanguages: []
+    translatedLanguages: [],
+    duplicateCount: 0
   }
 ];
 

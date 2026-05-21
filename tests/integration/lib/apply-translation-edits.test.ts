@@ -168,4 +168,140 @@ describe("applyTranslationEdits", () => {
     expect(updated.items).not.toBe(original.items);
     expect(updated.items[0]).not.toBe(original.items[0]);
   });
+
+  it("updates an order line's translatedName and translatedUnit by (orderIndex, lineIndex)", () => {
+    const base = {
+      ...makeInvoice(),
+      orders: [
+        {
+          orderNumber: "PO-1",
+          lines: [
+            { name: "Wykonanie usługi", translatedName: "Service execution", unit: "szt.", translatedUnit: "pcs" },
+            { name: "Dodatek", translatedName: "Surcharge", unit: "h", translatedUnit: "hr" }
+          ]
+        }
+      ]
+    } as unknown as Invoice;
+
+    const updated = applyTranslationEdits(base, {
+      orderLines: [
+        { orderIndex: 0, lineIndex: 0, translatedName: "Performance of services" },
+        { orderIndex: 0, lineIndex: 1, translatedUnit: "hours" }
+      ]
+    });
+
+    expect(updated.orders?.[0].lines?.[0].translatedName).toBe(
+      "Performance of services"
+    );
+    expect(updated.orders?.[0].lines?.[0].translatedUnit).toBe("pcs");
+    expect(updated.orders?.[0].lines?.[1].translatedUnit).toBe("hours");
+    expect(updated.orders?.[0].lines?.[1].translatedName).toBe("Surcharge");
+  });
+
+  it("ignores out-of-range order/line indices silently", () => {
+    const base = {
+      ...makeInvoice(),
+      orders: [{ lines: [{ name: "x", translatedName: "X" }] }]
+    } as unknown as Invoice;
+    const updated = applyTranslationEdits(base, {
+      orderLines: [
+        { orderIndex: 99, lineIndex: 0, translatedName: "nope" },
+        { orderIndex: 0, lineIndex: 99, translatedName: "nope" }
+      ]
+    });
+    expect(updated.orders?.[0].lines?.[0].translatedName).toBe("X");
+  });
+
+  it("updates settlement charge and deduction translatedReason by index", () => {
+    const base = {
+      ...makeInvoice(),
+      settlements: {
+        charges: [
+          { type: "charge", amount: 100, reason: "Opóźnienie", translatedReason: "Delay" }
+        ],
+        deductions: [
+          { type: "deduction", amount: 50, reason: "Rabat", translatedReason: "Discount" }
+        ]
+      }
+    } as unknown as Invoice;
+
+    const updated = applyTranslationEdits(base, {
+      settlementCharges: [{ index: 0, translatedReason: "Late delivery surcharge" }],
+      settlementDeductions: [{ index: 0, translatedReason: "Volume rebate" }]
+    });
+
+    expect(updated.settlements?.charges?.[0].translatedReason).toBe(
+      "Late delivery surcharge"
+    );
+    expect(updated.settlements?.deductions?.[0].translatedReason).toBe(
+      "Volume rebate"
+    );
+  });
+
+  it("updates a translationFragment's translated text by id", () => {
+    const base = {
+      ...makeInvoice(),
+      translationFragments: [
+        {
+          id: "fragment.correction.reason",
+          kind: "correction_reason",
+          source: "Błąd w stawce",
+          translated: "Mistake in rate",
+          xmlPath: ["Fa", "Korekta", "Powod"]
+        }
+      ]
+    } as unknown as Invoice;
+
+    const updated = applyTranslationEdits(base, {
+      translationFragments: [
+        { id: "fragment.correction.reason", translated: "Incorrect VAT rate" }
+      ]
+    });
+
+    expect(updated.translationFragments?.[0].translated).toBe(
+      "Incorrect VAT rate"
+    );
+    // Source must not be touched.
+    expect(updated.translationFragments?.[0].source).toBe("Błąd w stawce");
+  });
+
+  it("clears a translationFragment's translated when set to empty string", () => {
+    const base = {
+      ...makeInvoice(),
+      translationFragments: [
+        {
+          id: "fragment.x",
+          kind: "annotation",
+          source: "X",
+          translated: "Y",
+          xmlPath: ["a"]
+        }
+      ]
+    } as unknown as Invoice;
+
+    const updated = applyTranslationEdits(base, {
+      translationFragments: [{ id: "fragment.x", translated: "" }]
+    });
+    expect(updated.translationFragments?.[0].translated).toBeUndefined();
+  });
+
+  it("ignores translationFragment edits with unknown ids", () => {
+    const base = {
+      ...makeInvoice(),
+      translationFragments: [
+        {
+          id: "fragment.known",
+          kind: "k",
+          source: "S",
+          translated: "T",
+          xmlPath: []
+        }
+      ]
+    } as unknown as Invoice;
+    const updated = applyTranslationEdits(base, {
+      translationFragments: [{ id: "fragment.unknown", translated: "shouldn't apply" }]
+    });
+    expect(updated.translationFragments?.[0].translated).toBe("T");
+    expect(updated.translationFragments).toHaveLength(1);
+  });
 });

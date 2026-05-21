@@ -24,6 +24,27 @@ export interface CorrectionEdits {
   translatedPeriod?: string | null;
 }
 
+export interface OrderLineEdit {
+  /** 0-based index into invoice.orders */
+  orderIndex: number;
+  /** 0-based index into orders[orderIndex].lines */
+  lineIndex: number;
+  translatedName?: string | null;
+  translatedUnit?: string | null;
+}
+
+export interface SettlementLineEdit {
+  /** 0-based index into invoice.settlements.charges or .deductions */
+  index: number;
+  translatedReason?: string | null;
+}
+
+export interface TranslationFragmentEdit {
+  /** Fragment id (matches invoice.translationFragments[*].id) */
+  id: string;
+  translated?: string | null;
+}
+
 export interface TranslationEdits {
   items?: ReadonlyArray<ItemEdit>;
   translatedNotes?: string | null;
@@ -32,6 +53,18 @@ export interface TranslationEdits {
   additionalDescriptions?: ReadonlyArray<AdditionalDescriptionEdit>;
   /** Edits to invoice.correction translations (corrected invoices only). */
   correction?: CorrectionEdits;
+  /** Edits to invoice.orders[*].lines[*] free-text (name + unit). */
+  orderLines?: ReadonlyArray<OrderLineEdit>;
+  /** Edits to invoice.settlements.charges[*].translatedReason. */
+  settlementCharges?: ReadonlyArray<SettlementLineEdit>;
+  /** Edits to invoice.settlements.deductions[*].translatedReason. */
+  settlementDeductions?: ReadonlyArray<SettlementLineEdit>;
+  /**
+   * Edits to invoice.translationFragments[*].translated. Keyed by the
+   * stable fragment.id so reordering on the server doesn't drift edits.
+   * Unknown ids are silently ignored — defense against stale clients.
+   */
+  translationFragments?: ReadonlyArray<TranslationFragmentEdit>;
 }
 
 /**
@@ -139,6 +172,91 @@ export function applyTranslationEdits(
       }
     }
     next.correction = nextCorrection;
+  }
+
+  if (edits.orderLines && edits.orderLines.length > 0 && next.orders) {
+    next.orders = next.orders.map((order, oIdx) => {
+      const orderEdits = edits.orderLines?.filter((e) => e.orderIndex === oIdx);
+      if (!orderEdits || orderEdits.length === 0 || !order.lines) return order;
+      return {
+        ...order,
+        lines: order.lines.map((line, lIdx) => {
+          const edit = orderEdits.find((e) => e.lineIndex === lIdx);
+          if (!edit) return line;
+          const nextLine = { ...line };
+          if (edit.translatedName !== undefined) {
+            if (edit.translatedName === null || edit.translatedName.trim() === "") {
+              delete nextLine.translatedName;
+            } else {
+              nextLine.translatedName = edit.translatedName;
+            }
+          }
+          if (edit.translatedUnit !== undefined) {
+            if (edit.translatedUnit === null || edit.translatedUnit.trim() === "") {
+              delete nextLine.translatedUnit;
+            } else {
+              nextLine.translatedUnit = edit.translatedUnit;
+            }
+          }
+          return nextLine;
+        })
+      };
+    });
+  }
+
+  if (
+    (edits.settlementCharges?.length || edits.settlementDeductions?.length) &&
+    next.settlements
+  ) {
+    const nextSettlements = { ...next.settlements };
+    if (edits.settlementCharges?.length && nextSettlements.charges) {
+      nextSettlements.charges = nextSettlements.charges.map((line, idx) => {
+        const edit = edits.settlementCharges?.find((e) => e.index === idx);
+        if (!edit || edit.translatedReason === undefined) return line;
+        const nextLine = { ...line };
+        if (edit.translatedReason === null || edit.translatedReason.trim() === "") {
+          delete nextLine.translatedReason;
+        } else {
+          nextLine.translatedReason = edit.translatedReason;
+        }
+        return nextLine;
+      });
+    }
+    if (edits.settlementDeductions?.length && nextSettlements.deductions) {
+      nextSettlements.deductions = nextSettlements.deductions.map((line, idx) => {
+        const edit = edits.settlementDeductions?.find((e) => e.index === idx);
+        if (!edit || edit.translatedReason === undefined) return line;
+        const nextLine = { ...line };
+        if (edit.translatedReason === null || edit.translatedReason.trim() === "") {
+          delete nextLine.translatedReason;
+        } else {
+          nextLine.translatedReason = edit.translatedReason;
+        }
+        return nextLine;
+      });
+    }
+    next.settlements = nextSettlements;
+  }
+
+  if (
+    edits.translationFragments &&
+    edits.translationFragments.length > 0 &&
+    next.translationFragments
+  ) {
+    const byId = new Map(
+      edits.translationFragments.map((e) => [e.id, e] as const)
+    );
+    next.translationFragments = next.translationFragments.map((fragment) => {
+      const edit = byId.get(fragment.id);
+      if (!edit || edit.translated === undefined) return fragment;
+      const nextFragment = { ...fragment };
+      if (edit.translated === null || edit.translated.trim() === "") {
+        delete nextFragment.translated;
+      } else {
+        nextFragment.translated = edit.translated;
+      }
+      return nextFragment;
+    });
   }
 
   return next;

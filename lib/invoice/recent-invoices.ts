@@ -11,6 +11,15 @@ export interface InvoiceSummary {
   currency: string | null;
   createdAt: string;
   translatedLanguages: string[];
+  /**
+   * Count of OTHER invoices the user has with the same invoice_number
+   * (excluding this row). > 0 means there are duplicate uploads for the
+   * same human-readable number — the history UI surfaces it as a badge
+   * so the user can spot accidental re-uploads or version drift.
+   *
+   * Always 0 when invoiceNumber is null.
+   */
+  duplicateCount: number;
 }
 
 export interface ListInvoicesParams {
@@ -47,8 +56,54 @@ function rowToSummary(row: RawInvoiceWithTranslations): InvoiceSummary {
     totalGross: row.total_gross,
     currency: row.currency,
     createdAt: row.created_at,
-    translatedLanguages
+    translatedLanguages,
+    duplicateCount: 0
   };
+}
+
+/**
+ * Mutates each summary in place to set `duplicateCount` based on how many
+ * other rows the user has with the same invoice_number. Single SQL trip
+ * scoped to the numbers present in `summaries` — O(N) over the result
+ * set, not O(N) round trips.
+ */
+async function annotateDuplicateCounts(
+  client: ReturnType<typeof getSupabaseAdminClient>,
+  userId: string,
+  summaries: InvoiceSummary[]
+): Promise<InvoiceSummary[]> {
+  const numbers = Array.from(
+    new Set(
+      summaries
+        .map((s) => s.invoiceNumber)
+        .filter((n): n is string => typeof n === "string" && n.length > 0)
+    )
+  );
+  if (numbers.length === 0) return summaries;
+
+  const { data, error } = await client
+    .from("invoices")
+    .select("invoice_number")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .in("invoice_number", numbers);
+
+  if (error) {
+    console.error("[recent-invoices] duplicate-count lookup failed:", error);
+    return summaries;
+  }
+
+  const totals = new Map<string, number>();
+  for (const row of data ?? []) {
+    const n = row.invoice_number;
+    if (typeof n === "string") totals.set(n, (totals.get(n) ?? 0) + 1);
+  }
+
+  return summaries.map((s) => {
+    if (!s.invoiceNumber) return s;
+    const total = totals.get(s.invoiceNumber) ?? 1;
+    return { ...s, duplicateCount: Math.max(total - 1, 0) };
+  });
 }
 
 export async function getRecentInvoices(userId: string, limit: number): Promise<InvoiceSummary[]> {
@@ -71,7 +126,8 @@ export async function getRecentInvoices(userId: string, limit: number): Promise<
     return [];
   }
 
-  return (data as RawInvoiceWithTranslations[] | null)?.map(rowToSummary) ?? [];
+  const summaries = (data as RawInvoiceWithTranslations[] | null)?.map(rowToSummary) ?? [];
+  return annotateDuplicateCounts(admin, userId, summaries);
 }
 
 export async function listInvoices(
@@ -112,8 +168,10 @@ export async function listInvoices(
     return { rows: [], totalCount: 0, page: params.page, perPage: params.perPage };
   }
 
+  const summaries = (data as RawInvoiceWithTranslations[] | null)?.map(rowToSummary) ?? [];
+  const annotated = await annotateDuplicateCounts(admin, userId, summaries);
   return {
-    rows: (data as RawInvoiceWithTranslations[] | null)?.map(rowToSummary) ?? [],
+    rows: annotated,
     totalCount: count ?? 0,
     page: params.page,
     perPage: params.perPage
