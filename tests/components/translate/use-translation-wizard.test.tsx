@@ -165,7 +165,10 @@ describe("useTranslationWizard — Step 1 upload", () => {
     expect(result.current.state.files[1].errorMessage).toBe("Bad XML");
   });
 
-  it("marks a content-deduped result (isNew: false) as 'duplicate' status", async () => {
+  it("marks an upload with otherWithSameContentHash > 0 as 'duplicate' status", async () => {
+    // After the dedupe drop (2026-05-21) every upload is a new row, so
+    // 'content duplicate' is now driven by the count of OTHER rows the
+    // user already has with the same source_hash — not by isNew.
     const api = makeStubApi({
       uploadBatch: vi.fn(async (files: ReadonlyArray<File>) => ({
         results: files.map(
@@ -175,8 +178,9 @@ describe("useTranslationWizard — Step 1 upload", () => {
             invoiceId: "inv-1",
             invoiceNumber: "FA-2026-0001",
             warnings: [],
-            isNew: false,
-            otherWithSameNumber: 0
+            isNew: true,
+            otherWithSameNumber: 0,
+            otherWithSameContentHash: 1
           })
         )
       }))
@@ -319,8 +323,9 @@ describe("useTranslationWizard — step navigation", () => {
             invoiceId: "inv-1",
             invoiceNumber: "FA-2026-0001",
             warnings: [],
-            isNew: false,
-            otherWithSameNumber: 0
+            isNew: true,
+            otherWithSameNumber: 0,
+            otherWithSameContentHash: 1
           })
         )
       }))
@@ -464,8 +469,9 @@ describe("useTranslationWizard — step navigation", () => {
             invoiceId: `inv-${i + 1}`,
             invoiceNumber: `FA-${i + 1}`,
             warnings: [],
-            isNew: false,
-            otherWithSameNumber: 0
+            isNew: true,
+            otherWithSameNumber: 0,
+            otherWithSameContentHash: 1
           })
         )
       }))
@@ -730,8 +736,9 @@ describe("useTranslationWizard — cost computation", () => {
             invoiceId: `inv-${i + 1}`,
             invoiceNumber: `FA-${i + 1}`,
             warnings: [],
-            isNew: false,
-            otherWithSameNumber: 0
+            isNew: true,
+            otherWithSameNumber: 0,
+            otherWithSameContentHash: 1
           })
         )
       }))

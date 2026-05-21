@@ -30,6 +30,11 @@ interface SuccessResult {
   invoiceId: string;
   invoiceNumber: string;
   warnings: ReadonlyArray<string>;
+  /**
+   * Legacy field — always `true` since the upload service no longer
+   * dedupes by content hash. Each upload now creates a new invoice row.
+   * Clients should rely on `otherWithSameContentHash` instead.
+   */
   isNew: boolean;
   /**
    * Count of OTHER invoices (excluding this one) the user has uploaded
@@ -41,6 +46,13 @@ interface SuccessResult {
    * (in which case we don't speculate).
    */
   otherWithSameNumber: number;
+  /**
+   * Count of OTHER invoices (excluding this one just inserted) the user
+   * has with the same source_hash. > 0 means the user is re-uploading
+   * the exact same file — the warning UI flags it so the user knows
+   * before consuming a fresh translate credit.
+   */
+  otherWithSameContentHash: number;
 }
 
 interface FailureResult {
@@ -98,27 +110,33 @@ export async function POST(request: NextRequest) {
         supabase: admin
       });
 
-      // Same-invoice-number lookup: for genuinely-new uploads we count
-      // other invoices the user has with the same invoice_number. A hit
-      // means "you've sent us this number before from a different file"
-      // — likely a duplicate, possibly a correction, worth flagging
-      // BEFORE the user pays for translation.
-      //
-      // For isNew=false (content_hash matched) we don't run the lookup
-      // — the wizard already shows a 'duplicate' message via the isNew
-      // flag, so the extra DB read would be redundant.
-      let otherWithSameNumber = 0;
+      // Two duplicate signals, run in parallel after the insert:
+      //   1. otherWithSameNumber  → another invoice with the same
+      //      invoice_number exists (possibly a corrected version)
+      //   2. otherWithSameContentHash → an identical file was uploaded
+      //      before (now its own row; the warning lets the user decide
+      //      before paying for another fresh translation)
       const number = result.invoice.invoiceNumber;
-      if (result.isNew && typeof number === "string" && number.length > 0) {
-        const others = await admin
+      const [numberLookup, hashLookup] = await Promise.all([
+        typeof number === "string" && number.length > 0
+          ? admin
+              .from("invoices")
+              .select("id", { count: "exact", head: true })
+              .eq("user_id", userData.user.id)
+              .eq("invoice_number", number)
+              .is("deleted_at", null)
+              .neq("id", result.invoiceId)
+          : Promise.resolve({ count: 0 }),
+        admin
           .from("invoices")
           .select("id", { count: "exact", head: true })
           .eq("user_id", userData.user.id)
-          .eq("invoice_number", number)
+          .eq("source_hash", result.sourceHash)
           .is("deleted_at", null)
-          .neq("id", result.invoiceId);
-        otherWithSameNumber = others.count ?? 0;
-      }
+          .neq("id", result.invoiceId)
+      ]);
+      const otherWithSameNumber = numberLookup.count ?? 0;
+      const otherWithSameContentHash = hashLookup.count ?? 0;
 
       results.push({
         ok: true,
@@ -127,7 +145,8 @@ export async function POST(request: NextRequest) {
         invoiceNumber: number ?? "",
         warnings: result.warnings ?? [],
         isNew: result.isNew,
-        otherWithSameNumber
+        otherWithSameNumber,
+        otherWithSameContentHash
       });
     } catch (error) {
       if (error instanceof UploadError) {

@@ -60,10 +60,15 @@ export type UploadBatchResult =
       invoiceId: string;
       invoiceNumber: string;
       warnings: ReadonlyArray<string>;
+      /** Always `true` after the dedupe drop. Kept for back-compat. */
       isNew: boolean;
       /** Count of other invoices for this user with the same invoice_number.
        * 0 by default for backward compat with older default-api impls. */
       otherWithSameNumber?: number;
+      /** Count of other invoices for this user with the same source_hash —
+       * positive means the user just re-uploaded an identical file and a
+       * new row was inserted on top of the existing one(s). */
+      otherWithSameContentHash?: number;
     }
   | {
       ok: false;
@@ -346,11 +351,13 @@ export function useTranslationWizard({
           // visual state on the file row. Doesn't block translation; the
           // user can proceed (adding a new language is still useful) but
           // they're warned BEFORE the translate click consumes a credit.
-          //   isNew === false              → content_hash matched (same file)
+          //   otherWithSameContentHash > 0 → same file uploaded before
+          //                                  (now its own row in the DB)
           //   otherWithSameNumber > 0      → another invoice has the same
           //                                  invoice_number from this user
-          const otherCount = result.otherWithSameNumber ?? 0;
-          const isDuplicate = !result.isNew || otherCount > 0;
+          const numberCount = result.otherWithSameNumber ?? 0;
+          const hashCount = result.otherWithSameContentHash ?? 0;
+          const isDuplicate = numberCount > 0 || hashCount > 0;
           dispatch({
             type: "patchFileSlot",
             localId: slot.localId,
@@ -359,8 +366,8 @@ export function useTranslationWizard({
               invoiceId: result.invoiceId,
               invoiceNumber: result.invoiceNumber,
               warnings: result.warnings ?? [],
-              isContentDuplicate: !result.isNew,
-              otherWithSameNumber: otherCount
+              isContentDuplicate: hashCount > 0,
+              otherWithSameNumber: numberCount
             }
           });
         } else {
