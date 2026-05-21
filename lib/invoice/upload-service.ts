@@ -9,8 +9,16 @@ import { parseKsefXml } from "@/lib/xml/parser";
 export interface UploadResult {
   invoice: Invoice;
   invoiceId: string;
+  /**
+   * Always `true` since dedupe-by-content-hash was removed. Kept on the
+   * shape for backward compatibility — callers no longer condition on it.
+   */
   isNew: boolean;
   warnings: string[];
+  /** SHA-256 of the original source bytes — used by the upload-batch
+   *  route to count OTHER rows with the same hash for this user, which
+   *  drives the pre-upload "Already uploaded" warning. */
+  sourceHash: string;
 }
 
 export interface UploadOptions {
@@ -44,45 +52,6 @@ async function uploadXml(opts: {
   hash: string;
 }): Promise<UploadResult> {
   const xml = new TextDecoder().decode(opts.bytes);
-  const existing = await opts.supabase
-    .from("invoices")
-    .select("id, source_data, warnings")
-    .eq("user_id", opts.userId)
-    .eq("source_hash", opts.hash)
-    .is("deleted_at", null)
-    .maybeSingle();
-
-  if (existing.error) {
-    console.error("[upload] dedupe lookup failed:", existing.error);
-    throw new UploadError("Failed to check for existing invoice", 500);
-  }
-
-  if (existing.data) {
-    const invoice = existing.data.source_data as unknown as Invoice;
-    if (!invoice.sourceXml) {
-      const invoiceWithSourceXml: Invoice = { ...invoice, sourceXml: xml };
-      const update = await opts.supabase
-        .from("invoices")
-        .update({ source_data: invoiceWithSourceXml as unknown as Json })
-        .eq("id", existing.data.id);
-      if (update.error) {
-        console.error("[upload] failed to backfill XML source on existing invoice:", update.error);
-        throw new UploadError("Failed to update existing invoice", 500);
-      }
-      return {
-        invoice: invoiceWithSourceXml,
-        invoiceId: existing.data.id,
-        isNew: false,
-        warnings: existing.data.warnings ?? []
-      };
-    }
-    return {
-      invoice,
-      invoiceId: existing.data.id,
-      isNew: false,
-      warnings: existing.data.warnings ?? []
-    };
-  }
 
   const parsed = parseKsefXml(xml);
   if (!parsed.ok) {
@@ -125,29 +94,8 @@ async function uploadXml(opts: {
     .select("id")
     .single();
 
-  if (insert.error) {
-    if (insert.error.code === "23505") {
-      const winner = await opts.supabase
-        .from("invoices")
-        .select("id, source_data, warnings")
-        .eq("user_id", opts.userId)
-        .eq("source_hash", opts.hash)
-        .is("deleted_at", null)
-        .maybeSingle();
-      if (winner.data) {
-        return {
-          invoice: winner.data.source_data as unknown as Invoice,
-          invoiceId: winner.data.id,
-          isNew: false,
-          warnings: winner.data.warnings ?? []
-        };
-      }
-    }
+  if (insert.error || !insert.data) {
     console.error("[upload] failed to insert invoice:", insert.error);
-    throw new UploadError("Failed to persist invoice", 500);
-  }
-
-  if (!insert.data) {
     throw new UploadError("Failed to persist invoice", 500);
   }
 
@@ -155,7 +103,8 @@ async function uploadXml(opts: {
     invoice,
     invoiceId: insert.data.id,
     isNew: true,
-    warnings
+    warnings,
+    sourceHash: opts.hash
   };
 }
 
@@ -165,49 +114,6 @@ async function uploadPdf(opts: {
   bytes: Buffer;
   hash: string;
 }): Promise<UploadResult> {
-  const existing = await opts.supabase
-    .from("invoices")
-    .select("id, source_data, warnings")
-    .eq("user_id", opts.userId)
-    .eq("source_hash", opts.hash)
-    .is("deleted_at", null)
-    .maybeSingle();
-
-  if (existing.error) {
-    console.error("[upload] dedupe lookup failed:", existing.error);
-    throw new UploadError("Failed to check for existing invoice", 500);
-  }
-
-  if (existing.data) {
-    const invoice = existing.data.source_data as unknown as Invoice;
-    if (!invoice.sourceXml) {
-      const invoiceWithSourceXml = withSyntheticPdfSourceXml(invoice);
-      const update = await opts.supabase
-        .from("invoices")
-        .update({ source_data: invoiceWithSourceXml as unknown as Json })
-        .eq("id", existing.data.id);
-      if (update.error) {
-        console.error("[upload] failed to backfill synthetic XML source on existing PDF invoice:", update.error);
-        throw new UploadError("Failed to update existing invoice", 500);
-      }
-      return {
-        invoice: invoiceWithSourceXml,
-        invoiceId: existing.data.id,
-        isNew: false,
-        warnings: [
-          ...(existing.data.warnings ?? []),
-          "PDF rendered through reconstructed FA(3) XML; original XML was not provided."
-        ]
-      };
-    }
-    return {
-      invoice,
-      invoiceId: existing.data.id,
-      isNew: false,
-      warnings: existing.data.warnings ?? []
-    };
-  }
-
   const { parseKsefPdf } = await import("@/lib/pdf/parser");
   const parsed = await parseKsefPdf(opts.bytes);
   if (!parsed.ok) {
@@ -237,29 +143,8 @@ async function uploadPdf(opts: {
     .select("id")
     .single();
 
-  if (insert.error) {
-    if (insert.error.code === "23505") {
-      const winner = await opts.supabase
-        .from("invoices")
-        .select("id, source_data, warnings")
-        .eq("user_id", opts.userId)
-        .eq("source_hash", opts.hash)
-        .is("deleted_at", null)
-        .maybeSingle();
-      if (winner.data) {
-        return {
-          invoice: winner.data.source_data as unknown as Invoice,
-          invoiceId: winner.data.id,
-          isNew: false,
-          warnings: winner.data.warnings ?? []
-        };
-      }
-    }
+  if (insert.error || !insert.data) {
     console.error("[upload] failed to insert invoice:", insert.error);
-    throw new UploadError("Failed to persist invoice", 500);
-  }
-
-  if (!insert.data) {
     throw new UploadError("Failed to persist invoice", 500);
   }
 
@@ -267,7 +152,8 @@ async function uploadPdf(opts: {
     invoice,
     invoiceId: insert.data.id,
     isNew: true,
-    warnings
+    warnings,
+    sourceHash: opts.hash
   };
 }
 

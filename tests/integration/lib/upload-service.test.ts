@@ -60,38 +60,9 @@ describe("uploadInvoiceForUser (PDF)", () => {
     expect(count).toBe(0);
   });
 
-  it("dedupes PDF uploads via source_hash before parsing", async () => {
-    const userId = await newUser("pdf-dedupe");
-    const bytes = Buffer.from("%PDF-1.4 placeholder");
-    const hash = await sha256Hex(bytes);
-
-    // Seed an invoices row as if a prior PDF upload had succeeded.
-    // Include a non-empty `sourceXml` so the dedupe path skips the synthetic-XML
-    // backfill (which would crash on this intentionally-sparse fixture).
-    const seeded = await admin
-      .from("invoices")
-      .insert({
-        user_id: userId,
-        source_type: "pdf",
-        source_hash: hash,
-        source_size: bytes.length,
-        source_data: {
-          invoiceNumber: "FX-SEEDED",
-          sourceXml: "<Faktura/>"
-        } as unknown as Record<string, unknown>,
-        warnings: []
-      })
-      .select("id")
-      .single();
-    expect(seeded.error).toBeNull();
-
-    // Re-upload the same bytes — the dedupe lookup short-circuits before parseKsefPdf runs.
-    const file = new File([bytes], "again.pdf", { type: "application/pdf" });
-    const result = await uploadInvoiceForUser({ userId, file, supabase: admin });
-
-    expect(result.isNew).toBe(false);
-    expect(result.invoiceId).toBe(seeded.data!.id);
-  });
+  // Note: content-hash dedupe was removed (2026-05-21) so re-uploading
+  // the same PDF bytes now creates a new row. PDF re-upload test lives
+  // in the XML suite below since we don't ship a real KSeF PDF fixture.
 });
 
 describe("uploadInvoiceForUser (XML)", () => {
@@ -120,7 +91,12 @@ describe("uploadInvoiceForUser (XML)", () => {
     expect(result.invoice.sourceXml).toContain("<Faktura");
   });
 
-  it("returns the existing row when the same bytes are re-uploaded by the same user", async () => {
+  it("creates a NEW row each time the same XML is re-uploaded by the same user", async () => {
+    // Regression: content-hash dedupe was removed (2026-05-21) so users
+    // can see every re-upload as its own history entry with its own
+    // fresh translation. The pre-upload duplicate warning is now driven
+    // by counting other rows with the same source_hash (computed in
+    // app/api/upload-batch/route.ts), not by short-circuiting the insert.
     const userId = await newUser("xml-dupe");
     const bytes = readFileSync(samplePath);
     const file1 = new File([bytes], "sample.xml", { type: "application/xml" });
@@ -129,49 +105,16 @@ describe("uploadInvoiceForUser (XML)", () => {
     const first = await uploadInvoiceForUser({ userId, file: file1, supabase: admin });
     const second = await uploadInvoiceForUser({ userId, file: file2, supabase: admin });
 
-    expect(second.invoiceId).toBe(first.invoiceId);
-    expect(second.isNew).toBe(false);
+    expect(first.isNew).toBe(true);
+    expect(second.isNew).toBe(true);
+    expect(second.invoiceId).not.toBe(first.invoiceId);
+    expect(second.sourceHash).toBe(first.sourceHash);
     expect(second.invoice.invoiceNumber).toBe(first.invoice.invoiceNumber);
 
     const { count } = await admin
       .from("invoices")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId);
-    expect(count).toBe(1);
-  });
-
-  it("backfills sourceXml on an existing XML row created before sourceXml was persisted", async () => {
-    const userId = await newUser("xml-backfill");
-    const bytes = readFileSync(samplePath);
-    const hash = await sha256Hex(bytes);
-
-    const seeded = await admin
-      .from("invoices")
-      .insert({
-        user_id: userId,
-        source_type: "xml",
-        source_hash: hash,
-        source_size: bytes.length,
-        invoice_number: "SEEDED-XML",
-        source_data: { invoiceNumber: "SEEDED-XML" } as unknown as Record<string, unknown>,
-        warnings: []
-      })
-      .select("id")
-      .single();
-    expect(seeded.error).toBeNull();
-
-    const file = new File([bytes], "sample.xml", { type: "application/xml" });
-    const result = await uploadInvoiceForUser({ userId, file, supabase: admin });
-
-    expect(result.isNew).toBe(false);
-    expect(result.invoiceId).toBe(seeded.data!.id);
-    expect(result.invoice.sourceXml).toContain("<Faktura");
-
-    const { data: row } = await admin
-      .from("invoices")
-      .select("source_data")
-      .eq("id", seeded.data!.id)
-      .single();
-    expect((row?.source_data as { sourceXml?: string } | null)?.sourceXml).toContain("<Faktura");
+    expect(count).toBe(2);
   });
 });
