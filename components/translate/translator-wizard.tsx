@@ -18,6 +18,13 @@ export interface TranslatorWizardProps {
   api: WizardApi;
   /** Optional hydration — used by /translate?invoiceId=… */
   initialState?: Partial<WizardState>;
+  /**
+   * Optional side-effect that runs AFTER `wizard.reset()` when the user
+   * clicks "+ Nowe Tłumaczenie". The client wrapper uses this to wipe
+   * the `?invoiceId=…` deep-link from the URL so a subsequent re-mount
+   * can't re-hydrate the wizard into the previous invoice.
+   */
+  onAfterReset?: () => void;
 }
 
 /**
@@ -29,10 +36,16 @@ export function TranslatorWizard({
   uiLanguage = "pl",
   initialBalance,
   api,
-  initialState
+  initialState,
+  onAfterReset
 }: TranslatorWizardProps) {
   const t = copy[uiLanguage];
   const wizard = useTranslationWizard({ api, initialState });
+
+  function handleNewTranslation() {
+    wizard.reset();
+    onAfterReset?.();
+  }
 
   const steps: ReadonlyArray<StepperStep> = useMemo(
     () => [
@@ -112,7 +125,7 @@ export function TranslatorWizard({
           onResumeBatch={wizard.resumeBatch}
           onRetryItem={wizard.retryItem}
           onChangeLanguage={wizard.goBack}
-          onNewTranslation={wizard.reset}
+          onNewTranslation={handleNewTranslation}
         />
       ) : null}
     </section>

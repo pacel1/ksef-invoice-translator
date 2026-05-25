@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TranslatorWizard } from "./translator-wizard";
 import { createDefaultWizardApi } from "./default-wizard-api";
 import type {
@@ -38,12 +39,27 @@ export function TranslatorWizardClient({
     [preloaded]
   );
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // When the user clicks "+ Nowe Tłumaczenie" from a deep-link URL
+  // (/translate?invoiceId=…), the wizard resets its internal state but the
+  // URL is still pointed at the previous invoice. Any subsequent re-mount
+  // (sidebar navigation, hot reload, key-driven remount) would re-hydrate
+  // from `preloaded` and bounce the user back to delivery — making the
+  // reset feel broken. Strip the param so a fresh upload is sticky.
+  const handleAfterReset = useCallback(() => {
+    if (searchParams?.get("invoiceId")) {
+      router.replace("/translate");
+    }
+  }, [router, searchParams]);
+
   return (
     <TranslatorWizard
       uiLanguage={uiLanguage}
       initialBalance={initialBalance}
       api={api}
       initialState={initialState}
+      onAfterReset={handleAfterReset}
     />
   );
 }
