@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Languages, Pencil, Plus } from "lucide-react";
 import { TranslationEditor } from "./translation-editor";
 import { TranslationProgress } from "./translation-progress";
@@ -208,6 +208,19 @@ function DeliveryBatch(props: DeliveryStepProps) {
     jobItems.some((j) => j.status === "error") &&
     jobItems.some((j) => j.status !== "done");
 
+  // Editor wiring: which row (if any) is currently being edited, and a
+  // version counter that lets the in-modal preview iframe remount after
+  // every Save so it reflects the regenerated PDF.
+  const [editingFileSlotId, setEditingFileSlotId] = useState<string | null>(null);
+  const [previewVersion, setPreviewVersion] = useState(0);
+  const editingItem = useMemo(
+    () =>
+      editingFileSlotId
+        ? jobItems.find((j) => j.fileSlotId === editingFileSlotId) ?? null
+        : null,
+    [editingFileSlotId, jobItems]
+  );
+
   const langLabel =
     (languageNamesByUi.pl as Record<string, string>)[language] ?? language;
   const title =
@@ -234,21 +247,17 @@ function DeliveryBatch(props: DeliveryStepProps) {
     [api, jobItems, language, bilingual]
   );
 
-  const previewOne = useCallback(
-    async (fileSlotId: string) => {
-      // For v1, "Podgląd" just opens the PDF in a new tab — same blob as
-      // the download, no extra round-trip. Full inline preview is a PR #D
-      // polish item.
-      const it = jobItems.find((j) => j.fileSlotId === fileSlotId);
-      if (!it) return;
-      const blob = await api.generatePdf(it.invoiceId, language, bilingual);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      // Don't revoke immediately — let the tab handle it. Most browsers
-      // will GC eventually.
-    },
-    [api, jobItems, language, bilingual]
-  );
+  // Row body click and the per-row "Podgląd" both now open the same
+  // single-invoice editor used in single-file mode. The old behaviour
+  // (opening a raw PDF in a new tab) lost users in a non-editable view
+  // and matched no other surface in the app.
+  const openEditor = useCallback((fileSlotId: string) => {
+    setEditingFileSlotId(fileSlotId);
+  }, []);
+
+  const closeEditor = useCallback(() => {
+    setEditingFileSlotId(null);
+  }, []);
 
   const downloadZip = useCallback(async () => {
     const ids = jobItems.filter((j) => j.status === "done").map((j) => j.invoiceId);
@@ -341,12 +350,25 @@ function DeliveryBatch(props: DeliveryStepProps) {
             item={item}
             copy={copy}
             onDownload={downloadOne}
-            onPreview={previewOne}
+            onPreview={openEditor}
             onRetry={(slotId) => void props.onRetryItem(slotId)}
+            onOpenEditor={openEditor}
           />
         ))}
       </ul>
 
+      {editingItem ? (
+        <TranslationEditor
+          key={`${editingItem.invoiceId}-${previewVersion}`}
+          open={true}
+          onClose={closeEditor}
+          invoiceId={editingItem.invoiceId}
+          language={language}
+          bilingual={bilingual}
+          copy={copy}
+          onSaved={() => setPreviewVersion((v) => v + 1)}
+        />
+      ) : null}
     </div>
   );
 }

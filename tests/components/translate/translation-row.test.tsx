@@ -45,6 +45,45 @@ describe("<TranslationRow>", () => {
     expect(screen.getByTestId("row-spinner")).toBeInTheDocument();
   });
 
+  it("done row body is clickable when onOpenEditor is provided — Fix #1 multi-file edit entry", () => {
+    const onOpenEditor = vi.fn();
+    render(
+      <TranslationRow
+        item={makeItem({ status: "done", durationMs: 4_500 })}
+        copy={t}
+        onDownload={vi.fn()}
+        onPreview={vi.fn()}
+        onRetry={vi.fn()}
+        onOpenEditor={onOpenEditor}
+      />
+    );
+    // Body element renders as role="button" with the edit label so a11y
+    // tooling and keyboard users see the affordance.
+    const body = screen.getByRole("button", {
+      name: new RegExp(String(t.editTranslationCta), "i")
+    });
+    fireEvent.click(body);
+    expect(onOpenEditor).toHaveBeenCalledWith("slot-1");
+  });
+
+  it("does NOT mark the body clickable on non-done rows", () => {
+    render(
+      <TranslationRow
+        item={makeItem({ status: "translating" })}
+        copy={t}
+        onDownload={vi.fn()}
+        onPreview={vi.fn()}
+        onRetry={vi.fn()}
+        onOpenEditor={vi.fn()}
+      />
+    );
+    expect(
+      screen.queryByRole("button", {
+        name: new RegExp(String(t.editTranslationCta), "i")
+      })
+    ).toBeNull();
+  });
+
   it("done state shows duration + Preview + Download buttons", () => {
     render(
       <TranslationRow
