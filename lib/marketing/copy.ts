@@ -66,6 +66,60 @@ export const marketingCopy = {
           { title: "Dane w UE 🇪🇺", body: "Supabase Frankfurt. RODO. Kasowanie po 30 dniach." }
         ]
       },
+      features: {
+        headingMuted: "Faktura zostaje fakturą —",
+        headingAccent: "nawet po tłumaczeniu.",
+        items: {
+          fieldMapping: {
+            title: "Każde pole MF FA(3) zachowane",
+            body: "Tłumaczymy treść, ale numerację i strukturę MF zostawiamy nietknięte. PDF wciąż jest rozpoznawalny dla każdego polskiego księgowego — i wciąż zgodny ze schematem 2025-06-25."
+          },
+          pricing: {
+            title: "Bez subskrypcji. Pakiety, które się sumują.",
+            body: "Płacisz tylko za faktury, które tłumaczysz. Im większy pakiet, tym niższa cena za sztukę. Niewykorzystane kredyty nie wygasają."
+          },
+          residency: {
+            title: "Dane w Frankfurcie. Kasowane po 30 dniach.",
+            body: "Supabase Frankfurt (AWS eu-central-1). Szyfrowanie w transferze i w spoczynku. RODO-compliant. Faktury usuwane automatycznie po 30 dniach."
+          }
+        }
+      },
+      testimonials: {
+        // REPLACE_BEFORE_LAUNCH — placeholder testimonials. Swap for real ones before going live.
+        badge: "Beta — pierwsze opinie",
+        heading: "Co mówią pierwsi użytkownicy",
+        subhead:
+          "Tłumacz KSeF jest w wersji beta. Poniższe opinie pochodzą od pierwszych firm korzystających z narzędzia w okresie testów.",
+        items: [
+          {
+            id: "pl-1",
+            name: "Anna Kowalska (REPLACE_BEFORE_LAUNCH)",
+            role: "Księgowa",
+            company: "Studio Eksportowe sp. z o.o.",
+            content:
+              "Mam klientów z Niemiec i Czech. Wcześniej tłumaczyłam faktury ręcznie albo dopisywałam tabelki w Wordzie. Teraz wrzucam XML z KSeF i w 4 sekundy mam gotowy PDF z zachowanymi numerami pól MF.",
+            rating: 5
+          },
+          {
+            id: "pl-2",
+            name: "Tomasz Nowak (REPLACE_BEFORE_LAUNCH)",
+            role: "CFO",
+            company: "Agencja Marketingowa Brand+",
+            content:
+              "Zero subskrypcji, dokupujemy pakiety co kwartał według potrzeb. Najważniejsze, że PDF wygląda profesjonalnie i klient z UK od razu wie, co podpisuje.",
+            rating: 5
+          },
+          {
+            id: "pl-3",
+            name: "Magdalena Wójcik (REPLACE_BEFORE_LAUNCH)",
+            role: "Założycielka",
+            company: "Pracownia ceramiki E-commerce",
+            content:
+              "Sprzedaję na Etsy do 30 krajów. Tłumacz KSeF zaoszczędził mi godziny miesięcznie i pozwolił skupić się na produkcie, a nie na dokumentach.",
+            rating: 5
+          }
+        ]
+      },
       pricingTeaser: {
         heading: "Im więcej tłumaczysz, tym taniej",
         sliderLabel: "Wybierz pakiet:",
@@ -293,6 +347,60 @@ export const marketingCopy = {
           { title: "MF-compliant PDF", body: "Output matches the FA(3) 2025-06-25 schema. Ready to send." },
           { title: "No subscription", body: "Pay only for invoices you actually translate." },
           { title: "EU-based data 🇪🇺", body: "Supabase Frankfurt. GDPR. Deleted after 30 days." }
+        ]
+      },
+      features: {
+        headingMuted: "An invoice stays an invoice —",
+        headingAccent: "even after translation.",
+        items: {
+          fieldMapping: {
+            title: "Every MF FA(3) field preserved",
+            body: "We translate the content; the MF numbering and structure stay untouched. The PDF is still recognizable to any Polish accountant — and still matches the 2025-06-25 schema."
+          },
+          pricing: {
+            title: "No subscription. Packages that add up.",
+            body: "You only pay for invoices you translate. The bigger the package, the lower the unit price. Unused credits never expire."
+          },
+          residency: {
+            title: "Data in Frankfurt. Deleted after 30 days.",
+            body: "Supabase Frankfurt (AWS eu-central-1). Encrypted in transit and at rest. GDPR-compliant. Invoices auto-deleted after 30 days."
+          }
+        }
+      },
+      testimonials: {
+        // REPLACE_BEFORE_LAUNCH — placeholder testimonials. Swap for real ones before going live.
+        badge: "Beta — first opinions",
+        heading: "What early users say",
+        subhead:
+          "Tłumacz KSeF is in beta. The quotes below come from the first companies using the tool during the test period.",
+        items: [
+          {
+            id: "en-1",
+            name: "Anna Kowalska (REPLACE_BEFORE_LAUNCH)",
+            role: "Accountant",
+            company: "Studio Eksportowe sp. z o.o.",
+            content:
+              "I have clients in Germany and Czechia. I used to translate invoices by hand or paste tables into Word. Now I drop a KSeF XML and 4 seconds later I have a PDF with all MF field numbers preserved.",
+            rating: 5
+          },
+          {
+            id: "en-2",
+            name: "Tomasz Nowak (REPLACE_BEFORE_LAUNCH)",
+            role: "CFO",
+            company: "Marketing Agency Brand+",
+            content:
+              "No subscription — we buy packages each quarter as needed. What matters most is that the PDF looks professional and a UK client immediately understands what they're signing.",
+            rating: 5
+          },
+          {
+            id: "en-3",
+            name: "Magdalena Wójcik (REPLACE_BEFORE_LAUNCH)",
+            role: "Founder",
+            company: "Ceramics Workshop · E-commerce",
+            content:
+              "I sell on Etsy to 30 countries. Tłumacz KSeF saved me hours every month and let me focus on the product, not the paperwork.",
+            rating: 5
+          }
         ]
       },
       pricingTeaser: {

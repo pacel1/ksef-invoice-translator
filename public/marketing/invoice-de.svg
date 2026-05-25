@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 400" role="img" aria-label="German translated invoice">
+  <defs>
+    <linearGradient id="de-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F7FAFC"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="400" rx="12" fill="url(#de-bg)"/>
+  <rect x="0.5" y="0.5" width="319" height="399" rx="11.5" fill="none" stroke="#E2E7EE"/>
+
+  <!-- Header band -->
+  <rect x="20" y="22" width="120" height="22" rx="11" fill="#FEF3C7"/>
+  <text x="80" y="37" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#92400E">DE · ÜBERSETZT</text>
+  <text x="20" y="74" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700" fill="#0F2643">RECHNUNG</text>
+  <text x="20" y="92" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#6B7488">FV/2026/05/001</text>
+
+  <rect x="220" y="58" width="80" height="40" rx="6" fill="#0F2643"/>
+  <text x="260" y="74" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-weight="600" fill="#FFFFFF">KSeF</text>
+  <text x="260" y="88" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="7" fill="#94A3B8">UPO 12345</text>
+
+  <line x1="20" y1="112" x2="300" y2="112" stroke="#E2E7EE"/>
+
+  <text x="20" y="130" font-family="ui-sans-serif, system-ui, sans-serif" font-size="8" font-weight="600" fill="#6B7488">VERKÄUFER</text>
+  <rect x="20" y="138" width="120" height="6" rx="3" fill="#0F2643"/>
+  <rect x="20" y="150" width="90" height="5" rx="2.5" fill="#CBD5E1"/>
+  <rect x="20" y="160" width="100" height="5" rx="2.5" fill="#CBD5E1"/>
+
+  <text x="180" y="130" font-family="ui-sans-serif, system-ui, sans-serif" font-size="8" font-weight="600" fill="#6B7488">KÄUFER</text>
+  <rect x="180" y="138" width="100" height="6" rx="3" fill="#0F2643"/>
+  <rect x="180" y="150" width="80" height="5" rx="2.5" fill="#CBD5E1"/>
+  <rect x="180" y="160" width="100" height="5" rx="2.5" fill="#CBD5E1"/>
+
+  <rect x="20" y="186" width="280" height="22" rx="4" fill="#F7FAFC"/>
+  <text x="28" y="201" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-weight="600" fill="#404F69">Leistung</text>
+  <text x="220" y="201" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-weight="600" fill="#404F69">Menge</text>
+  <text x="276" y="201" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-weight="600" fill="#404F69">Betrag</text>
+
+  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" fill="#0F2643">
+    <text x="28" y="226">Beratungsleistung</text>
+    <text x="220" y="226" fill="#404F69">10</text>
+    <text x="292" y="226" text-anchor="end">8.200,00</text>
+    <line x1="20" y1="234" x2="300" y2="234" stroke="#EEF2F7"/>
+
+    <text x="28" y="250">Softwarelizenz</text>
+    <text x="220" y="250" fill="#404F69">1</text>
+    <text x="292" y="250" text-anchor="end">3.600,00</text>
+    <line x1="20" y1="258" x2="300" y2="258" stroke="#EEF2F7"/>
+
+    <text x="28" y="274">Einrichtung &amp; Schulung</text>
+    <text x="220" y="274" fill="#404F69">4</text>
+    <text x="292" y="274" text-anchor="end">2.400,00</text>
+    <line x1="20" y1="282" x2="300" y2="282" stroke="#EEF2F7"/>
+
+    <text x="28" y="298">Technischer Support</text>
+    <text x="220" y="298" fill="#404F69">12</text>
+    <text x="292" y="298" text-anchor="end">1.800,00</text>
+  </g>
+
+  <rect x="170" y="320" width="130" height="58" rx="6" fill="#ECECFE"/>
+  <text x="180" y="338" font-family="ui-sans-serif, system-ui, sans-serif" font-size="8" font-weight="600" fill="#4F46E5">ZU ZAHLEN</text>
+  <text x="292" y="362" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700" fill="#0F2643">19.680,00</text>
+  <text x="292" y="374" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" fill="#6B7488">PLN brutto</text>
+</svg>

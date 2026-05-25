@@ -1,12 +1,19 @@
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { Globe2, ShieldCheck, Zap } from "lucide-react";
 import { PublicHeader } from "@/components/layout/public-header";
 import { LegalFooter } from "@/components/layout/legal-footer";
 import { TrustStrip } from "@/components/trust/trust-strip";
-import { PriceSnippet } from "@/components/trust/price-snippet";
 import { FounderCard } from "@/components/trust/founder-card";
 import { MarketingFAQ } from "@/components/marketing/marketing-faq";
 import { PublicPricingSlider } from "@/components/marketing/public-pricing-slider";
+import { HeroSection } from "@/components/ui/hero-section-9";
+import { AnimatedTestimonials } from "@/components/ui/animated-testimonials";
+import {
+  FeaturesSection,
+  FieldMappingIllustration,
+  PricingTiersIllustration,
+  DataResidencyIllustration
+} from "@/components/ui/features-section";
 import { marketingCopy, type MarketingLocale } from "@/lib/marketing/copy";
 import { FOUNDER } from "@/lib/brand/founder";
 
@@ -27,53 +34,79 @@ export function LandingPage({ locale }: LandingPageProps) {
       <PublicHeader locale={locale} />
       <main className="flex flex-1 flex-col">
         {/* Hero */}
-        <section className="mx-auto w-full max-w-5xl px-5 py-20 text-center md:px-8 md:py-28">
-          <h1 className="text-display text-text-strong">{t.heroHeadline}</h1>
-          <p className="mx-auto mt-5 max-w-2xl text-body text-text-muted">{t.heroSubhead}</p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/login"
-              className="inline-flex h-12 items-center justify-center rounded-md bg-accent px-6 text-body font-semibold text-white shadow-sm transition-colors duration-hover ease-out hover:bg-accent-hover"
-            >
-              {t.heroCtaPrimary}
-            </Link>
-            <Link
-              href="#demo"
-              className="inline-flex h-12 items-center justify-center rounded-md border border-border bg-surface px-6 text-body font-medium text-text transition-colors duration-hover ease-out hover:bg-surface-muted"
-            >
-              {t.heroCtaSecondary}
-            </Link>
-          </div>
-          <div className="mt-6 flex justify-center">
-            <PriceSnippet locale={locale} variant="inline" />
-          </div>
-        </section>
+        <HeroSection
+          title={t.heroHeadline}
+          subtitle={t.heroSubhead}
+          note={t.heroFreeNote}
+          actions={[
+            {
+              text: t.heroCtaPrimary,
+              href: "/login",
+              variant: "default",
+              className: "shadow-sm"
+            },
+            {
+              text: t.heroCtaSecondary,
+              href: "#features",
+              variant: "outline"
+            }
+          ]}
+          stats={[
+            {
+              value: "20+",
+              label: locale === "pl" ? "języków docelowych" : "target languages",
+              icon: <Globe2 className="h-5 w-5" aria-hidden="true" />
+            },
+            {
+              value: "MF FA(3)",
+              label: locale === "pl" ? "zgodny ze schematem" : "schema compliant",
+              icon: <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+            },
+            {
+              value: "~4 s",
+              label: locale === "pl" ? "średnio na fakturę" : "average per invoice",
+              icon: <Zap className="h-5 w-5" aria-hidden="true" />
+            }
+          ]}
+          images={[
+            { src: "/marketing/invoice-pl.svg", alt: "Polska faktura FA(3) — oryginał" },
+            { src: "/marketing/invoice-en.svg", alt: "English translation — same invoice" }
+          ]}
+          translationLabel="4 s"
+        />
 
-        {/* Live demo strip (static for Sprint 2) */}
-        <section id="demo" className="bg-surface-muted">
-          <div className="mx-auto max-w-6xl px-5 py-16 md:px-8">
-            <h2 className="text-center text-h2 text-text-strong">{t.demoStripHeading}</h2>
-            <p className="mt-2 text-center text-small text-text-muted">{t.demoStripCaption}</p>
-            <div className="mt-8 rounded-xl border border-border bg-surface p-12 text-center text-small text-text-muted shadow-sm">
-              <p className="font-medium text-text-strong">Demo — wkrótce interaktywne</p>
-              <p className="mt-2">Tłumaczenia są generowane przez API w czasie rzeczywistym.</p>
-            </div>
-          </div>
-        </section>
+        {/* Features — 1 hero card + 2 small cards */}
+        <div id="features" />
+        <FeaturesSection
+          headingMuted={t.features.headingMuted}
+          headingAccent={t.features.headingAccent}
+          items={[
+            {
+              title: t.features.items.fieldMapping.title,
+              body: t.features.items.fieldMapping.body,
+              illustration: <FieldMappingIllustration />,
+              hero: true
+            },
+            {
+              title: t.features.items.pricing.title,
+              body: t.features.items.pricing.body,
+              illustration: <PricingTiersIllustration />
+            },
+            {
+              title: t.features.items.residency.title,
+              body: t.features.items.residency.body,
+              illustration: <DataResidencyIllustration />
+            }
+          ]}
+        />
 
-        {/* Three value props */}
-        <section className="mx-auto w-full max-w-6xl px-5 py-20 md:px-8">
-          <h2 className="text-center text-h2 text-text-strong">{t.valueProps.heading}</h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {t.valueProps.items.map((item) => (
-              <div key={item.title} className="rounded-xl border border-border bg-surface p-6 shadow-sm">
-                <CheckCircle2 className="h-6 w-6 text-accent" aria-hidden="true" />
-                <h3 className="mt-3 text-h3 text-text-strong">{item.title}</h3>
-                <p className="mt-2 text-small text-text">{item.body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Testimonials */}
+        <AnimatedTestimonials
+          badgeText={t.testimonials.badge}
+          title={t.testimonials.heading}
+          subtitle={t.testimonials.subhead}
+          testimonials={t.testimonials.items}
+        />
 
         {/* TrustStrip */}
         <section className="bg-surface-muted py-12">
