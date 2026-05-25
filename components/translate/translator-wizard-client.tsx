@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { TranslatorWizard } from "./translator-wizard";
+import { TranslatorWizard, type ReviewerSnapshot } from "./translator-wizard";
 import { createDefaultWizardApi } from "./default-wizard-api";
 import type {
   FileSlot,
@@ -21,6 +21,8 @@ export interface TranslatorWizardClientProps {
    * (no translation yet) so they skip the upload flow entirely.
    */
   preloaded?: PreloadedInvoice | null;
+  /** Snapshot of the user's first/last name. Drives the hard-block modal. */
+  reviewer?: ReviewerSnapshot;
 }
 
 /**
@@ -31,7 +33,8 @@ export interface TranslatorWizardClientProps {
 export function TranslatorWizardClient({
   uiLanguage,
   initialBalance,
-  preloaded
+  preloaded,
+  reviewer
 }: TranslatorWizardClientProps) {
   const api = useMemo(() => createDefaultWizardApi(), []);
   const initialState = useMemo(
@@ -60,6 +63,7 @@ export function TranslatorWizardClient({
       api={api}
       initialState={initialState}
       onAfterReset={handleAfterReset}
+      reviewer={reviewer}
     />
   );
 }

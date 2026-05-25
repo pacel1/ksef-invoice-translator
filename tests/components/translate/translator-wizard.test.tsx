@@ -153,6 +153,73 @@ describe("<TranslatorWizard>", () => {
     expect(screen.queryByTestId("upload-file-list")).toBeNull();
   });
 
+  it("opens the hard-block name modal when the user clicks Translate without a reviewer name", async () => {
+    // Hydrate straight into Step 2 with a single ready file + a chosen
+    // language, so the Translate CTA is visible and one click is enough
+    // to trigger the gate.
+    render(
+      <TranslatorWizard
+        uiLanguage="pl"
+        initialBalance={5}
+        api={makeStubApi()}
+        reviewer={{ firstName: null, lastName: null }}
+        initialState={{
+          step: "language",
+          files: [
+            {
+              localId: "slot-1",
+              file: new File([], "f.xml", { type: "application/xml" }),
+              status: "ready",
+              invoiceId: "inv-1",
+              invoiceNumber: "FA-1"
+            }
+          ],
+          language: "en",
+          bilingual: false,
+          jobItems: []
+        }}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Tłumacz/i }));
+    expect(
+      await screen.findByRole("dialog", {
+        name: /Imię i nazwisko zatwierdzającego tłumaczenie/i
+      })
+    ).toBeInTheDocument();
+  });
+
+  it("does NOT open the hard-block modal when first+last name are already set", () => {
+    render(
+      <TranslatorWizard
+        uiLanguage="pl"
+        initialBalance={5}
+        api={makeStubApi()}
+        reviewer={{ firstName: "Jan", lastName: "Kowalski" }}
+        initialState={{
+          step: "language",
+          files: [
+            {
+              localId: "slot-1",
+              file: new File([], "f.xml", { type: "application/xml" }),
+              status: "ready",
+              invoiceId: "inv-1",
+              invoiceNumber: "FA-1"
+            }
+          ],
+          language: "en",
+          bilingual: false,
+          jobItems: []
+        }}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Tłumacz/i }));
+    expect(
+      screen.queryByRole("dialog", {
+        name: /Imię i nazwisko zatwierdzającego tłumaczenie/i
+      })
+    ).toBeNull();
+  });
+
   it("invokes onAfterReset when the user starts a new translation from delivery", () => {
     // Allows the client wrapper to clean a deep-link URL (?invoiceId=…) so
     // a subsequent re-mount cannot re-hydrate the wizard into the old

@@ -12,6 +12,8 @@ const baseProps = {
   email: "user@firma.pl",
   initialLocale: "pl" as const,
   initialDisplayName: "Jan Kowalski",
+  initialFirstName: "",
+  initialLastName: "",
   labels: {
     heading: "Profil",
     emailLabel: "E-mail",
@@ -19,6 +21,9 @@ const baseProps = {
     localeLabel: "Język interfejsu",
     displayNameLabel: "Nazwa wyświetlana (opcjonalnie)",
     displayNameHelp: "Używana w transakcyjnych e-mailach.",
+    firstNameLabel: "Imię",
+    lastNameLabel: "Nazwisko",
+    fullNameHelp: "Imię i nazwisko trafiają na każdą przetłumaczoną fakturę…",
     saveButton: "Zapisz zmiany",
     savingButton: "Zapisuję…",
     saveSuccess: "Zapisano.",
@@ -49,19 +54,27 @@ describe("<ProfileSection>", () => {
     expect(input.value).toBe("Jan Kowalski");
   });
 
-  it("calls updateProfile with new locale + displayName on submit", async () => {
+  it("calls updateProfile with new locale + displayName + first/last on submit", async () => {
     updateProfileMock.mockResolvedValue({ ok: true });
     render(<ProfileSection {...baseProps} />);
     fireEvent.click(screen.getByRole("radio", { name: /en/i }));
     fireEvent.change(screen.getByLabelText(/Nazwa wyświetlana/i), {
       target: { value: "Anna Nowak" }
     });
+    fireEvent.change(screen.getByLabelText(/Imię/i), {
+      target: { value: "Anna" }
+    });
+    fireEvent.change(screen.getByLabelText(/Nazwisko/i), {
+      target: { value: "Nowak" }
+    });
     fireEvent.click(screen.getByRole("button", { name: /Zapisz zmiany/i }));
 
     await waitFor(() => {
       expect(updateProfileMock).toHaveBeenCalledWith({
         locale: "en",
-        displayName: "Anna Nowak"
+        displayName: "Anna Nowak",
+        firstName: "Anna",
+        lastName: "Nowak"
       });
     });
     await waitFor(() => {

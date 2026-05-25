@@ -21,7 +21,8 @@ export default async function TranslatePage({
   searchParams?: Promise<{ invoiceId?: string }>;
 }) {
   const user = await requireUser();
-  const { uiLanguage } = await getCurrentProfile(user.id);
+  const profile = await getCurrentProfile(user.id);
+  const { uiLanguage, firstName, lastName } = profile;
   const balance = await getCurrentBalance(user.id);
   const t = copy[uiLanguage];
 
@@ -68,6 +69,7 @@ export default async function TranslatePage({
           uiLanguage={uiLanguage}
           initialBalance={totalCredits}
           preloaded={preloaded}
+          reviewer={{ firstName, lastName }}
         />
       </main>
     </div>
