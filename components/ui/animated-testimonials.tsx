@@ -158,7 +158,7 @@ export function AnimatedTestimonials({
                   <div className="relative mb-6 flex-1">
                     <Quote className="absolute -left-2 -top-2 h-8 w-8 rotate-180 text-accent/20" aria-hidden="true" />
                     <p className="relative z-10 text-lg font-medium leading-relaxed text-text-strong">
-                      „{testimonial.content}"
+                      „{testimonial.content}”
                     </p>
                   </div>
 

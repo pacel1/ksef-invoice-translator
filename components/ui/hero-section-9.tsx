@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
@@ -187,9 +188,12 @@ export function HeroSection({
             style={{ transformOrigin: "bottom right" }}
             variants={imageVariants}
           >
-            <img
+            <Image
               src={images[0].src}
               alt={images[0].alt}
+              width={320}
+              height={400}
+              priority
               className="block h-auto w-full rounded-xl"
             />
           </motion.div>
@@ -217,9 +221,11 @@ export function HeroSection({
             style={{ transformOrigin: "top left" }}
             variants={imageVariants}
           >
-            <img
+            <Image
               src={images[1].src}
               alt={images[1].alt}
+              width={320}
+              height={400}
               className="block h-auto w-full rounded-xl"
             />
           </motion.div>
