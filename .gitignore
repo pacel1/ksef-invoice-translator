@@ -23,3 +23,8 @@ playwright/.cache
 # Test envs
 .env.test
 .env.local
+
+# Local tooling
+.claude/
+.worktrees/
+.DS_Store
