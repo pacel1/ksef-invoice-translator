@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { InvoiceTable } from "@/components/history/invoice-table";
 import type { InvoiceSummary } from "@/lib/invoice/recent-invoices";
 
@@ -7,6 +7,7 @@ const labels = {
   numberHeader: "Numer",
   dateHeader: "Data wystawienia",
   sellerHeader: "Sprzedawca",
+  buyerHeader: "Nabywca",
   amountHeader: "Kwota",
   languagesHeader: "Języki",
   actionsHeader: "Akcje",
@@ -22,6 +23,7 @@ const sample: InvoiceSummary[] = [
     invoiceNumber: "F/24/0148",
     issueDate: "2026-05-12",
     sellerName: "ACME Sp. z o.o.",
+    buyerName: "Klient Sp. z o.o.",
     totalGross: 18597.6,
     currency: "PLN",
     createdAt: "2026-05-12T10:00:00Z",
@@ -33,6 +35,7 @@ const sample: InvoiceSummary[] = [
     invoiceNumber: "F/24/0147",
     issueDate: "2026-05-11",
     sellerName: null,
+    buyerName: null,
     totalGross: null,
     currency: null,
     createdAt: "2026-05-11T10:00:00Z",
@@ -42,13 +45,50 @@ const sample: InvoiceSummary[] = [
 ];
 
 describe("<InvoiceTable>", () => {
-  it("renders all column headers", () => {
+  it("renders all column headers including Nabywca", () => {
     render(<InvoiceTable rows={sample} labels={labels} />);
     expect(screen.getByRole("columnheader", { name: /Numer/ })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /Data wystawienia/ })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /Sprzedawca/ })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Nabywca/ })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /Kwota/ })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /Języki/ })).toBeInTheDocument();
+  });
+
+  it("renders buyer name in the Nabywca column", () => {
+    render(<InvoiceTable rows={sample} labels={labels} />);
+    expect(screen.getByText("Klient Sp. z o.o.")).toBeInTheDocument();
+  });
+
+  it("makes sortable headers clickable and surfaces direction via aria-sort", () => {
+    const onSort = vi.fn();
+    render(
+      <InvoiceTable
+        rows={sample}
+        labels={labels}
+        sort={{ by: "createdAt", order: "desc" }}
+        onSort={onSort}
+      />
+    );
+    const dateHeader = screen.getByRole("columnheader", { name: /Data wystawienia/ });
+    expect(dateHeader).toHaveAttribute("aria-sort", "descending");
+
+    // Clicking the date header again should request the opposite direction.
+    fireEvent.click(screen.getByRole("button", { name: /Data wystawienia/ }));
+    expect(onSort).toHaveBeenCalledWith("createdAt");
+
+    // Clicking a different column should request that column (the parent
+    // decides the default direction).
+    fireEvent.click(screen.getByRole("button", { name: /Nabywca/ }));
+    expect(onSort).toHaveBeenCalledWith("buyerName");
+  });
+
+  it("does NOT make headers clickable when onSort is omitted", () => {
+    render(<InvoiceTable rows={sample} labels={labels} />);
+    // No button-role headers — they should be plain text.
+    expect(
+      screen.queryByRole("button", { name: /Data wystawienia/ })
+    ).toBeNull();
   });
 
   it("renders one row per invoice with the invoice number", () => {
@@ -108,6 +148,7 @@ describe("<InvoiceTable>", () => {
         invoiceNumber: "F/24/0148",
         issueDate: "2026-05-12",
         sellerName: "ACME",
+        buyerName: "Klient",
         totalGross: 100,
         currency: "PLN",
         createdAt: "2026-05-12T10:00:00Z",
