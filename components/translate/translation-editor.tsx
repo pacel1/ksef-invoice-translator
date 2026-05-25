@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import type { Invoice, LanguageCode } from "@/types/invoice";
 import type { Copy } from "@/lib/workspace/copy";
+import {
+  buildEditableFields,
+  groupEditableFieldsBySection
+} from "@/lib/translation/editable-fields";
 import { cn } from "@/lib/utils";
 
 export interface TranslationEditorProps {
@@ -735,39 +739,102 @@ function EditorFields({ invoice, draft, setDraft, copy }: EditorFieldsProps) {
       ) : null}
 
       {hasFragments ? (
-        <section className="flex flex-col gap-3">
+        <FragmentSections
+          fragments={fragments}
+          draft={draft}
+          setDraft={setDraft}
+          locale={copy.editorFragmentsLabel === "AI-translated phrases" ? "en" : "pl"}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+interface FragmentSectionsProps {
+  fragments: Invoice["translationFragments"];
+  draft: DraftState;
+  setDraft: React.Dispatch<React.SetStateAction<DraftState>>;
+  locale: "pl" | "en";
+}
+
+/**
+ * Renders the parser's `translationFragments` as a unified set of
+ * EditableTranslationField groups — friendly section labels (Korekta,
+ * Załącznik, Płatność, …) with human field names ("Etykieta załącznika"
+ * instead of "attachment_key"). The save key stays the parser's stable
+ * fragment.id so /api/translate/edit doesn't need to change.
+ */
+function FragmentSections({
+  fragments,
+  draft,
+  setDraft,
+  locale
+}: FragmentSectionsProps) {
+  const groups = useMemo(() => {
+    const fields = buildEditableFields(fragments ?? [], { locale });
+    return groupEditableFieldsBySection(fields);
+  }, [fragments, locale]);
+
+  return (
+    <>
+      {groups.map((group) => (
+        <section key={group.section} className="flex flex-col gap-3">
           <h3 className="text-small font-semibold text-text-strong">
-            {String(copy.editorFragmentsLabel)}
+            {group.label}
           </h3>
           <ul className="flex flex-col gap-3">
-            {fragments.map((fragment) => (
+            {group.fields.map((field) => (
               <li
-                key={`fragment-${fragment.id}`}
+                key={`field-${field.id}`}
                 className="rounded-lg border border-border bg-surface p-3"
               >
-                <p className="mb-2 text-micro text-text-muted">
-                  <span className="font-medium">{fragment.kind}</span>:{" "}
-                  {fragment.source}
-                </p>
-                <textarea
-                  value={draft.fragmentTranslations[fragment.id] ?? ""}
-                  onChange={(e) =>
-                    setDraft((prev) => ({
-                      ...prev,
-                      fragmentTranslations: {
-                        ...prev.fragmentTranslations,
-                        [fragment.id]: e.target.value
-                      }
-                    }))
-                  }
-                  rows={2}
-                  className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
-                />
+                <div className="mb-2 flex flex-col gap-0.5">
+                  <span className="text-small font-medium text-text-strong">
+                    {field.label}
+                  </span>
+                  {field.xmlPathBreadcrumb ? (
+                    <span className="text-micro text-text-muted">
+                      {field.xmlPathBreadcrumb}
+                    </span>
+                  ) : null}
+                  <p className="mt-1 text-small text-text">{field.source}</p>
+                </div>
+                {field.multiline ? (
+                  <textarea
+                    value={draft.fragmentTranslations[field.id] ?? ""}
+                    onChange={(e) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        fragmentTranslations: {
+                          ...prev.fragmentTranslations,
+                          [field.id]: e.target.value
+                        }
+                      }))
+                    }
+                    rows={3}
+                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={draft.fragmentTranslations[field.id] ?? ""}
+                    onChange={(e) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        fragmentTranslations: {
+                          ...prev.fragmentTranslations,
+                          [field.id]: e.target.value
+                        }
+                      }))
+                    }
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-small text-text-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                )}
               </li>
             ))}
           </ul>
         </section>
-      ) : null}
-    </div>
+      ))}
+    </>
   );
 }
