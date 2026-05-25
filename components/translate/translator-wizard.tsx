@@ -1,13 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Stepper, type StepperStep } from "@/components/ui/stepper";
 import { copy, type UiLanguage } from "@/lib/workspace/copy";
+import { NameCaptureModal } from "@/components/account/name-capture-modal";
 import { useTranslationWizard, type WizardApi, type WizardState } from "./use-translation-wizard";
 import { UploadStep } from "./upload-step";
 import { LanguageStep } from "./language-step";
 import { DeliveryStep } from "./delivery-step";
 import type { LanguageCode } from "@/types/invoice";
+
+export interface ReviewerSnapshot {
+  firstName: string | null;
+  lastName: string | null;
+}
 
 export interface TranslatorWizardProps {
   /** UI locale — drives the copy dictionary used by step children. */
@@ -18,6 +24,19 @@ export interface TranslatorWizardProps {
   api: WizardApi;
   /** Optional hydration — used by /translate?invoiceId=… */
   initialState?: Partial<WizardState>;
+  /**
+   * Optional side-effect that runs AFTER `wizard.reset()` when the user
+   * clicks "+ Nowe Tłumaczenie". The client wrapper uses this to wipe
+   * the `?invoiceId=…` deep-link from the URL so a subsequent re-mount
+   * can't re-hydrate the wizard into the previous invoice.
+   */
+  onAfterReset?: () => void;
+  /**
+   * The user's current first/last name (from profiles). If either half
+   * is missing, the wizard hard-blocks the Translate click with a modal
+   * — MF requires the reviewer name on every translated invoice.
+   */
+  reviewer?: ReviewerSnapshot;
 }
 
 /**
@@ -29,10 +48,44 @@ export function TranslatorWizard({
   uiLanguage = "pl",
   initialBalance,
   api,
-  initialState
+  initialState,
+  onAfterReset,
+  reviewer
 }: TranslatorWizardProps) {
   const t = copy[uiLanguage];
   const wizard = useTranslationWizard({ api, initialState });
+
+  // Reviewer-name hard block: if MF-required first/last name is missing
+  // when the user clicks Translate, open the modal and stash the action
+  // so we can resume it the moment the name lands in the database.
+  const [reviewerSatisfied, setReviewerSatisfied] = useState(
+    Boolean(reviewer?.firstName?.trim() && reviewer?.lastName?.trim())
+  );
+  const [nameModalOpen, setNameModalOpen] = useState(false);
+  const retryAfterSaveRef = useRef<null | (() => void)>(null);
+
+  const handleTranslate = useCallback(async () => {
+    if (!reviewerSatisfied) {
+      retryAfterSaveRef.current = () => {
+        void wizard.startTranslation();
+      };
+      setNameModalOpen(true);
+      return;
+    }
+    await wizard.startTranslation();
+  }, [reviewerSatisfied, wizard]);
+
+  function handleNameSaved() {
+    setReviewerSatisfied(true);
+    const retry = retryAfterSaveRef.current;
+    retryAfterSaveRef.current = null;
+    if (retry) retry();
+  }
+
+  function handleNewTranslation() {
+    wizard.reset();
+    onAfterReset?.();
+  }
 
   const steps: ReadonlyArray<StepperStep> = useMemo(
     () => [
@@ -97,7 +150,7 @@ export function TranslatorWizard({
           onSetLanguage={wizard.setLanguage}
           onSetBilingual={wizard.setBilingual}
           onBack={wizard.goBack}
-          onTranslate={wizard.startTranslation}
+          onTranslate={handleTranslate}
         />
       ) : null}
 
@@ -112,9 +165,30 @@ export function TranslatorWizard({
           onResumeBatch={wizard.resumeBatch}
           onRetryItem={wizard.retryItem}
           onChangeLanguage={wizard.goBack}
-          onNewTranslation={wizard.reset}
+          onNewTranslation={handleNewTranslation}
         />
       ) : null}
+
+      <NameCaptureModal
+        open={nameModalOpen}
+        dismissible={false}
+        initialFirstName={reviewer?.firstName ?? ""}
+        initialLastName={reviewer?.lastName ?? ""}
+        labels={{
+          title: String(t.nameCaptureTitle),
+          body: String(t.nameCaptureBody),
+          firstNameLabel: String(t.nameCaptureFirstNameLabel),
+          lastNameLabel: String(t.nameCaptureLastNameLabel),
+          saveButton: String(t.nameCaptureSave),
+          savingButton: String(t.nameCaptureSaving),
+          errorMessage: String(t.nameCaptureError)
+        }}
+        onClose={() => {
+          setNameModalOpen(false);
+          retryAfterSaveRef.current = null;
+        }}
+        onSaved={handleNameSaved}
+      />
     </section>
   );
 }

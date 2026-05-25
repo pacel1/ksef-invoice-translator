@@ -9,6 +9,7 @@ import { supportedLanguages } from "@/lib/translation/languages";
 import { getOrCreateTranslation } from "@/lib/translation/translation-cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { reviewerNameFromProfile } from "@/lib/auth/get-current-profile";
 import type { Invoice, LanguageCode } from "@/types/invoice";
 
 export const runtime = "nodejs";
@@ -79,7 +80,7 @@ async function pdfFromCache(params: z.infer<typeof cachedRequestSchema>) {
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("display_name")
+      .select("display_name, first_name, last_name")
       .eq("id", userData.user.id)
       .maybeSingle()
   ]);
@@ -110,9 +111,17 @@ async function pdfFromCache(params: z.infer<typeof cachedRequestSchema>) {
     invoice = result.invoice;
   }
 
+  const reviewer = reviewerNameFromProfile(
+    {
+      firstName: profile.data?.first_name ?? null,
+      lastName: profile.data?.last_name ?? null,
+      displayName: profile.data?.display_name ?? null
+    },
+    userData.user.email
+  );
   const response = await renderPdfResponse(invoice, language.code, bilingual, translated, {
     sourceXml: invoice.sourceXml ?? sourceInvoice.sourceXml,
-    reviewedBy: params.reviewedBy ?? profile.data?.display_name ?? userData.user.email,
+    reviewedBy: params.reviewedBy ?? reviewer,
     skipKsefVerification: Boolean(params.preview),
     preserveUnconfirmedVerification: Boolean(params.preview),
     timings

@@ -13,7 +13,7 @@ export default async function AccountPage() {
   const admin = getSupabaseAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("display_name, locale")
+    .select("display_name, locale, first_name, last_name")
     .eq("id", user.id)
     .single();
 
@@ -27,6 +27,8 @@ export default async function AccountPage() {
         email={user.email ?? ""}
         initialLocale={uiLanguage}
         initialDisplayName={profile?.display_name ?? ""}
+        initialFirstName={profile?.first_name ?? ""}
+        initialLastName={profile?.last_name ?? ""}
         labels={{
           heading: String(t.accountProfileHeading),
           emailLabel: String(t.accountEmailLabel),
@@ -34,6 +36,9 @@ export default async function AccountPage() {
           localeLabel: String(t.accountLocaleLabel),
           displayNameLabel: String(t.accountDisplayNameLabel),
           displayNameHelp: String(t.accountDisplayNameHelp),
+          firstNameLabel: String(t.accountFirstNameLabel),
+          lastNameLabel: String(t.accountLastNameLabel),
+          fullNameHelp: String(t.accountFullNameHelp),
           saveButton: String(t.accountSaveButton),
           savingButton: String(t.accountSavingButton),
           saveSuccess: String(t.accountSaveSuccess),

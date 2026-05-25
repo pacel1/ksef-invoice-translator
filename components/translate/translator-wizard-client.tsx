@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import { TranslatorWizard } from "./translator-wizard";
+import { useCallback, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { TranslatorWizard, type ReviewerSnapshot } from "./translator-wizard";
 import { createDefaultWizardApi } from "./default-wizard-api";
 import type {
   FileSlot,
@@ -20,6 +21,8 @@ export interface TranslatorWizardClientProps {
    * (no translation yet) so they skip the upload flow entirely.
    */
   preloaded?: PreloadedInvoice | null;
+  /** Snapshot of the user's first/last name. Drives the hard-block modal. */
+  reviewer?: ReviewerSnapshot;
 }
 
 /**
@@ -30,7 +33,8 @@ export interface TranslatorWizardClientProps {
 export function TranslatorWizardClient({
   uiLanguage,
   initialBalance,
-  preloaded
+  preloaded,
+  reviewer
 }: TranslatorWizardClientProps) {
   const api = useMemo(() => createDefaultWizardApi(), []);
   const initialState = useMemo(
@@ -38,12 +42,28 @@ export function TranslatorWizardClient({
     [preloaded]
   );
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // When the user clicks "+ Nowe Tłumaczenie" from a deep-link URL
+  // (/translate?invoiceId=…), the wizard resets its internal state but the
+  // URL is still pointed at the previous invoice. Any subsequent re-mount
+  // (sidebar navigation, hot reload, key-driven remount) would re-hydrate
+  // from `preloaded` and bounce the user back to delivery — making the
+  // reset feel broken. Strip the param so a fresh upload is sticky.
+  const handleAfterReset = useCallback(() => {
+    if (searchParams?.get("invoiceId")) {
+      router.replace("/translate");
+    }
+  }, [router, searchParams]);
+
   return (
     <TranslatorWizard
       uiLanguage={uiLanguage}
       initialBalance={initialBalance}
       api={api}
       initialState={initialState}
+      onAfterReset={handleAfterReset}
+      reviewer={reviewer}
     />
   );
 }

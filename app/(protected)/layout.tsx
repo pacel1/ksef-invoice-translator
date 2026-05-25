@@ -4,15 +4,18 @@ import { getCurrentBalance } from "@/lib/billing/get-current-balance";
 import { signOut } from "@/app/actions/auth";
 import { BalanceChip } from "@/components/billing/balance-chip";
 import { CreditPurchaseDrawer } from "@/components/billing/credit-purchase-drawer";
+import { OnboardingNameModal } from "@/components/account/onboarding-name-modal";
 import { AuthenticatedHeader } from "@/components/layout/authenticated-header";
 import { LegalFooter } from "@/components/layout/legal-footer";
 import { copy } from "@/lib/workspace/copy";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const { uiLanguage } = await getCurrentProfile(user.id);
+  const profile = await getCurrentProfile(user.id);
+  const { uiLanguage, firstName, lastName } = profile;
   const balance = await getCurrentBalance(user.id);
   const t = copy[uiLanguage];
+  const reviewerMissing = !firstName?.trim() || !lastName?.trim();
 
   const balanceSlot = (
     <BalanceChip
@@ -41,6 +44,19 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         labels={{
           title: String(t.drawerTitle),
           closeLabel: String(t.close)
+        }}
+      />
+      <OnboardingNameModal
+        missing={reviewerMissing}
+        labels={{
+          title: String(t.nameCaptureTitle),
+          body: String(t.nameCaptureBody),
+          firstNameLabel: String(t.nameCaptureFirstNameLabel),
+          lastNameLabel: String(t.nameCaptureLastNameLabel),
+          saveButton: String(t.nameCaptureSave),
+          savingButton: String(t.nameCaptureSaving),
+          dismissButton: String(t.nameCaptureDismiss),
+          errorMessage: String(t.nameCaptureError)
         }}
       />
     </div>

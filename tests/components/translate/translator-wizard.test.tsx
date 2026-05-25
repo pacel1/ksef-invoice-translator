@@ -102,4 +102,154 @@ describe("<TranslatorWizard>", () => {
     expect(items[0]).toHaveAttribute("aria-current", "step");
     expect(items[1]).not.toHaveAttribute("aria-current");
   });
+
+  it("clicking '+ Nowe Tłumaczenie' on delivery snaps back to a clean upload step", () => {
+    // Hydrate straight into the delivery step with one done invoice so the
+    // "+ Nowe Tłumaczenie" CTA is reachable. After the click the wizard
+    // must return to step 1 with NO file rows still showing — this is the
+    // regression Fix #2 protects against (state.files were "stuck" after
+    // hydrated-from-URL deep-links).
+    render(
+      <TranslatorWizard
+        uiLanguage="pl"
+        initialBalance={5}
+        api={makeStubApi()}
+        initialState={{
+          step: "delivery",
+          files: [
+            {
+              localId: "preloaded-1",
+              file: new File([], "FA-9.xml", { type: "application/xml" }),
+              status: "ready",
+              invoiceId: "inv-9",
+              invoiceNumber: "FA-9"
+            }
+          ],
+          language: "en",
+          bilingual: false,
+          jobItems: [
+            {
+              fileSlotId: "preloaded-1",
+              invoiceId: "inv-9",
+              invoiceNumber: "FA-9",
+              status: "done",
+              creditConsumed: false
+            }
+          ]
+        }}
+      />
+    );
+    // Sanity — we start on delivery
+    expect(screen.getByTestId("wizard-step-delivery")).toBeInTheDocument();
+
+    // Click "+ Nowe tłumaczenie" (the single-mode variant since there is 1 done item)
+    const newBtn = screen.getByRole("button", { name: /Nowe tłumaczenie/i });
+    act(() => {
+      fireEvent.click(newBtn);
+    });
+
+    // Back on Step 1 with no lingering file rows
+    expect(screen.getByTestId("wizard-step-upload")).toBeInTheDocument();
+    expect(screen.queryByTestId("upload-file-list")).toBeNull();
+  });
+
+  it("opens the hard-block name modal when the user clicks Translate without a reviewer name", async () => {
+    // Hydrate straight into Step 2 with a single ready file + a chosen
+    // language, so the Translate CTA is visible and one click is enough
+    // to trigger the gate.
+    render(
+      <TranslatorWizard
+        uiLanguage="pl"
+        initialBalance={5}
+        api={makeStubApi()}
+        reviewer={{ firstName: null, lastName: null }}
+        initialState={{
+          step: "language",
+          files: [
+            {
+              localId: "slot-1",
+              file: new File([], "f.xml", { type: "application/xml" }),
+              status: "ready",
+              invoiceId: "inv-1",
+              invoiceNumber: "FA-1"
+            }
+          ],
+          language: "en",
+          bilingual: false,
+          jobItems: []
+        }}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Tłumacz/i }));
+    expect(
+      await screen.findByRole("dialog", {
+        name: /Imię i nazwisko zatwierdzającego tłumaczenie/i
+      })
+    ).toBeInTheDocument();
+  });
+
+  it("does NOT open the hard-block modal when first+last name are already set", () => {
+    render(
+      <TranslatorWizard
+        uiLanguage="pl"
+        initialBalance={5}
+        api={makeStubApi()}
+        reviewer={{ firstName: "Jan", lastName: "Kowalski" }}
+        initialState={{
+          step: "language",
+          files: [
+            {
+              localId: "slot-1",
+              file: new File([], "f.xml", { type: "application/xml" }),
+              status: "ready",
+              invoiceId: "inv-1",
+              invoiceNumber: "FA-1"
+            }
+          ],
+          language: "en",
+          bilingual: false,
+          jobItems: []
+        }}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Tłumacz/i }));
+    expect(
+      screen.queryByRole("dialog", {
+        name: /Imię i nazwisko zatwierdzającego tłumaczenie/i
+      })
+    ).toBeNull();
+  });
+
+  it("invokes onAfterReset when the user starts a new translation from delivery", () => {
+    // Allows the client wrapper to clean a deep-link URL (?invoiceId=…) so
+    // a subsequent re-mount cannot re-hydrate the wizard into the old
+    // preloaded invoice.
+    const onAfterReset = vi.fn();
+    render(
+      <TranslatorWizard
+        uiLanguage="pl"
+        initialBalance={5}
+        api={makeStubApi()}
+        onAfterReset={onAfterReset}
+        initialState={{
+          step: "delivery",
+          jobItems: [
+            {
+              fileSlotId: "x",
+              invoiceId: "inv-9",
+              invoiceNumber: "FA-9",
+              status: "done",
+              creditConsumed: false
+            }
+          ]
+        }}
+      />
+    );
+
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /Nowe tłumaczenie/i }));
+    });
+
+    expect(onAfterReset).toHaveBeenCalledTimes(1);
+  });
 });

@@ -11,6 +11,13 @@ export interface TranslationRowProps {
   onDownload: (fileSlotId: string) => void;
   onPreview: (fileSlotId: string) => void;
   onRetry: (fileSlotId: string) => void;
+  /**
+   * Optional row-level handler invoked when the user clicks anywhere on
+   * the body of a done row (outside the action buttons). Used to open
+   * the same single-invoice editor the one-file flow exposes, so users
+   * can edit fields directly from the batch results table.
+   */
+  onOpenEditor?: (fileSlotId: string) => void;
 }
 
 /**
@@ -26,11 +33,39 @@ export function TranslationRow({
   copy,
   onDownload,
   onPreview,
-  onRetry
+  onRetry,
+  onOpenEditor
 }: TranslationRowProps) {
+  const clickable = item.status === "done" && Boolean(onOpenEditor);
+
+  function handleBodyClick() {
+    if (clickable) onOpenEditor?.(item.fileSlotId);
+  }
+
+  function handleBodyKey(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!clickable) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onOpenEditor?.(item.fileSlotId);
+    }
+  }
+
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 items-center gap-3 rounded-md",
+          clickable &&
+            "cursor-pointer hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        )}
+        role={clickable ? "button" : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        aria-label={
+          clickable ? String(copy.editTranslationCta) : undefined
+        }
+        onClick={handleBodyClick}
+        onKeyDown={handleBodyKey}
+      >
         <StatusIcon status={item.status} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-body text-text-strong">

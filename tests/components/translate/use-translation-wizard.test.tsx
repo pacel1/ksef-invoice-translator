@@ -165,10 +165,11 @@ describe("useTranslationWizard — Step 1 upload", () => {
     expect(result.current.state.files[1].errorMessage).toBe("Bad XML");
   });
 
-  it("marks an upload with otherWithSameContentHash > 0 as 'duplicate' status", async () => {
-    // After the dedupe drop (2026-05-21) every upload is a new row, so
-    // 'content duplicate' is now driven by the count of OTHER rows the
-    // user already has with the same source_hash — not by isNew.
+  it("does NOT mark identical-file re-uploads as 'duplicate' (each re-upload is its own row)", async () => {
+    // After the content-hash dedupe drop, identical-content re-uploads
+    // are deliberately allowed as fresh rows. Even if a stale API still
+    // surfaces `otherWithSameContentHash`, the wizard MUST ignore it —
+    // only same-invoice-number collisions still warrant a warning.
     const api = makeStubApi({
       uploadBatch: vi.fn(async (files: ReadonlyArray<File>) => ({
         results: files.map(
@@ -180,19 +181,17 @@ describe("useTranslationWizard — Step 1 upload", () => {
             warnings: [],
             isNew: true,
             otherWithSameNumber: 0,
-            otherWithSameContentHash: 1
+            otherWithSameContentHash: 2
           })
         )
       }))
     });
-
     const { result } = renderHook(() => useTranslationWizard({ api }));
     await act(async () => {
       await result.current.addFiles([makeFile("a.xml")]);
     });
 
-    expect(result.current.state.files[0].status).toBe("duplicate");
-    expect(result.current.state.files[0].isContentDuplicate).toBe(true);
+    expect(result.current.state.files[0].status).toBe("ready");
   });
 
   it("marks a fresh upload as 'duplicate' when otherWithSameNumber > 0", async () => {
@@ -218,7 +217,6 @@ describe("useTranslationWizard — Step 1 upload", () => {
     });
 
     expect(result.current.state.files[0].status).toBe("duplicate");
-    expect(result.current.state.files[0].isContentDuplicate).toBe(false);
     expect(result.current.state.files[0].otherWithSameNumber).toBe(2);
   });
 
@@ -324,8 +322,7 @@ describe("useTranslationWizard — step navigation", () => {
             invoiceNumber: "FA-2026-0001",
             warnings: [],
             isNew: true,
-            otherWithSameNumber: 0,
-            otherWithSameContentHash: 1
+            otherWithSameNumber: 1
           })
         )
       }))
@@ -470,8 +467,7 @@ describe("useTranslationWizard — step navigation", () => {
             invoiceNumber: `FA-${i + 1}`,
             warnings: [],
             isNew: true,
-            otherWithSameNumber: 0,
-            otherWithSameContentHash: 1
+            otherWithSameNumber: 1
           })
         )
       }))
@@ -737,8 +733,7 @@ describe("useTranslationWizard — cost computation", () => {
             invoiceNumber: `FA-${i + 1}`,
             warnings: [],
             isNew: true,
-            otherWithSameNumber: 0,
-            otherWithSameContentHash: 1
+            otherWithSameNumber: 1
           })
         )
       }))

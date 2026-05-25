@@ -10,6 +10,9 @@ export interface ProfileSectionLabels {
   localeLabel: string;
   displayNameLabel: string;
   displayNameHelp: string;
+  firstNameLabel: string;
+  lastNameLabel: string;
+  fullNameHelp: string;
   saveButton: string;
   savingButton: string;
   saveSuccess: string;
@@ -20,6 +23,8 @@ export interface ProfileSectionProps {
   email: string;
   initialLocale: "pl" | "en";
   initialDisplayName: string;
+  initialFirstName: string;
+  initialLastName: string;
   labels: ProfileSectionLabels;
 }
 
@@ -29,16 +34,25 @@ export function ProfileSection({
   email,
   initialLocale,
   initialDisplayName,
+  initialFirstName,
+  initialLastName,
   labels
 }: ProfileSectionProps) {
   const [locale, setLocale] = useState<"pl" | "en">(initialLocale);
   const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [firstName, setFirstName] = useState(initialFirstName);
+  const [lastName, setLastName] = useState(initialLastName);
   const [status, setStatus] = useState<Status>("idle");
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("saving");
-    const result = await updateProfile({ locale, displayName });
+    const result = await updateProfile({
+      locale,
+      displayName,
+      firstName,
+      lastName
+    });
     setStatus(result.ok ? "saved" : "error");
   }
 
@@ -77,6 +91,30 @@ export function ProfileSection({
               ))}
             </div>
           </fieldset>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="flex flex-col gap-1.5 text-small">
+              <span className="font-medium text-text">{labels.firstNameLabel}</span>
+              <input
+                type="text"
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="h-11 rounded-md border border-border bg-surface px-4 text-body text-text-strong outline-none transition-colors duration-hover ease-out focus:border-accent focus:ring-2 focus:ring-accent-soft"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-small">
+              <span className="font-medium text-text">{labels.lastNameLabel}</span>
+              <input
+                type="text"
+                autoComplete="family-name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="h-11 rounded-md border border-border bg-surface px-4 text-body text-text-strong outline-none transition-colors duration-hover ease-out focus:border-accent focus:ring-2 focus:ring-accent-soft"
+              />
+            </label>
+          </div>
+          <p className="text-micro text-text-muted">{labels.fullNameHelp}</p>
 
           <label className="flex flex-col gap-1.5 text-small">
             <span className="font-medium text-text">{labels.displayNameLabel}</span>
