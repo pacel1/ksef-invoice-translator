@@ -71,27 +71,11 @@ describe("<UploadFileRow>", () => {
     expect(screen.getByTestId("file-row-warning")).toBeInTheDocument();
   });
 
-  it("renders the content-duplicate message when isContentDuplicate=true", () => {
-    render(
-      <UploadFileRow
-        slot={makeSlot({
-          status: "duplicate",
-          isContentDuplicate: true,
-          otherWithSameNumber: 0
-        })}
-        copy={t}
-        onRemove={vi.fn()}
-      />
-    );
-    expect(screen.getByText(String(t.duplicateContentRow))).toBeInTheDocument();
-  });
-
   it("renders the number-duplicate message with count + invoiceNumber substituted", () => {
     render(
       <UploadFileRow
         slot={makeSlot({
           status: "duplicate",
-          isContentDuplicate: false,
           otherWithSameNumber: 3,
           invoiceNumber: "FA/30/05/2026"
         })}

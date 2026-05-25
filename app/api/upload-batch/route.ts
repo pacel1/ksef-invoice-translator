@@ -33,7 +33,6 @@ interface SuccessResult {
   /**
    * Legacy field — always `true` since the upload service no longer
    * dedupes by content hash. Each upload now creates a new invoice row.
-   * Clients should rely on `otherWithSameContentHash` instead.
    */
   isNew: boolean;
   /**
@@ -46,13 +45,6 @@ interface SuccessResult {
    * (in which case we don't speculate).
    */
   otherWithSameNumber: number;
-  /**
-   * Count of OTHER invoices (excluding this one just inserted) the user
-   * has with the same source_hash. > 0 means the user is re-uploading
-   * the exact same file — the warning UI flags it so the user knows
-   * before consuming a fresh translate credit.
-   */
-  otherWithSameContentHash: number;
 }
 
 interface FailureResult {
@@ -110,33 +102,22 @@ export async function POST(request: NextRequest) {
         supabase: admin
       });
 
-      // Two duplicate signals, run in parallel after the insert:
-      //   1. otherWithSameNumber  → another invoice with the same
-      //      invoice_number exists (possibly a corrected version)
-      //   2. otherWithSameContentHash → an identical file was uploaded
-      //      before (now its own row; the warning lets the user decide
-      //      before paying for another fresh translation)
+      // Duplicate signal: another invoice with the same parsed
+      // invoice_number exists (possibly a corrected version). Identical-
+      // content re-uploads are deliberately allowed as fresh rows, so we
+      // no longer compute or expose a source_hash duplicate signal.
       const number = result.invoice.invoiceNumber;
-      const [numberLookup, hashLookup] = await Promise.all([
+      const numberLookup =
         typeof number === "string" && number.length > 0
-          ? admin
+          ? await admin
               .from("invoices")
               .select("id", { count: "exact", head: true })
               .eq("user_id", userData.user.id)
               .eq("invoice_number", number)
               .is("deleted_at", null)
               .neq("id", result.invoiceId)
-          : Promise.resolve({ count: 0 }),
-        admin
-          .from("invoices")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", userData.user.id)
-          .eq("source_hash", result.sourceHash)
-          .is("deleted_at", null)
-          .neq("id", result.invoiceId)
-      ]);
+          : { count: 0 };
       const otherWithSameNumber = numberLookup.count ?? 0;
-      const otherWithSameContentHash = hashLookup.count ?? 0;
 
       results.push({
         ok: true,
@@ -145,8 +126,7 @@ export async function POST(request: NextRequest) {
         invoiceNumber: number ?? "",
         warnings: result.warnings ?? [],
         isNew: result.isNew,
-        otherWithSameNumber,
-        otherWithSameContentHash
+        otherWithSameNumber
       });
     } catch (error) {
       if (error instanceof UploadError) {

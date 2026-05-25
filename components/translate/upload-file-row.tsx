@@ -130,17 +130,11 @@ function SecondaryLine({ slot, copy }: { slot: FileSlot; copy: Copy }) {
 }
 
 /**
- * Pick the right duplicate message for the file row:
- *   - content_hash matched     → "Identyczna faktura była już wgrana…"
- *   - invoice_number matched   → "Możliwy duplikat: faktura {N} była już
- *                                  wgrana N razy"
- *   - both                     → content-hash takes precedence (stronger signal)
- *   - neither (status alone)   → fall back to the generic duplicate copy
+ * Pick the right duplicate message for the file row. After the content-hash
+ * dedupe drop the only remaining signal is `otherWithSameNumber` (another
+ * invoice from this user shares the parsed invoice_number).
  */
 function duplicateMessage(slot: FileSlot, copy: Copy): string {
-  if (slot.isContentDuplicate) {
-    return String(copy.duplicateContentRow);
-  }
   if ((slot.otherWithSameNumber ?? 0) > 0) {
     return String(copy.duplicateNumberRow)
       .replace("{count}", String(slot.otherWithSameNumber))

@@ -17,8 +17,6 @@ export interface FileSlot {
   invoiceNumber?: string;
   errorMessage?: string;
   warnings?: ReadonlyArray<string>;
-  /** True iff the upload deduped against an existing invoice (content_hash match). */
-  isContentDuplicate?: boolean;
   /** Count of other invoices in the user's archive with the same invoice_number. */
   otherWithSameNumber?: number;
 }
@@ -65,9 +63,12 @@ export type UploadBatchResult =
       /** Count of other invoices for this user with the same invoice_number.
        * 0 by default for backward compat with older default-api impls. */
       otherWithSameNumber?: number;
-      /** Count of other invoices for this user with the same source_hash —
-       * positive means the user just re-uploaded an identical file and a
-       * new row was inserted on top of the existing one(s). */
+      /**
+       * Deprecated. After the content-hash dedupe drop, identical re-uploads
+       * are deliberately allowed as fresh rows; the wizard ignores this
+       * field. Retained in the type only to swallow stale API responses
+       * without a deserialization error.
+       */
       otherWithSameContentHash?: number;
     }
   | {
@@ -347,26 +348,19 @@ export function useTranslationWizard({
           continue;
         }
         if (result.ok) {
-          // Duplicate detection — surface either signal as the 'duplicate'
-          // visual state on the file row. Doesn't block translation; the
-          // user can proceed (adding a new language is still useful) but
-          // they're warned BEFORE the translate click consumes a credit.
-          //   otherWithSameContentHash > 0 → same file uploaded before
-          //                                  (now its own row in the DB)
-          //   otherWithSameNumber > 0      → another invoice has the same
-          //                                  invoice_number from this user
+          // Duplicate detection — only same-invoice-number collisions
+          // warrant a warning. Content-hash matches no longer count: each
+          // re-upload is its own row by design, so flagging them would
+          // contradict the "every upload is fresh" contract.
           const numberCount = result.otherWithSameNumber ?? 0;
-          const hashCount = result.otherWithSameContentHash ?? 0;
-          const isDuplicate = numberCount > 0 || hashCount > 0;
           dispatch({
             type: "patchFileSlot",
             localId: slot.localId,
             patch: {
-              status: isDuplicate ? "duplicate" : "ready",
+              status: numberCount > 0 ? "duplicate" : "ready",
               invoiceId: result.invoiceId,
               invoiceNumber: result.invoiceNumber,
               warnings: result.warnings ?? [],
-              isContentDuplicate: hashCount > 0,
               otherWithSameNumber: numberCount
             }
           });
