@@ -38,7 +38,8 @@ describe("<HistoryPage>", () => {
       />
     );
     expect(screen.getByRole("heading", { level: 1, name: /Historia faktur/i })).toBeInTheDocument();
-    expect(screen.getByText("F/24/0148")).toBeInTheDocument();
+    // F/24/0148 appears in both the desktop row and the mobile card.
+    expect(screen.getAllByText("F/24/0148").length).toBe(2);
   });
 
   it("renders the filter bar", () => {

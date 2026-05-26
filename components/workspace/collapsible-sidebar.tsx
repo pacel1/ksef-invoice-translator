@@ -2,7 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, HelpCircle, History, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, HelpCircle, History } from "lucide-react";
+import { NewTranslationLink } from "./new-translation-link";
 
 export interface CollapsibleSidebarLabels {
   newInvoiceLabel: string;
@@ -103,14 +104,7 @@ function CollapsedRail({ labels }: { labels: CollapsibleSidebarLabels }) {
       aria-label={labels.recentHeading}
       className="flex w-14 shrink-0 flex-col items-center border-r border-border bg-surface-muted/60 py-6"
     >
-      <Link
-        href="/translate"
-        aria-label={labels.newInvoiceLabel}
-        title={labels.newInvoiceLabel}
-        className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-md bg-accent text-white shadow-sm transition-colors duration-hover hover:bg-accent-hover"
-      >
-        <Plus className="h-4 w-4" aria-hidden="true" />
-      </Link>
+      <NewTranslationLink label={labels.newInvoiceLabel} variant="collapsed" />
       <Link
         href="/translate/history"
         aria-label={labels.allArchive}

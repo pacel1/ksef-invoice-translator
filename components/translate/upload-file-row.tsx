@@ -46,7 +46,16 @@ export function UploadFileRow({ slot, copy, onRemove }: UploadFileRowProps) {
         <StatusIcon status={slot.status} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-body text-text-strong">{primaryLabel}</p>
-          <p className="truncate text-small text-text-muted">
+          <p
+            className={cn(
+              "text-small text-text-muted",
+              // Short status messages don't need to wrap; long ones (duplicate /
+              // error explanations) MUST be fully visible or the user can't act
+              // on the warning.
+              (slot.status === "parsing" || slot.status === "ready") && "truncate",
+              (slot.status === "duplicate" || slot.status === "error") && "break-words"
+            )}
+          >
             <SecondaryLine slot={slot} copy={copy} />
           </p>
         </div>

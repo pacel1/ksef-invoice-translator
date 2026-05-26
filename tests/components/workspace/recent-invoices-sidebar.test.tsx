@@ -1,7 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { RecentInvoicesSidebarView } from "@/components/workspace/recent-invoices-sidebar";
 import type { InvoiceSummary } from "@/lib/invoice/recent-invoices";
+
+// NewTranslationLink (rendered inside the view) calls useRouter at mount.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() })
+}));
 
 const sample: InvoiceSummary[] = [
   {
@@ -40,11 +45,11 @@ const baseLabels = {
 };
 
 describe("<RecentInvoicesSidebarView>", () => {
-  it("renders the New Translation CTA pointing at /translate", () => {
+  it("renders the New Translation CTA", () => {
     render(<RecentInvoicesSidebarView invoices={[]} labels={baseLabels} />);
     expect(
-      screen.getByRole("link", { name: /Nowe tłumaczenie/i })
-    ).toHaveAttribute("href", "/translate");
+      screen.getByRole("button", { name: /Nowe tłumaczenie/i })
+    ).toBeInTheDocument();
   });
 
   it("renders the Recent heading + Historia link pointing at /translate/history", () => {
@@ -77,5 +82,12 @@ describe("<RecentInvoicesSidebarView>", () => {
   it("omits invoice rows when invoices array is empty", () => {
     render(<RecentInvoicesSidebarView invoices={[]} labels={baseLabels} />);
     expect(screen.queryByText(/F\/24\//)).not.toBeInTheDocument();
+  });
+
+  it("RECENT_LIMIT is 3 — only the 3 newest invoices come into the view", async () => {
+    const sidebarModule = await import(
+      "@/components/workspace/recent-invoices-sidebar"
+    );
+    expect(sidebarModule.RECENT_LIMIT).toBe(3);
   });
 });

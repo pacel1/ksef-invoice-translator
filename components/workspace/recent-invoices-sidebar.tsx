@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Plus, HelpCircle, Mail } from "lucide-react";
+import { HelpCircle, Mail } from "lucide-react";
 import { getRecentInvoices, type InvoiceSummary } from "@/lib/invoice/recent-invoices";
 import { CollapsibleSidebar } from "./collapsible-sidebar";
+import { NewTranslationLink } from "./new-translation-link";
 
 export interface RecentInvoicesSidebarProps {
   userId: string;
@@ -24,7 +25,9 @@ export interface RecentInvoicesSidebarViewProps {
   labels: RecentInvoicesSidebarLabels;
 }
 
-const RECENT_LIMIT = 8;
+// Exported so tests pin this value. Three is enough for "just used" — the
+// rest live in /translate/history.
+export const RECENT_LIMIT = 3;
 
 /**
  * Server-rendered sidebar wrapper — fetches recent invoices, picks a
@@ -91,13 +94,7 @@ export function RecentInvoicesSidebarView({ invoices, labels }: RecentInvoicesSi
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-surface-muted/60 py-6">
       <div className="px-4">
-        <Link
-          href="/translate"
-          className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1 rounded-md bg-accent px-4 text-small font-semibold text-white shadow-sm transition-colors duration-hover ease-out hover:bg-accent-hover"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          {labels.newInvoiceLabel.replace(/^\+\s*/, "")}
-        </Link>
+        <NewTranslationLink label={labels.newInvoiceLabel} variant="full" />
       </div>
 
       <div className="mt-8 flex-1 overflow-y-auto px-4">
