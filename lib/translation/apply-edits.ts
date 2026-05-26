@@ -259,5 +259,45 @@ export function applyTranslationEdits(
     });
   }
 
+  // Final pass: when the user edited correction.translatedReason/Period,
+  // mirror those values onto the matching translationFragments so anything
+  // that reads fragments (XML rebuild, debug tooling, future renderers)
+  // stays consistent with what we wrote to invoice.correction. Runs LAST
+  // so it beats any stale fragment value the editor may have echoed back
+  // from its cached draft (the editor filters correction_reason/period
+  // fragments out of the visible list, so the value it sends for those
+  // ids is whatever the AI originally returned, not the user's edit).
+  if (edits.correction && next.translationFragments) {
+    const reasonEdit = edits.correction.translatedReason;
+    const periodEdit = edits.correction.translatedPeriod;
+    next.translationFragments = next.translationFragments.map((fragment) => {
+      if (
+        fragment.kind === "correction_reason" &&
+        reasonEdit !== undefined
+      ) {
+        const nextFragment = { ...fragment };
+        if (reasonEdit === null || reasonEdit.trim() === "") {
+          delete nextFragment.translated;
+        } else {
+          nextFragment.translated = reasonEdit;
+        }
+        return nextFragment;
+      }
+      if (
+        fragment.kind === "correction_period" &&
+        periodEdit !== undefined
+      ) {
+        const nextFragment = { ...fragment };
+        if (periodEdit === null || periodEdit.trim() === "") {
+          delete nextFragment.translated;
+        } else {
+          nextFragment.translated = periodEdit;
+        }
+        return nextFragment;
+      }
+      return fragment;
+    });
+  }
+
   return next;
 }

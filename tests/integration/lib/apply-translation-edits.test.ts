@@ -305,3 +305,126 @@ describe("applyTranslationEdits", () => {
     expect(updated.translationFragments).toHaveLength(1);
   });
 });
+
+function baseInvoiceWithCorrection(): Invoice {
+  return {
+    invoiceNumber: "FA/1",
+    issueDate: "2026-05-01",
+    currency: "PLN",
+    seller: { name: "Acme" },
+    buyer: { name: "Beta" },
+    items: [],
+    totals: { net: 100, vat: 23, gross: 123 },
+    correction: {
+      reason: "Błąd w stawce VAT",
+      translatedReason: "VAT rate error (AI)",
+      period: "2026-04",
+      translatedPeriod: "April 2026 (AI)"
+    },
+    translationFragments: [
+      {
+        id: "fragment-correction-reason-1",
+        kind: "correction_reason",
+        source: "Błąd w stawce VAT",
+        translated: "VAT rate error (AI)",
+        xmlPath: ["Fa", "Korekta", "Przyczyna"]
+      },
+      {
+        id: "fragment-correction-period-1",
+        kind: "correction_period",
+        source: "2026-04",
+        translated: "April 2026 (AI)",
+        xmlPath: ["Fa", "Korekta", "Okres"]
+      }
+    ]
+  } as unknown as Invoice;
+}
+
+describe("applyTranslationEdits — correction/fragment sync", () => {
+  it("mirrors correction.translatedReason onto the matching translationFragment", () => {
+    const before = baseInvoiceWithCorrection();
+    const after = applyTranslationEdits(before, {
+      correction: { translatedReason: "VAT rate error (corrected by user)" }
+    });
+    expect(after.correction?.translatedReason).toBe(
+      "VAT rate error (corrected by user)"
+    );
+    const fragment = after.translationFragments?.find(
+      (f) => f.kind === "correction_reason"
+    );
+    expect(fragment?.translated).toBe("VAT rate error (corrected by user)");
+  });
+
+  it("mirrors correction.translatedPeriod onto the matching fragment", () => {
+    const before = baseInvoiceWithCorrection();
+    const after = applyTranslationEdits(before, {
+      correction: { translatedPeriod: "April 2026 (user)" }
+    });
+    expect(after.correction?.translatedPeriod).toBe("April 2026 (user)");
+    const fragment = after.translationFragments?.find(
+      (f) => f.kind === "correction_period"
+    );
+    expect(fragment?.translated).toBe("April 2026 (user)");
+  });
+
+  it("clearing the correction reason ALSO clears the matching fragment translation", () => {
+    const before = baseInvoiceWithCorrection();
+    const after = applyTranslationEdits(before, {
+      correction: { translatedReason: "" }
+    });
+    expect(after.correction?.translatedReason).toBeUndefined();
+    const fragment = after.translationFragments?.find(
+      (f) => f.kind === "correction_reason"
+    );
+    expect(fragment?.translated).toBeUndefined();
+  });
+
+  it("correction edit beats a contradicting translationFragment edit submitted in the same payload", () => {
+    // This is the realistic shape: the editor sends ALL fragments back with
+    // their cached values, including correction_reason. The user's correction
+    // edit must still win.
+    const before = baseInvoiceWithCorrection();
+    const after = applyTranslationEdits(before, {
+      correction: { translatedReason: "User's edit" },
+      translationFragments: [
+        {
+          id: "fragment-correction-reason-1",
+          translated: "Stale AI value"
+        }
+      ]
+    });
+    expect(after.correction?.translatedReason).toBe("User's edit");
+    const fragment = after.translationFragments?.find(
+      (f) => f.id === "fragment-correction-reason-1"
+    );
+    expect(fragment?.translated).toBe("User's edit");
+  });
+
+  it("when no correction edits are present, fragments are left untouched", () => {
+    const before = baseInvoiceWithCorrection();
+    const after = applyTranslationEdits(before, {
+      translatedNotes: "Just notes"
+    });
+    const fragmentsBefore = before.translationFragments ?? [];
+    const fragmentsAfter = after.translationFragments ?? [];
+    expect(fragmentsAfter).toEqual(fragmentsBefore);
+  });
+
+  it("user-edited fragment with no correction edit is still applied normally", () => {
+    // Regression guard: the mirror logic only fires when edits.correction is
+    // present. Pure fragment edits should still go through unmodified.
+    const before = baseInvoiceWithCorrection();
+    const after = applyTranslationEdits(before, {
+      translationFragments: [
+        {
+          id: "fragment-correction-reason-1",
+          translated: "Direct fragment edit"
+        }
+      ]
+    });
+    const fragment = after.translationFragments?.find(
+      (f) => f.id === "fragment-correction-reason-1"
+    );
+    expect(fragment?.translated).toBe("Direct fragment edit");
+  });
+});
