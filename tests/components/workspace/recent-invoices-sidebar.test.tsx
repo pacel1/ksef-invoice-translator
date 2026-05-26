@@ -83,4 +83,11 @@ describe("<RecentInvoicesSidebarView>", () => {
     render(<RecentInvoicesSidebarView invoices={[]} labels={baseLabels} />);
     expect(screen.queryByText(/F\/24\//)).not.toBeInTheDocument();
   });
+
+  it("RECENT_LIMIT is 3 — only the 3 newest invoices come into the view", async () => {
+    const sidebarModule = await import(
+      "@/components/workspace/recent-invoices-sidebar"
+    );
+    expect(sidebarModule.RECENT_LIMIT).toBe(3);
+  });
 });

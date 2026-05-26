@@ -25,7 +25,9 @@ export interface RecentInvoicesSidebarViewProps {
   labels: RecentInvoicesSidebarLabels;
 }
 
-const RECENT_LIMIT = 8;
+// Exported so tests pin this value. Three is enough for "just used" — the
+// rest live in /translate/history.
+export const RECENT_LIMIT = 3;
 
 /**
  * Server-rendered sidebar wrapper — fetches recent invoices, picks a
