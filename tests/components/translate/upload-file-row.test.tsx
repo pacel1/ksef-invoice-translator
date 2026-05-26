@@ -89,6 +89,60 @@ describe("<UploadFileRow>", () => {
     expect(screen.getByText(expected)).toBeInTheDocument();
   });
 
+  it("renders the duplicate secondary line WITHOUT the truncate utility (full text visible)", () => {
+    render(
+      <UploadFileRow
+        slot={makeSlot({
+          status: "duplicate",
+          otherWithSameNumber: 3,
+          invoiceNumber: "FA/30/05/2026"
+        })}
+        copy={t}
+        onRemove={vi.fn()}
+      />
+    );
+    const expected = String(t.duplicateNumberRow)
+      .replace("{count}", "3")
+      .replace("{invoiceNumber}", "FA/30/05/2026");
+    const secondary = screen.getByText(expected);
+    expect(secondary.className).not.toMatch(/truncate/);
+  });
+
+  it("renders the error secondary line WITHOUT the truncate utility", () => {
+    render(
+      <UploadFileRow
+        slot={makeSlot({ status: "error", errorMessage: "Long error message that should never be truncated mid-sentence" })}
+        copy={t}
+        onRemove={vi.fn()}
+      />
+    );
+    const secondary = screen.getByText(/Long error message/);
+    expect(secondary.className).not.toMatch(/truncate/);
+  });
+
+  it("KEEPS truncate on the parsing and ready secondary lines (short text, room is tight)", () => {
+    const { rerender } = render(
+      <UploadFileRow
+        slot={makeSlot({ status: "parsing" })}
+        copy={t}
+        onRemove={vi.fn()}
+      />
+    );
+    expect(screen.getByText(String(t.parsingRow)).className).toMatch(/truncate/);
+
+    rerender(
+      <UploadFileRow
+        slot={makeSlot({ status: "ready" })}
+        copy={t}
+        onRemove={vi.fn()}
+      />
+    );
+    // The ready secondary line wraps filename + size in a single <span> child of
+    // the <p>; the <p>'s class is what we assert.
+    const ready = screen.getByText(/FA-2026-0001\.xml/).closest("p");
+    expect(ready?.className).toMatch(/truncate/);
+  });
+
   it("remove button has an aria-label including the filename", () => {
     render(
       <UploadFileRow slot={makeSlot()} copy={t} onRemove={vi.fn()} />
