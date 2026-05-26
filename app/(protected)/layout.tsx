@@ -30,7 +30,16 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen flex-col bg-surface text-text-strong">
-      <AuthenticatedHeader email={user.email ?? ""} balanceSlot={balanceSlot} signOutAction={signOut} />
+      <AuthenticatedHeader
+        email={user.email ?? ""}
+        balanceSlot={balanceSlot}
+        signOutAction={signOut}
+        labels={{
+          workspace: String(t.navWorkspace),
+          history: String(t.navHistory),
+          signOut: String(t.signOut)
+        }}
+      />
       <div className="mx-auto w-full max-w-7xl flex-1 px-5 py-8 md:px-8">{children}</div>
       <LegalFooter locale={uiLanguage} />
       <CreditPurchaseDrawer
