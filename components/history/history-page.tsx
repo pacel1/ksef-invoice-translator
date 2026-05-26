@@ -38,6 +38,11 @@ const COPY = {
     tableOpenLabel: "Otwórz",
     tableEmptyMessage: "Brak faktur do wyświetlenia.",
     tableDuplicatesBadge: "+{count} kopie",
+    mobileLabelDate: "Data",
+    mobileLabelSeller: "Sprzedawca",
+    mobileLabelBuyer: "Nabywca",
+    mobileLabelAmount: "Kwota",
+    mobileLabelLanguages: "Status",
     paginationPrev: "Poprzednia",
     paginationNext: "Następna",
     paginationPageOf: "Strona {page} z {total}"
@@ -60,6 +65,11 @@ const COPY = {
     tableOpenLabel: "Open",
     tableEmptyMessage: "No invoices to show.",
     tableDuplicatesBadge: "+{count} copies",
+    mobileLabelDate: "Date",
+    mobileLabelSeller: "Seller",
+    mobileLabelBuyer: "Buyer",
+    mobileLabelAmount: "Amount",
+    mobileLabelLanguages: "Status",
     paginationPrev: "Previous",
     paginationNext: "Next",
     paginationPageOf: "Page {page} of {total}"
@@ -182,7 +192,12 @@ export function HistoryPage({ initialData, locale }: HistoryPageProps) {
           actionsHeader: t.tableActionsHeader,
           openLabel: t.tableOpenLabel,
           emptyMessage: t.tableEmptyMessage,
-          duplicatesBadge: t.tableDuplicatesBadge
+          duplicatesBadge: t.tableDuplicatesBadge,
+          mobileLabelDate: t.mobileLabelDate,
+          mobileLabelSeller: t.mobileLabelSeller,
+          mobileLabelBuyer: t.mobileLabelBuyer,
+          mobileLabelAmount: t.mobileLabelAmount,
+          mobileLabelLanguages: t.mobileLabelLanguages
         }}
       />
       {totalPages > 1 ? (
