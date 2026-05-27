@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import Stripe from "stripe";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { buildFakturaParams } from "@/lib/billing/build-faktura-params";
+import { issueFaktura } from "@/lib/billing/fakturownia";
 
 export const runtime = "nodejs";
 
@@ -45,6 +47,89 @@ export async function POST(request: NextRequest) {
   }
 }
 
+interface BuyerIdentity {
+  buyer_nip: string;
+  buyer_eu_vat: string | null;
+  buyer_business_name: string;
+  buyer_email: string;
+  buyer_address_line1: string | null;
+  buyer_address_line2: string | null;
+  buyer_postal_code: string | null;
+  buyer_city: string | null;
+  buyer_country: string | null;
+}
+
+class MissingBuyerIdentityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MissingBuyerIdentityError";
+  }
+}
+
+/**
+ * Extract buyer identity from a checkout.session.completed event. Throws
+ * if the required B2B fields are missing — the checkout config makes them
+ * mandatory, so a missing field signals a misconfiguration on the Stripe
+ * side and we should fail loudly rather than silently issue a wrong faktura.
+ */
+function extractBuyerIdentity(session: Stripe.Checkout.Session): BuyerIdentity {
+  const details = session.customer_details;
+  if (!details) {
+    throw new MissingBuyerIdentityError("customer_details missing on session");
+  }
+
+  // Stripe stores tax IDs as an array; we expect exactly one for B2B.
+  const taxIds = details.tax_ids ?? [];
+  const taxId = taxIds[0];
+  if (!taxId || !taxId.value) {
+    throw new MissingBuyerIdentityError("no tax_id on customer_details");
+  }
+
+  // Map Stripe's tax-id types onto our two-column model:
+  //   pl_nip → buyer_nip (raw 10 digits)
+  //   eu_vat starting with PL → buyer_nip (after stripping PL prefix) + buyer_eu_vat
+  //   eu_vat starting with anything else → buyer_eu_vat only (we'd reject this
+  //     before reaching production since the checkout is PL-NIP-only by policy)
+  let buyer_nip: string;
+  let buyer_eu_vat: string | null = null;
+  if (taxId.type === "pl_nip") {
+    buyer_nip = taxId.value;
+  } else if (taxId.type === "eu_vat" && taxId.value.toUpperCase().startsWith("PL")) {
+    buyer_nip = taxId.value.slice(2);
+    buyer_eu_vat = taxId.value;
+  } else {
+    throw new MissingBuyerIdentityError(
+      `non-PL tax_id (${taxId.type}: ${taxId.value}) — checkout policy requires PL NIP`
+    );
+  }
+
+  // Stripe Tax-ID UI captures `business_name` as a separate field, and
+  // `name` is the cardholder name. For B2B we want the company name first
+  // and fall back to `name` only if Stripe didn't surface a business_name
+  // (older Stripe accounts that don't enable the legal-name capture).
+  const businessName = details.business_name ?? details.name ?? null;
+  if (!businessName) {
+    throw new MissingBuyerIdentityError("buyer business name missing");
+  }
+  if (!details.email) {
+    throw new MissingBuyerIdentityError("buyer email missing");
+  }
+
+  const address = details.address ?? null;
+
+  return {
+    buyer_nip,
+    buyer_eu_vat,
+    buyer_business_name: businessName,
+    buyer_email: details.email,
+    buyer_address_line1: address?.line1 ?? null,
+    buyer_address_line2: address?.line2 ?? null,
+    buyer_postal_code: address?.postal_code ?? null,
+    buyer_city: address?.city ?? null,
+    buyer_country: address?.country ?? null
+  };
+}
+
 async function handleCheckoutCompleted(
   admin: ReturnType<typeof getSupabaseAdminClient>,
   session: Stripe.Checkout.Session
@@ -62,11 +147,29 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  // Idempotency: if already paid, do nothing.
   if (purchase.data.status === "paid") {
-    return;
+    return; // Idempotent — already processed.
   }
 
+  // Extract buyer identity BEFORE granting credits. If extraction fails we
+  // log + skip the row; the operator can backfill from Stripe later. We
+  // still grant credits because the customer paid; the missing-data state
+  // is a tax-compliance problem, not a fulfillment one.
+  let buyerIdentity: BuyerIdentity | null = null;
+  try {
+    buyerIdentity = extractBuyerIdentity(session);
+  } catch (error) {
+    if (error instanceof MissingBuyerIdentityError) {
+      console.error(
+        `[webhook] missing buyer identity on session ${session.id}:`,
+        error.message
+      );
+    } else {
+      throw error;
+    }
+  }
+
+  // Atomic status flip + identity persistence in one update.
   const update = await admin
     .from("stripe_purchases")
     .update({
@@ -74,16 +177,18 @@ async function handleCheckoutCompleted(
       paid_at: new Date().toISOString(),
       credits_granted: purchase.data.package_size,
       stripe_payment_intent_id:
-        typeof session.payment_intent === "string" ? session.payment_intent : null
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : null,
+      ...(buyerIdentity ?? {})
     })
     .eq("id", purchase.data.id)
-    .eq("status", "pending") // Re-check status atomically (extra guard against races).
+    .eq("status", "pending")
     .select("id")
     .maybeSingle();
 
   if (!update.data) {
-    // Either someone else flipped it concurrently, or it was already paid.
-    return;
+    return; // Concurrent webhook won the race; already processed.
   }
 
   const grant = await admin.rpc("grant_paid_credits", {
@@ -95,13 +200,101 @@ async function handleCheckoutCompleted(
     console.error("[webhook] grant_paid_credits failed:", grant.error);
     throw new Error("grant_paid_credits failed");
   }
+
+  // Only create the fakturownia row if we have the buyer identity. Without
+  // it the cron would just fail to build params and retry forever.
+  if (buyerIdentity) {
+    const fakturaRow = await admin
+      .from("fakturownia_invoices")
+      .insert({
+        stripe_purchase_id: purchase.data.id,
+        kind: "vat",
+        gov_status: "pending"
+      })
+      .select("id")
+      .single();
+
+    if (fakturaRow.error) {
+      console.error(
+        `[webhook] failed to create fakturownia_invoices row for ${purchase.data.id}:`,
+        fakturaRow.error
+      );
+      // Don't throw — credits are already granted; the cron can be primed manually if needed.
+      return;
+    }
+
+    // Optionally: try issuing immediately for happy-path latency. The cron is
+    // the safety net. We gate the inline attempt on KSEF_LIVE so dev shells
+    // don't call Fakturownia by accident.
+    if (process.env.KSEF_LIVE === "true") {
+      await tryIssueFakturaInline(admin, fakturaRow.data.id, purchase.data.id);
+    }
+  }
+}
+
+/**
+ * Best-effort inline faktura issuance from the webhook. Wrapped in a
+ * try/catch because the webhook MUST return 200 quickly — Stripe retries
+ * non-2xx and we don't want a Fakturownia outage to trigger duplicate
+ * credit grants. Failures are silent here; the cron picks up the row.
+ */
+async function tryIssueFakturaInline(
+  admin: ReturnType<typeof getSupabaseAdminClient>,
+  fakturaRowId: string,
+  stripePurchaseId: string
+): Promise<void> {
+  try {
+    // Load the full purchase row so we can call buildFakturaParams.
+    const fullRow = await admin
+      .from("stripe_purchases")
+      .select(
+        "id, package_size, unit_price_cents, total_amount_cents, currency, buyer_nip, buyer_business_name, buyer_email, buyer_address_line1, buyer_address_line2, buyer_postal_code, buyer_city, buyer_country, created_at"
+      )
+      .eq("id", stripePurchaseId)
+      .single();
+    if (fullRow.error || !fullRow.data) {
+      console.error(
+        `[webhook] failed to reload stripe_purchases ${stripePurchaseId} for inline faktura`
+      );
+      return;
+    }
+
+    const params = buildFakturaParams(fullRow.data);
+    const result = await issueFaktura(params);
+
+    await admin
+      .from("fakturownia_invoices")
+      .update({
+        fakturownia_id: result.fakturowniaId,
+        gov_status: result.govStatus,
+        gov_id: result.govId,
+        pdf_url: result.pdfUrl,
+        last_error: result.errorMessages.join("; ") || null,
+        attempt_count: 1
+      })
+      .eq("id", fakturaRowId);
+  } catch (error) {
+    console.error(
+      `[webhook] inline issueFaktura failed for purchase ${stripePurchaseId}:`,
+      error
+    );
+    await admin
+      .from("fakturownia_invoices")
+      .update({
+        gov_status: "failed",
+        last_error: error instanceof Error ? error.message : String(error),
+        attempt_count: 1
+      })
+      .eq("id", fakturaRowId);
+  }
 }
 
 async function handleChargeRefunded(
   admin: ReturnType<typeof getSupabaseAdminClient>,
   charge: Stripe.Charge
 ): Promise<void> {
-  const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : null;
+  const paymentIntentId =
+    typeof charge.payment_intent === "string" ? charge.payment_intent : null;
   if (!paymentIntentId) return;
 
   const purchase = await admin
@@ -111,7 +304,9 @@ async function handleChargeRefunded(
     .maybeSingle();
 
   if (!purchase.data) {
-    console.warn(`[webhook] no stripe_purchases row for payment_intent ${paymentIntentId}`);
+    console.warn(
+      `[webhook] no stripe_purchases row for payment_intent ${paymentIntentId}`
+    );
     return;
   }
 
@@ -138,4 +333,28 @@ async function handleChargeRefunded(
     console.error("[webhook] refund_paid_credits failed:", refund.error);
     throw new Error("refund_paid_credits failed");
   }
+
+  // Look up the original vat faktura to link the korekta.
+  const original = await admin
+    .from("fakturownia_invoices")
+    .select("id")
+    .eq("stripe_purchase_id", purchase.data.id)
+    .eq("kind", "vat")
+    .maybeSingle();
+
+  if (!original.data) {
+    console.warn(
+      `[webhook] no original fakturownia_invoices row for purchase ${purchase.data.id} — korekta deferred`
+    );
+    return;
+  }
+
+  // Insert a pending korekta row; the cron will issue it once the parent
+  // has a confirmed gov_id.
+  await admin.from("fakturownia_invoices").insert({
+    stripe_purchase_id: purchase.data.id,
+    kind: "correction",
+    parent_id: original.data.id,
+    gov_status: "pending"
+  });
 }

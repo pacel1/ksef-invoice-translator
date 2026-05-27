@@ -97,13 +97,23 @@ export async function POST(request: NextRequest) {
         }
       ],
       automatic_tax: { enabled: true },
-      invoice_creation: {
+      // B2B-only flow: customer MUST supply a tax ID (NIP or EU VAT).
+      // Stripe's tax-ID UI captures the legal business name alongside the ID.
+      // NOTE: Stripe SDK 22.1.1 only types `"if_supported" | "never"` for
+      // tax_id_collection.required; the API spec also accepts "always" but
+      // the SDK lags. Using "if_supported" keeps types green and is
+      // functionally equivalent in PL where pl_nip is always supported.
+      tax_id_collection: {
         enabled: true,
-        invoice_data: {
-          description: `KSeF Translator — pakiet ${packageSize} kredytów`,
-          metadata: { user_id: userData.user.id, package_size: String(packageSize) }
-        }
+        required: "if_supported"
       },
+      billing_address_collection: "required",
+      // We need a Stripe Customer object so customer_details.tax_ids land in a
+      // persistent place we can re-query from the webhook.
+      customer_creation: "always",
+      // We no longer rely on Stripe-issued invoices — Fakturownia issues the
+      // legal KSeF document. Removing `invoice_creation` saves the per-invoice
+      // Stripe fee (0.4%) and avoids confusing the customer with two PDFs.
       customer_email: userData.user.email,
       client_reference_id: pending.data.id,
       success_url: `${appUrl}/billing?status=paid&session_id={CHECKOUT_SESSION_ID}`,

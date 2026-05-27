@@ -110,6 +110,66 @@ export type Database = {
           },
         ]
       }
+      fakturownia_invoices: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          fakturownia_id: string | null
+          gov_id: string | null
+          gov_status: string
+          id: string
+          kind: string
+          last_error: string | null
+          parent_id: string | null
+          pdf_url: string | null
+          stripe_purchase_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          fakturownia_id?: string | null
+          gov_id?: string | null
+          gov_status?: string
+          id?: string
+          kind: string
+          last_error?: string | null
+          parent_id?: string | null
+          pdf_url?: string | null
+          stripe_purchase_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          fakturownia_id?: string | null
+          gov_id?: string | null
+          gov_status?: string
+          id?: string
+          kind?: string
+          last_error?: string | null
+          parent_id?: string | null
+          pdf_url?: string | null
+          stripe_purchase_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fakturownia_invoices_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "fakturownia_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fakturownia_invoices_stripe_purchase_id_fkey"
+            columns: ["stripe_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "stripe_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           created_at: string
@@ -198,6 +258,15 @@ export type Database = {
       }
       stripe_purchases: {
         Row: {
+          buyer_address_line1: string | null
+          buyer_address_line2: string | null
+          buyer_business_name: string | null
+          buyer_city: string | null
+          buyer_country: string | null
+          buyer_email: string | null
+          buyer_eu_vat: string | null
+          buyer_nip: string | null
+          buyer_postal_code: string | null
           created_at: string
           credits_granted: number
           currency: string
@@ -212,6 +281,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          buyer_address_line1?: string | null
+          buyer_address_line2?: string | null
+          buyer_business_name?: string | null
+          buyer_city?: string | null
+          buyer_country?: string | null
+          buyer_email?: string | null
+          buyer_eu_vat?: string | null
+          buyer_nip?: string | null
+          buyer_postal_code?: string | null
           created_at?: string
           credits_granted?: number
           currency?: string
@@ -226,6 +304,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          buyer_address_line1?: string | null
+          buyer_address_line2?: string | null
+          buyer_business_name?: string | null
+          buyer_city?: string | null
+          buyer_country?: string | null
+          buyer_email?: string | null
+          buyer_eu_vat?: string | null
+          buyer_nip?: string | null
+          buyer_postal_code?: string | null
           created_at?: string
           credits_granted?: number
           currency?: string
@@ -253,7 +340,6 @@ export type Database = {
         Row: {
           bilingual: boolean
           created_at: string
-          engine_version: string
           id: string
           invoice_id: string
           language: string
@@ -263,7 +349,6 @@ export type Database = {
         Insert: {
           bilingual: boolean
           created_at?: string
-          engine_version?: string
           id?: string
           invoice_id: string
           language: string
@@ -273,7 +358,6 @@ export type Database = {
         Update: {
           bilingual?: boolean
           created_at?: string
-          engine_version?: string
           id?: string
           invoice_id?: string
           language?: string
