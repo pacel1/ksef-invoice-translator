@@ -99,10 +99,12 @@ export async function POST(request: NextRequest) {
       automatic_tax: { enabled: true },
       // B2B-only flow: customer MUST supply a tax ID (NIP or EU VAT).
       // Stripe's tax-ID UI captures the legal business name alongside the ID.
-      // NOTE: Stripe SDK 22.1.1 only types `"if_supported" | "never"` for
-      // tax_id_collection.required; the API spec also accepts "always" but
-      // the SDK lags. Using "if_supported" keeps types green and is
-      // functionally equivalent in PL where pl_nip is always supported.
+      // `"if_supported"` is the strongest enforcement Stripe offers — the API
+      // enum is exactly `"if_supported" | "never"` (verified against the
+      // official OpenAPI spec). In Poland this is functionally equivalent to
+      // "always required" because `pl_nip` and `eu_vat` are both supported
+      // tax-ID types in PL — every Polish buyer is prompted and the prompt
+      // blocks checkout completion until satisfied.
       tax_id_collection: {
         enabled: true,
         required: "if_supported"
