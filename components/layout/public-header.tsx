@@ -19,6 +19,8 @@ export function PublicHeader({ locale = "pl" }: PublicHeaderProps) {
         <nav className="flex items-center gap-2">
           <Link href="/pricing" className={baseLink}>{t.publicHeader.pricing}</Link>
           <Link href="/security" className={baseLink}>{t.publicHeader.security}</Link>
+          <Link href="/blog" className={baseLink}>{t.publicHeader.blog}</Link>
+          <Link href="/faq" className={baseLink}>{t.publicHeader.faq}</Link>
           <Link href="/login" className={ctaLink}>{t.publicHeader.login}</Link>
         </nav>
       </div>

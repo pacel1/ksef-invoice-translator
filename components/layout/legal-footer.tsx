@@ -23,6 +23,8 @@ export function LegalFooter({ locale = "pl" }: LegalFooterProps) {
           <ul className="space-y-2 text-small">
             <li><Link href="/pricing" className="text-text hover:text-text-strong">{t.footer.sitemap.cennik}</Link></li>
             <li><Link href="/security" className="text-text hover:text-text-strong">{t.footer.sitemap.security}</Link></li>
+            <li><Link href="/blog" className="text-text hover:text-text-strong">{t.footer.sitemap.blog}</Link></li>
+            <li><Link href="/faq" className="text-text hover:text-text-strong">{t.footer.sitemap.faq}</Link></li>
             <li><Link href="/app/history" className="text-text hover:text-text-strong">{t.footer.sitemap.history}</Link></li>
             <li><Link href="/security#kontakt" className="text-text hover:text-text-strong">{t.footer.sitemap.help}</Link></li>
           </ul>
