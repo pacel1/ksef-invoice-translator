@@ -1,0 +1,20 @@
+{
+  "name": "tlumaczksef-studio",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "sanity dev",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "deploy-graphql": "sanity graphql deploy"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sanity": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.21",
+    "typescript": "^5.8.3"
+  }
+}
