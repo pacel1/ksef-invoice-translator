@@ -9,6 +9,8 @@ export const marketingCopy = {
     publicHeader: {
       pricing: "Cennik",
       security: "Bezpieczeństwo",
+      blog: "Blog",
+      faq: "Pomoc",
       login: "Zaloguj się"
     },
     footer: {
@@ -17,6 +19,8 @@ export const marketingCopy = {
         heading: "Produkt",
         cennik: "Cennik",
         security: "Bezpieczeństwo",
+        blog: "Blog",
+        faq: "Pomoc / FAQ",
         history: "Historia",
         help: "Pomoc"
       },
@@ -269,6 +273,20 @@ export const marketingCopy = {
       errorGeneric: "Nie udało się wysłać linku. Spróbuj ponownie.",
       errorRateLimited: "Za dużo prób. Odczekaj chwilę i spróbuj jeszcze raz."
     },
+    blog: {
+      heading: "Blog",
+      subheading: "Artykuły o tłumaczeniu faktur KSeF dla zagranicznych kontrahentów",
+      backToList: "← Wszystkie artykuły",
+      publishedLabel: "Opublikowano",
+      readMore: "Czytaj dalej",
+      enInfoHeading: "Blog dostępny po polsku",
+      enInfoBody: "Nasze artykuły o fakturach KSeF są dostępne w języku polskim.",
+      enInfoCta: "Przejdź do bloga",
+    },
+    faq: {
+      heading: "Centrum pomocy",
+      subheading: "Odpowiedzi na najczęstsze pytania o tłumaczeniu faktur KSeF",
+    },
     authError: {
       title: "Problem z linkiem logowania",
       reasonExpired: {
@@ -293,6 +311,8 @@ export const marketingCopy = {
     publicHeader: {
       pricing: "Pricing",
       security: "Security",
+      blog: "Blog",
+      faq: "Help",
       login: "Sign in"
     },
     footer: {
@@ -301,6 +321,8 @@ export const marketingCopy = {
         heading: "Product",
         cennik: "Pricing",
         security: "Security",
+        blog: "Blog",
+        faq: "Help / FAQ",
         history: "History",
         help: "Help"
       },
@@ -551,6 +573,20 @@ export const marketingCopy = {
       backToHome: "Back to homepage",
       errorGeneric: "Failed to send the link. Please try again.",
       errorRateLimited: "Too many attempts. Please wait a moment and try again."
+    },
+    blog: {
+      heading: "Blog",
+      subheading: "Articles about translating KSeF invoices for international clients",
+      backToList: "← All articles",
+      publishedLabel: "Published",
+      readMore: "Read more",
+      enInfoHeading: "Blog available in Polish",
+      enInfoBody: "Our KSeF invoice articles are published in Polish.",
+      enInfoCta: "Go to blog",
+    },
+    faq: {
+      heading: "Help centre",
+      subheading: "Answers to the most common questions about KSeF invoice translation",
     },
     authError: {
       title: "Sign-in link problem",
