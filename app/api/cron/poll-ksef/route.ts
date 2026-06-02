@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import { buildFakturaParams } from "@/lib/billing/build-faktura-params";
+import { buildIfirmaFaktura } from "@/lib/billing/build-ifirma-faktura";
 import {
   issueFaktura,
+  sendToKsef,
   issueKorekta,
-  getFakturaStatus
-} from "@/lib/billing/fakturownia";
+  getKsefStatus
+} from "@/lib/billing/ifirma";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // Vercel default; cap the worker loop accordingly.
@@ -14,24 +15,10 @@ const BATCH_SIZE = 20; // rows per invocation; keeps wall time < 60s
 const MAX_ATTEMPTS = 5;
 
 interface ProcessedItem {
-  fakturownia_invoice_id: string;
+  ksef_invoice_id: string;
   action: "issued" | "polled" | "korekta_issued" | "skipped" | "failed";
   gov_status?: string;
   error?: string;
-}
-
-/**
- * Map Fakturownia's KSeF status onto the narrower set our DB CHECK
- * constraint allows. Fakturownia distinguishes `send_error` (KSeF rejected
- * the document) from `server_error` (network/Fakturownia upstream blew up);
- * we collapse the latter into `failed` since our state machine treats it as
- * a retry candidate, not a terminal rejection.
- */
-function mapFakturowniaToDbStatus(
-  govStatus: string
-): "processing" | "ok" | "send_error" | "failed" {
-  if (govStatus === "server_error") return "failed";
-  return govStatus as "processing" | "ok" | "send_error" | "failed";
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -57,9 +44,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   // 1. PENDING rows — try to issue them.
   const pending = await admin
-    .from("fakturownia_invoices")
+    .from("ksef_invoices")
     .select(
-      "id, stripe_purchase_id, kind, parent_id, attempt_count, stripe_purchases(id, package_size, unit_price_cents, total_amount_cents, currency, buyer_nip, buyer_business_name, buyer_email, buyer_address_line1, buyer_address_line2, buyer_postal_code, buyer_city, buyer_country, created_at)"
+      "id, stripe_purchase_id, kind, parent_id, provider_invoice_id, attempt_count, stripe_purchases(id, package_size, unit_price_cents, total_amount_cents, currency, buyer_nip, buyer_business_name, buyer_email, buyer_address_line1, buyer_address_line2, buyer_postal_code, buyer_city, buyer_country, created_at)"
     )
     .in("gov_status", ["pending", "failed"])
     .lt("attempt_count", MAX_ATTEMPTS)
@@ -70,7 +57,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const purchase = row.stripe_purchases;
     if (!purchase) {
       processed.push({
-        fakturownia_invoice_id: row.id,
+        ksef_invoice_id: row.id,
         action: "skipped",
         error: "missing parent stripe_purchase"
       });
@@ -79,23 +66,40 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     try {
       if (row.kind === "vat") {
-        const params = buildFakturaParams(purchase);
-        const result = await issueFaktura(params);
+        let providerInvoiceId = row.provider_invoice_id as string | null;
+
+        // Step 1: create the invoice only if we haven't already. This is the
+        // idempotency guard: if the webhook (or a previous cron pass) crashed
+        // between create and send-to-KSeF, we resume here without duplicating
+        // the create call.
+        if (!providerInvoiceId) {
+          const body = buildIfirmaFaktura(purchase);
+          const created = await issueFaktura(body);
+          providerInvoiceId = created.providerInvoiceId;
+          await admin
+            .from("ksef_invoices")
+            .update({
+              provider_invoice_id: providerInvoiceId,
+              attempt_count: row.attempt_count + 1
+            })
+            .eq("id", row.id);
+        }
+
+        // Step 2: send to KSeF.
+        await sendToKsef(providerInvoiceId, { korekta: false });
         await admin
-          .from("fakturownia_invoices")
+          .from("ksef_invoices")
           .update({
-            fakturownia_id: result.fakturowniaId,
-            gov_status: mapFakturowniaToDbStatus(result.govStatus),
-            gov_id: result.govId,
-            pdf_url: result.pdfUrl,
-            last_error: result.errorMessages.join("; ") || null,
+            gov_status: "processing",
+            last_error: null,
             attempt_count: row.attempt_count + 1
           })
           .eq("id", row.id);
+
         processed.push({
-          fakturownia_invoice_id: row.id,
+          ksef_invoice_id: row.id,
           action: "issued",
-          gov_status: result.govStatus
+          gov_status: "processing"
         });
         continue;
       }
@@ -103,7 +107,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       // kind === "correction"
       if (!row.parent_id) {
         processed.push({
-          fakturownia_invoice_id: row.id,
+          ksef_invoice_id: row.id,
           action: "skipped",
           error: "korekta without parent_id"
         });
@@ -111,14 +115,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
 
       const parent = await admin
-        .from("fakturownia_invoices")
-        .select("fakturownia_id, gov_status, gov_id")
+        .from("ksef_invoices")
+        .select("provider_invoice_id, gov_status, gov_id")
         .eq("id", row.parent_id)
         .single();
 
       if (parent.error || !parent.data) {
         processed.push({
-          fakturownia_invoice_id: row.id,
+          ksef_invoice_id: row.id,
           action: "skipped",
           error: "parent missing"
         });
@@ -126,44 +130,43 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
 
       // Wait for parent KSeF acceptance before issuing the korekta.
-      if (parent.data.gov_status !== "ok" || !parent.data.fakturownia_id) {
+      if (parent.data.gov_status !== "ok" || !parent.data.provider_invoice_id) {
         processed.push({
-          fakturownia_invoice_id: row.id,
+          ksef_invoice_id: row.id,
           action: "skipped",
           error: "parent not yet KSeF-accepted"
         });
         continue;
       }
 
-      const params = buildFakturaParams(purchase);
-      const result = await issueKorekta({
-        originalFakturowniaId: parent.data.fakturownia_id,
-        stripePurchaseId: purchase.id,
+      const built = buildIfirmaFaktura(purchase);
+      const korekta = await issueKorekta({
+        originalProviderInvoiceId: parent.data.provider_invoice_id,
+        reason: "ZWR_SPRZ_TOW",
         issueDate: new Date().toISOString().slice(0, 10),
-        reason: "Zwrot kredytów - anulowanie zakupu",
-        positions: params.positions.map((p) => ({
-          ...p,
-          // Negate the net price to express a refund.
-          priceNet: `-${p.priceNet}`
-        })),
-        currency: params.currency
+        sposobZaplaty: "KOM",
+        zaplacono: 0,
+        // Full refund: corrected quantity 0 (everything returned). iFirma
+        // computes the delta from the original. Verify partial-refund
+        // semantics with live creds.
+        positions: built.Pozycje.map((p) => ({ ...p, Ilosc: 0 }))
       });
-
       await admin
-        .from("fakturownia_invoices")
+        .from("ksef_invoices")
         .update({
-          fakturownia_id: result.fakturowniaId,
-          gov_status: mapFakturowniaToDbStatus(result.govStatus),
-          gov_id: result.govId,
-          pdf_url: result.pdfUrl,
-          last_error: result.errorMessages.join("; ") || null,
+          provider_invoice_id: korekta.providerInvoiceId,
           attempt_count: row.attempt_count + 1
         })
         .eq("id", row.id);
+      await sendToKsef(korekta.providerInvoiceId, { korekta: true });
+      await admin
+        .from("ksef_invoices")
+        .update({ gov_status: "processing", last_error: null })
+        .eq("id", row.id);
       processed.push({
-        fakturownia_invoice_id: row.id,
+        ksef_invoice_id: row.id,
         action: "korekta_issued",
-        gov_status: result.govStatus
+        gov_status: "processing"
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -172,7 +175,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         message
       );
       await admin
-        .from("fakturownia_invoices")
+        .from("ksef_invoices")
         .update({
           gov_status: "failed",
           last_error: message,
@@ -180,52 +183,52 @@ export async function POST(request: Request): Promise<NextResponse> {
         })
         .eq("id", row.id);
       processed.push({
-        fakturownia_invoice_id: row.id,
+        ksef_invoice_id: row.id,
         action: "failed",
         error: message
       });
     }
   }
 
-  // 2. PROCESSING rows — poll Fakturownia for the terminal state.
+  // 2. PROCESSING rows — poll iFirma/KSeF for the terminal state.
   const processing = await admin
-    .from("fakturownia_invoices")
-    .select("id, fakturownia_id, attempt_count")
+    .from("ksef_invoices")
+    .select("id, provider_invoice_id, attempt_count")
     .eq("gov_status", "processing")
-    .not("fakturownia_id", "is", null)
+    .not("provider_invoice_id", "is", null)
     .lt("attempt_count", MAX_ATTEMPTS)
     .order("created_at", { ascending: true })
     .limit(BATCH_SIZE);
 
   for (const row of processing.data ?? []) {
-    if (!row.fakturownia_id) continue;
+    if (!row.provider_invoice_id) continue;
     try {
-      const result = await getFakturaStatus(row.fakturownia_id);
+      const result = await getKsefStatus(row.provider_invoice_id);
       await admin
-        .from("fakturownia_invoices")
+        .from("ksef_invoices")
         .update({
-          gov_status: mapFakturowniaToDbStatus(result.govStatus),
+          gov_status: result.govStatus,
           gov_id: result.govId,
           last_error: result.errorMessages.join("; ") || null,
           attempt_count: row.attempt_count + 1
         })
         .eq("id", row.id);
       processed.push({
-        fakturownia_invoice_id: row.id,
+        ksef_invoice_id: row.id,
         action: "polled",
         gov_status: result.govStatus
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await admin
-        .from("fakturownia_invoices")
+        .from("ksef_invoices")
         .update({
           last_error: message,
           attempt_count: row.attempt_count + 1
         })
         .eq("id", row.id);
       processed.push({
-        fakturownia_invoice_id: row.id,
+        ksef_invoice_id: row.id,
         action: "failed",
         error: message
       });

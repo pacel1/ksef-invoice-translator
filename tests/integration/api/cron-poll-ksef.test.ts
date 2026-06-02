@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the admin client so the integration test doesn't actually hit Supabase
-// (and doesn't require fakturownia_invoices rows or service-role creds to be
-// fully loaded in the test runner). The cron handler only calls `.from(...)`
-// on the admin client; we return a chainable stub whose select queries
-// resolve to an empty array.
+// (and doesn't require ksef_invoices rows or service-role creds to be fully
+// loaded in the test runner). The cron handler only calls `.from(...)` on the
+// admin client; we return a chainable stub whose select queries resolve to an
+// empty array.
 vi.mock("@/lib/supabase/admin", () => {
   const emptyResult = { data: [], error: null };
   // Build a chainable query stub. Every method returns `this` until the
@@ -48,9 +48,8 @@ const ORIGINAL_ENV = { ...process.env };
 
 beforeEach(() => {
   process.env.CRON_SECRET = "test-cron-secret";
-  process.env.FAKTUROWNIA_ACCOUNT = "mycompany";
-  process.env.FAKTUROWNIA_API_TOKEN = "test-token";
-  process.env.FAKTUROWNIA_ENV = "demo";
+  process.env.IFIRMA_USERNAME = "test-login";
+  process.env.IFIRMA_INVOICE_KEY = "0123456789abcdef0123456789abcdef";
   process.env.KSEF_LIVE = "true";
 });
 
