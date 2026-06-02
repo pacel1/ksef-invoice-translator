@@ -10,14 +10,16 @@ interface PurchaseHistoryProps {
 type FakturaGovStatus = "pending" | "processing" | "ok" | "send_error" | "failed";
 
 interface FakturaInfo {
+  id: string;
   govStatus: FakturaGovStatus;
-  pdfUrl: string | null;
+  providerInvoiceId: string | null;
 }
 
 interface FakturaJoinedRow {
+  id: string;
   kind: string;
   gov_status: string;
-  pdf_url: string | null;
+  provider_invoice_id: string | null;
 }
 
 function findVatFaktura(rows: FakturaJoinedRow[] | null): FakturaInfo | null {
@@ -25,8 +27,9 @@ function findVatFaktura(rows: FakturaJoinedRow[] | null): FakturaInfo | null {
   const vat = rows.find((r) => r.kind === "vat");
   if (!vat) return null;
   return {
+    id: vat.id,
     govStatus: vat.gov_status as FakturaGovStatus,
-    pdfUrl: vat.pdf_url
+    providerInvoiceId: vat.provider_invoice_id
   };
 }
 
@@ -65,7 +68,7 @@ export async function PurchaseHistory({ userId, uiLanguage }: PurchaseHistoryPro
   const { data: rows } = await admin
     .from("stripe_purchases")
     .select(
-      "id, package_size, total_amount_cents, currency, status, created_at, paid_at, fakturownia_invoices(id, kind, fakturownia_id, gov_status, gov_id, pdf_url, created_at)"
+      "id, package_size, total_amount_cents, currency, status, created_at, paid_at, ksef_invoices(id, kind, provider_invoice_id, gov_status, gov_id, created_at)"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
@@ -119,9 +122,9 @@ export async function PurchaseHistory({ userId, uiLanguage }: PurchaseHistoryPro
             {rows.map((row) => {
               const fakturaRows = (
                 row as unknown as {
-                  fakturownia_invoices: FakturaJoinedRow[] | null;
+                  ksef_invoices: FakturaJoinedRow[] | null;
                 }
-              ).fakturownia_invoices;
+              ).ksef_invoices;
               const info = findVatFaktura(fakturaRows);
               const fakturaStatus: FakturaGovStatus | "none" = info?.govStatus ?? "none";
               return (
@@ -147,9 +150,9 @@ export async function PurchaseHistory({ userId, uiLanguage }: PurchaseHistoryPro
                       >
                         {fakturaLabel(fakturaStatus, t)}
                       </span>
-                      {info?.pdfUrl ? (
+                      {info && info.govStatus === "ok" && info.providerInvoiceId ? (
                         <a
-                          href={info.pdfUrl}
+                          href={`/api/invoices/${info.id}/pdf`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-small font-medium text-accent hover:text-accent-hover"

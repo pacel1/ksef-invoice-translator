@@ -111,9 +111,9 @@ export async function POST(request: NextRequest) {
       // We need a Stripe Customer object so customer_details.tax_ids land in a
       // persistent place we can re-query from the webhook.
       customer_creation: "always",
-      // We no longer rely on Stripe-issued invoices — Fakturownia issues the
-      // legal KSeF document. Removing `invoice_creation` saves the per-invoice
-      // Stripe fee (0.4%) and avoids confusing the customer with two PDFs.
+      // We no longer rely on Stripe-issued invoices — iFirma issues the legal
+      // KSeF document. Removing `invoice_creation` saves the per-invoice Stripe
+      // fee (0.4%) and avoids confusing the customer with two PDFs.
       customer_email: userData.user.email,
       client_reference_id: pending.data.id,
       success_url: `${appUrl}/billing?status=paid&session_id={CHECKOUT_SESSION_ID}`,

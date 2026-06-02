@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import Stripe from "stripe";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import { buildFakturaParams } from "@/lib/billing/build-faktura-params";
-import { issueFaktura } from "@/lib/billing/fakturownia";
+import { buildIfirmaFaktura } from "@/lib/billing/build-ifirma-faktura";
+import { issueFaktura, sendToKsef } from "@/lib/billing/ifirma";
 
 export const runtime = "nodejs";
 
@@ -201,11 +201,11 @@ async function handleCheckoutCompleted(
     throw new Error("grant_paid_credits failed");
   }
 
-  // Only create the fakturownia row if we have the buyer identity. Without
+  // Only create the ksef_invoices row if we have the buyer identity. Without
   // it the cron would just fail to build params and retry forever.
   if (buyerIdentity) {
     const fakturaRow = await admin
-      .from("fakturownia_invoices")
+      .from("ksef_invoices")
       .insert({
         stripe_purchase_id: purchase.data.id,
         kind: "vat",
@@ -216,7 +216,7 @@ async function handleCheckoutCompleted(
 
     if (fakturaRow.error) {
       console.error(
-        `[webhook] failed to create fakturownia_invoices row for ${purchase.data.id}:`,
+        `[webhook] failed to create ksef_invoices row for ${purchase.data.id}:`,
         fakturaRow.error
       );
       // Don't throw — credits are already granted; the cron can be primed manually if needed.
@@ -225,7 +225,7 @@ async function handleCheckoutCompleted(
 
     // Optionally: try issuing immediately for happy-path latency. The cron is
     // the safety net. We gate the inline attempt on KSEF_LIVE so dev shells
-    // don't call Fakturownia by accident.
+    // don't call iFirma by accident.
     if (process.env.KSEF_LIVE === "true") {
       await tryIssueFakturaInline(admin, fakturaRow.data.id, purchase.data.id);
     }
@@ -235,16 +235,20 @@ async function handleCheckoutCompleted(
 /**
  * Best-effort inline faktura issuance from the webhook. Wrapped in a
  * try/catch because the webhook MUST return 200 quickly — Stripe retries
- * non-2xx and we don't want a Fakturownia outage to trigger duplicate
+ * non-2xx and we don't want an iFirma outage to trigger duplicate
  * credit grants. Failures are silent here; the cron picks up the row.
+ *
+ * Two-step issue: create the faktura in iFirma (returns provider_invoice_id),
+ * persist that id immediately, then submit to KSeF. Persisting between
+ * the two calls means a crash mid-flow leaves the cron a clear hand-off
+ * point — it resumes from provider_invoice_id and just retries sendToKsef.
  */
 async function tryIssueFakturaInline(
   admin: ReturnType<typeof getSupabaseAdminClient>,
-  fakturaRowId: string,
+  ksefInvoiceRowId: string,
   stripePurchaseId: string
 ): Promise<void> {
   try {
-    // Load the full purchase row so we can call buildFakturaParams.
     const fullRow = await admin
       .from("stripe_purchases")
       .select(
@@ -259,33 +263,37 @@ async function tryIssueFakturaInline(
       return;
     }
 
-    const params = buildFakturaParams(fullRow.data);
-    const result = await issueFaktura(params);
+    // Step 1: create the invoice in iFirma.
+    const body = buildIfirmaFaktura(fullRow.data);
+    const { providerInvoiceId } = await issueFaktura(body);
+
+    // Persist the provider id immediately so a crash before the KSeF send
+    // doesn't lose it (the cron resumes from provider_invoice_id).
+    await admin
+      .from("ksef_invoices")
+      .update({ provider_invoice_id: providerInvoiceId, attempt_count: 1 })
+      .eq("id", ksefInvoiceRowId);
+
+    // Step 2: submit to KSeF.
+    await sendToKsef(providerInvoiceId, { korekta: false });
 
     await admin
-      .from("fakturownia_invoices")
-      .update({
-        fakturownia_id: result.fakturowniaId,
-        gov_status: result.govStatus,
-        gov_id: result.govId,
-        pdf_url: result.pdfUrl,
-        last_error: result.errorMessages.join("; ") || null,
-        attempt_count: 1
-      })
-      .eq("id", fakturaRowId);
+      .from("ksef_invoices")
+      .update({ gov_status: "processing", last_error: null })
+      .eq("id", ksefInvoiceRowId);
   } catch (error) {
     console.error(
-      `[webhook] inline issueFaktura failed for purchase ${stripePurchaseId}:`,
+      `[webhook] inline iFirma issue failed for purchase ${stripePurchaseId}:`,
       error
     );
     await admin
-      .from("fakturownia_invoices")
+      .from("ksef_invoices")
       .update({
         gov_status: "failed",
         last_error: error instanceof Error ? error.message : String(error),
         attempt_count: 1
       })
-      .eq("id", fakturaRowId);
+      .eq("id", ksefInvoiceRowId);
   }
 }
 
@@ -336,7 +344,7 @@ async function handleChargeRefunded(
 
   // Look up the original vat faktura to link the korekta.
   const original = await admin
-    .from("fakturownia_invoices")
+    .from("ksef_invoices")
     .select("id")
     .eq("stripe_purchase_id", purchase.data.id)
     .eq("kind", "vat")
@@ -344,14 +352,14 @@ async function handleChargeRefunded(
 
   if (!original.data) {
     console.warn(
-      `[webhook] no original fakturownia_invoices row for purchase ${purchase.data.id} — korekta deferred`
+      `[webhook] no original ksef_invoices row for purchase ${purchase.data.id} — korekta deferred`
     );
     return;
   }
 
   // Insert a pending korekta row; the cron will issue it once the parent
   // has a confirmed gov_id.
-  await admin.from("fakturownia_invoices").insert({
+  await admin.from("ksef_invoices").insert({
     stripe_purchase_id: purchase.data.id,
     kind: "correction",
     parent_id: original.data.id,
