@@ -1,19 +1,50 @@
 import { ifirmaGet } from "./client";
 import type { KsefInvoiceResult } from "./types";
 
-// A KSeF reference number is 35 chars: NIP-DATE-12HEX-CRC. We don't hard-fail
-// on the format; this is just a heuristic to recognise a "looks like a numer
-// KSeF" string while the real field name is unconfirmed.
-const KSEF_NUMBER_RE = /^\d{10}-\d{8}-[0-9A-F]{12}-[0-9A-F]{2}$/i;
+/**
+ * iFirma's `StatusKSEF` sub-object on a single invoice. Confirmed against the
+ * live API (2026-06-02). `Status` is an enum string; `Opis` is a human-readable
+ * description (carries the rejection reason on failure).
+ */
+interface IfirmaStatusKsef {
+  Status?: string;
+  Opis?: string;
+  TrybWysylki?: string;
+  CzasWysylki?: string;
+  CzasWlasciwejWysylki?: string;
+}
 
 /**
- * Best-effort KSeF status read. iFirma's docs don't document the KSeF-status
- * response, so we GET the single-invoice JSON and scan for:
- *   - any key containing "ksef" whose value looks like a numer KSeF -> ok
- *   - a truthy CzyWyslano (sent flag) with no number yet -> processing
- *   - otherwise -> processing (keep polling; the cron caps attempts)
- * The untouched body is returned on `raw` (and logged) so the real field
- * names can be confirmed against live creds, then this can be tightened.
+ * Detects an iFirma KSeF status string that means the document was rejected
+ * or errored at submission — a terminal failure, not a retry-and-wait.
+ * iFirma's accepted status is `PRZYJETA_W_KSEF`; rejection/error variants use
+ * `ODRZUCONA…` (rejected) or `BŁĄD…`/`BLAD…` (error). Matched case- and
+ * accent-insensitively so spelling/encoding drift doesn't slip through.
+ */
+function isRejectionStatus(status: string): boolean {
+  return /ODRZ|B[ŁL][ĄA]D|BLEDN|B[ŁL][ĘE]DN|NEGATYW|ERROR/i.test(status);
+}
+
+/**
+ * Read the KSeF state of a single iFirma invoice. The single-invoice GET
+ * returns the invoice object directly (no `{ response }` wrapper — unlike the
+ * list/mutation endpoints); we handle both shapes. Field names confirmed
+ * against the live API (2026-06-02):
+ *
+ *   - `NumerKSEF` — the KSeF reference number. KSeF assigns it ONLY on
+ *     acceptance, so a non-empty value is the authoritative "accepted" signal.
+ *   - `StatusKSEF.Status` — enum: `PRZYJETA_W_KSEF` (accepted),
+ *     `ODRZUCONA…`/`BŁĄD…` (rejected/error), or an in-progress value.
+ *   - `StatusKSEF.Opis` — human description; carries the rejection reason.
+ *
+ * Note: the list endpoint's `CzyWyslano` is NOT a reliable KSeF signal (it can
+ * read false for an already-accepted invoice), which is why we poll the
+ * single-invoice endpoint and read `StatusKSEF` instead.
+ *
+ * Maps to our DB state machine:
+ *   accepted              → ok (+ govId = NumerKSEF)
+ *   rejected / send error  → send_error (+ Opis as the error message)
+ *   sent-and-waiting / etc → processing (keep polling; the cron caps attempts)
  */
 export async function getKsefStatus(
   providerInvoiceId: string
@@ -22,21 +53,48 @@ export async function getKsefStatus(
     `/fakturakraj/${encodeURIComponent(providerInvoiceId)}.json`
   );
 
-  // iFirma 200 bodies are wrapped in { response: {...} }; flatten for scanning.
   const inner =
     (body as { response?: Record<string, unknown> }).response ?? body;
 
+  const numerKsef =
+    typeof inner.NumerKSEF === "string" && inner.NumerKSEF.trim().length > 0
+      ? inner.NumerKSEF.trim()
+      : null;
+
+  const statusObj = (inner.StatusKSEF ?? null) as IfirmaStatusKsef | null;
+  const status = (statusObj?.Status ?? "").toUpperCase();
+  const opis = statusObj?.Opis ?? "";
+
   console.info(
-    "[ifirma/get-status] raw KSeF status body for invoice",
+    "[ifirma/get-status] KSeF status for invoice",
     providerInvoiceId,
-    JSON.stringify(inner)
+    JSON.stringify({ NumerKSEF: numerKsef, StatusKSEF: statusObj })
   );
 
-  const govId = findKsefNumber(inner);
-  if (govId) {
-    return { providerInvoiceId, govStatus: "ok", govId, errorMessages: [], raw: body };
+  // Accepted: a KSeF number means the document is in KSeF, full stop. We also
+  // accept an explicit PRZYJ* status as a belt-and-suspenders signal.
+  if (numerKsef || status.includes("PRZYJ")) {
+    return {
+      providerInvoiceId,
+      govStatus: "ok",
+      govId: numerKsef,
+      errorMessages: [],
+      raw: body
+    };
   }
 
+  // Rejected / send error — surface the description so ops can see why.
+  if (isRejectionStatus(status)) {
+    return {
+      providerInvoiceId,
+      govStatus: "send_error",
+      govId: null,
+      errorMessages: opis ? [opis] : [status],
+      raw: body
+    };
+  }
+
+  // Sent-and-waiting, queued, or not yet dispatched — keep polling.
   return {
     providerInvoiceId,
     govStatus: "processing",
@@ -44,17 +102,4 @@ export async function getKsefStatus(
     errorMessages: [],
     raw: body
   };
-}
-
-function findKsefNumber(obj: Record<string, unknown>): string | null {
-  for (const [key, value] of Object.entries(obj)) {
-    if (
-      key.toLowerCase().includes("ksef") &&
-      typeof value === "string" &&
-      KSEF_NUMBER_RE.test(value)
-    ) {
-      return value;
-    }
-  }
-  return null;
 }
