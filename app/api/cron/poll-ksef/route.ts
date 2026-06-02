@@ -139,26 +139,38 @@ export async function POST(request: Request): Promise<NextResponse> {
         continue;
       }
 
-      const built = buildIfirmaFaktura(purchase);
-      const korekta = await issueKorekta({
-        originalProviderInvoiceId: parent.data.provider_invoice_id,
-        reason: "ZWR_SPRZ_TOW",
-        issueDate: new Date().toISOString().slice(0, 10),
-        sposobZaplaty: "KOM",
-        zaplacono: 0,
-        // Full refund: corrected quantity 0 (everything returned). iFirma
-        // computes the delta from the original. Verify partial-refund
-        // semantics with live creds.
-        positions: built.Pozycje.map((p) => ({ ...p, Ilosc: 0 }))
-      });
-      await admin
-        .from("ksef_invoices")
-        .update({
-          provider_invoice_id: korekta.providerInvoiceId,
-          attempt_count: row.attempt_count + 1
-        })
-        .eq("id", row.id);
-      await sendToKsef(korekta.providerInvoiceId, { korekta: true });
+      let providerInvoiceId = row.provider_invoice_id as string | null;
+
+      // Step 1: create the korekta only if we haven't already. Same
+      // idempotency pattern as the vat branch above: if a previous attempt
+      // persisted provider_invoice_id but failed before sendToKsef, resume
+      // here without duplicating the create call — otherwise we'd issue a
+      // second korekta in iFirma against the same original invoice.
+      if (!providerInvoiceId) {
+        const built = buildIfirmaFaktura(purchase);
+        const korekta = await issueKorekta({
+          originalProviderInvoiceId: parent.data.provider_invoice_id,
+          reason: "ZWR_SPRZ_TOW",
+          issueDate: new Date().toISOString().slice(0, 10),
+          sposobZaplaty: "KOM",
+          zaplacono: 0,
+          // Full refund: corrected quantity 0 (everything returned). iFirma
+          // computes the delta from the original. Verify partial-refund
+          // semantics with live creds.
+          positions: built.Pozycje.map((p) => ({ ...p, Ilosc: 0 }))
+        });
+        providerInvoiceId = korekta.providerInvoiceId;
+        await admin
+          .from("ksef_invoices")
+          .update({
+            provider_invoice_id: providerInvoiceId,
+            attempt_count: row.attempt_count + 1
+          })
+          .eq("id", row.id);
+      }
+
+      // Step 2: send to KSeF (with the korekta flag).
+      await sendToKsef(providerInvoiceId, { korekta: true });
       await admin
         .from("ksef_invoices")
         .update({ gov_status: "processing", last_error: null })
