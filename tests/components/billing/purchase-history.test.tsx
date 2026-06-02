@@ -34,7 +34,7 @@ describe("<PurchaseHistory>", () => {
         status: "paid",
         created_at: "2026-05-27T10:00:00Z",
         paid_at: "2026-05-27T10:00:01Z",
-        fakturownia_invoices: [{ kind: "vat", gov_status: "pending", pdf_url: null }]
+        ksef_invoices: [{ id: "ksef-p1", kind: "vat", gov_status: "pending", provider_invoice_id: null }]
       }
     ];
     await renderPurchaseHistory();
@@ -44,7 +44,7 @@ describe("<PurchaseHistory>", () => {
     expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders 'Wystawiona ✓' + PDF link when faktura is ok with a pdf_url", async () => {
+  it("renders 'Wystawiona ✓' + PDF link when faktura is ok with a provider_invoice_id", async () => {
     mockRows = [
       {
         id: "p2",
@@ -54,15 +54,15 @@ describe("<PurchaseHistory>", () => {
         status: "paid",
         created_at: "2026-05-27T10:00:00Z",
         paid_at: "2026-05-27T10:00:01Z",
-        fakturownia_invoices: [
-          { kind: "vat", gov_status: "ok", pdf_url: "https://example.com/pdf" }
+        ksef_invoices: [
+          { id: "ksef-p2", kind: "vat", gov_status: "ok", provider_invoice_id: "1244512" }
         ]
       }
     ];
     await renderPurchaseHistory();
     expect(screen.getByText(/Wystawiona/)).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /Pobierz PDF/ });
-    expect(link).toHaveAttribute("href", "https://example.com/pdf");
+    expect(link).toHaveAttribute("href", "/api/invoices/ksef-p2/pdf");
     expect(link).toHaveAttribute("target", "_blank");
   });
 
@@ -76,7 +76,7 @@ describe("<PurchaseHistory>", () => {
         status: "paid",
         created_at: "2026-05-27T10:00:00Z",
         paid_at: "2026-05-27T10:00:01Z",
-        fakturownia_invoices: [{ kind: "vat", gov_status: "send_error", pdf_url: null }]
+        ksef_invoices: [{ id: "ksef-p3", kind: "vat", gov_status: "send_error", provider_invoice_id: null }]
       }
     ];
     await renderPurchaseHistory();
@@ -93,7 +93,7 @@ describe("<PurchaseHistory>", () => {
         status: "paid",
         created_at: "2026-05-27T10:00:00Z",
         paid_at: "2026-05-27T10:00:01Z",
-        fakturownia_invoices: []
+        ksef_invoices: []
       }
     ];
     await renderPurchaseHistory();
