@@ -110,66 +110,6 @@ export type Database = {
           },
         ]
       }
-      fakturownia_invoices: {
-        Row: {
-          attempt_count: number
-          created_at: string
-          fakturownia_id: string | null
-          gov_id: string | null
-          gov_status: string
-          id: string
-          kind: string
-          last_error: string | null
-          parent_id: string | null
-          pdf_url: string | null
-          stripe_purchase_id: string
-          updated_at: string
-        }
-        Insert: {
-          attempt_count?: number
-          created_at?: string
-          fakturownia_id?: string | null
-          gov_id?: string | null
-          gov_status?: string
-          id?: string
-          kind: string
-          last_error?: string | null
-          parent_id?: string | null
-          pdf_url?: string | null
-          stripe_purchase_id: string
-          updated_at?: string
-        }
-        Update: {
-          attempt_count?: number
-          created_at?: string
-          fakturownia_id?: string | null
-          gov_id?: string | null
-          gov_status?: string
-          id?: string
-          kind?: string
-          last_error?: string | null
-          parent_id?: string | null
-          pdf_url?: string | null
-          stripe_purchase_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fakturownia_invoices_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "fakturownia_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fakturownia_invoices_stripe_purchase_id_fkey"
-            columns: ["stripe_purchase_id"]
-            isOneToOne: false
-            referencedRelation: "stripe_purchases"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       invoices: {
         Row: {
           created_at: string
@@ -222,6 +162,66 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ksef_invoices: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          gov_id: string | null
+          gov_status: string
+          id: string
+          kind: string
+          last_error: string | null
+          parent_id: string | null
+          pdf_url: string | null
+          provider_invoice_id: string | null
+          stripe_purchase_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          gov_id?: string | null
+          gov_status?: string
+          id?: string
+          kind: string
+          last_error?: string | null
+          parent_id?: string | null
+          pdf_url?: string | null
+          provider_invoice_id?: string | null
+          stripe_purchase_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          gov_id?: string | null
+          gov_status?: string
+          id?: string
+          kind?: string
+          last_error?: string | null
+          parent_id?: string | null
+          pdf_url?: string | null
+          provider_invoice_id?: string | null
+          stripe_purchase_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ksef_invoices_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "ksef_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ksef_invoices_stripe_purchase_id_fkey"
+            columns: ["stripe_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "stripe_purchases"
             referencedColumns: ["id"]
           },
         ]
