@@ -13,6 +13,13 @@ export const maxDuration = 60; // Vercel default; cap the worker loop accordingl
 
 const BATCH_SIZE = 20; // rows per invocation; keeps wall time < 60s
 const MAX_ATTEMPTS = 5;
+// A faktura that the pending pass — or the webhook's inline issue — finalized
+// to 'processing' moments ago is certainly still 'processing' in KSeF. Polling
+// it again in the same cycle burns one of the MAX_ATTEMPTS retries for nothing.
+// Skip rows younger than this so the retry budget is spent on real status
+// transitions; 30s clears the same-invocation race yet stays far under the
+// 5-minute cron cadence.
+const JUST_ISSUED_GRACE_MS = 30_000;
 
 interface ProcessedItem {
   ksef_invoice_id: string;
@@ -197,6 +204,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     .eq("gov_status", "processing")
     .not("provider_invoice_id", "is", null)
     .lt("attempt_count", MAX_ATTEMPTS)
+    .lt(
+      "created_at",
+      new Date(Date.now() - JUST_ISSUED_GRACE_MS).toISOString()
+    )
     .order("created_at", { ascending: true })
     .limit(BATCH_SIZE);
 
