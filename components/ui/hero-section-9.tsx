@@ -144,17 +144,11 @@ export function HeroSection({
           ) : null}
 
           <motion.div
-            className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 lg:justify-start"
+            className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 lg:justify-start"
             variants={itemVariants}
           >
             {stats.map((stat, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "flex items-center gap-2",
-                  i > 0 && "sm:border-l sm:border-border sm:pl-5"
-                )}
-              >
+              <div key={i} className="flex items-center gap-2">
                 <span className="text-accent [&_svg]:h-4 [&_svg]:w-4" aria-hidden="true">
                   {stat.icon}
                 </span>
