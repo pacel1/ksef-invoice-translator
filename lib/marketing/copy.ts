@@ -11,7 +11,9 @@ export const marketingCopy = {
       security: "Bezpieczeństwo",
       blog: "Blog",
       faq: "Pomoc",
-      login: "Zaloguj się"
+      login: "Zaloguj się",
+      menuOpen: "Otwórz menu",
+      menuClose: "Zamknij menu"
     },
     footer: {
       legalLabel: "© {year} {name} · NIP {nip} · REGON {regon} · {address}",
@@ -60,6 +62,9 @@ export const marketingCopy = {
       heroCtaPrimary: "Zacznij za darmo",
       heroCtaSecondary: "Zobacz przykład",
       heroFreeNote: "1 darmowa faktura w miesiącu. Bez karty.",
+      heroEyebrow: "MF FA(3) · schemat 2025-06-25",
+      heroProofLine:
+        "od 2,99 zł za fakturę · bez subskrypcji · 1 darmowa faktura w miesiącu, bez karty.",
       demoStripHeading: "Tłumaczenie zachowuje strukturę i numerację MF",
       demoStripCaption: "Polski oryginał po lewej · profesjonalne tłumaczenie po prawej",
       valueProps: {
@@ -87,6 +92,35 @@ export const marketingCopy = {
             body: "Supabase Frankfurt (AWS eu-central-1). Szyfrowanie w transferze i w spoczynku. RODO-compliant. Faktury usuwane automatycznie po 30 dniach."
           }
         }
+      },
+      howItWorks: {
+        eyebrow: "Jak to działa",
+        heading: "Od pliku KSeF do gotowego PDF — w trzech krokach.",
+        steps: [
+          {
+            title: "Wgraj fakturę",
+            body: "Plik FA(3) XML z KSeF albo PDF. Bez integracji, bez logowania do KSeF."
+          },
+          {
+            title: "Tłumaczymy treść",
+            body: "20+ języków, w około 4 sekundy. Numerację i strukturę MF zostawiamy nietknięte."
+          },
+          {
+            title: "Pobierz MF-PDF",
+            body: "Zgodny ze schematem 2025-06-25. Gotowy do wysłania klientowi."
+          }
+        ]
+      },
+      riskReversal: {
+        eyebrow: "Bez ryzyka",
+        heading: "Zacznij bez ryzyka.",
+        items: [
+          "1 faktura w miesiącu — gratis",
+          "Bez karty, bez subskrypcji",
+          "Niewykorzystane kredyty nie wygasają",
+          "Zwrot pakietu w ciągu 14 dni"
+        ],
+        cta: "Zacznij za darmo"
       },
       testimonials: {
         // REPLACE_BEFORE_LAUNCH — placeholder testimonials. Swap for real ones before going live.
@@ -125,11 +159,13 @@ export const marketingCopy = {
         ]
       },
       pricingTeaser: {
+        eyebrow: "Cennik",
         heading: "Im więcej tłumaczysz, tym taniej",
         sliderLabel: "Wybierz pakiet:",
         cta: "Pełny cennik"
       },
       faq: {
+        eyebrow: "FAQ",
         heading: "Najczęstsze pytania",
         items: [
           { q: "Czy potrzebuję integracji z KSeF?", a: "Nie. Wystarczy plik FA(3) XML pobrany z KSeF albo PDF z fakturą. Nie podłączamy się do KSeF i nie wymagamy żadnej integracji." },
@@ -313,7 +349,9 @@ export const marketingCopy = {
       security: "Security",
       blog: "Blog",
       faq: "Help",
-      login: "Sign in"
+      login: "Sign in",
+      menuOpen: "Open menu",
+      menuClose: "Close menu"
     },
     footer: {
       legalLabel: "© {year} {name} · NIP {nip} · REGON {regon} · {address}",
@@ -361,6 +399,9 @@ export const marketingCopy = {
       heroCtaPrimary: "Start free",
       heroCtaSecondary: "See example",
       heroFreeNote: "1 free invoice per month. No card.",
+      heroEyebrow: "MF FA(3) · schema 2025-06-25",
+      heroProofLine:
+        "from PLN 2.99 per invoice · no subscription · 1 free invoice every month, no card.",
       demoStripHeading: "Translation preserves MF structure and numbering",
       demoStripCaption: "Polish original on the left · professional translation on the right",
       valueProps: {
@@ -388,6 +429,35 @@ export const marketingCopy = {
             body: "Supabase Frankfurt (AWS eu-central-1). Encrypted in transit and at rest. GDPR-compliant. Invoices auto-deleted after 30 days."
           }
         }
+      },
+      howItWorks: {
+        eyebrow: "How it works",
+        heading: "From a KSeF file to a ready PDF — in three steps.",
+        steps: [
+          {
+            title: "Upload your invoice",
+            body: "FA(3) XML from KSeF or a PDF. No integration, no KSeF login."
+          },
+          {
+            title: "We translate the content",
+            body: "20+ languages in about 4 seconds. MF numbering and structure stay untouched."
+          },
+          {
+            title: "Download the MF-PDF",
+            body: "Matches the 2025-06-25 schema. Ready to send to your client."
+          }
+        ]
+      },
+      riskReversal: {
+        eyebrow: "No risk",
+        heading: "Start with zero risk.",
+        items: [
+          "1 free invoice every month",
+          "No card, no subscription",
+          "Unused credits never expire",
+          "Refund within 14 days"
+        ],
+        cta: "Start free"
       },
       testimonials: {
         // REPLACE_BEFORE_LAUNCH — placeholder testimonials. Swap for real ones before going live.
@@ -426,11 +496,13 @@ export const marketingCopy = {
         ]
       },
       pricingTeaser: {
+        eyebrow: "Pricing",
         heading: "The more you translate, the cheaper it gets",
         sliderLabel: "Choose a package:",
         cta: "Full pricing"
       },
       faq: {
+        eyebrow: "FAQ",
         heading: "Frequent questions",
         items: [
           { q: "Do I need to integrate with KSeF?", a: "No. Just upload your FA(3) XML or PDF. We never connect to KSeF and require no integration." },
