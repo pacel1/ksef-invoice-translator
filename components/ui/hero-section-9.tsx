@@ -30,6 +30,8 @@ interface HeroImage {
 interface HeroSectionProps {
   title: React.ReactNode;
   subtitle: React.ReactNode;
+  /** Small uppercase pill shown above the H1 (e.g. a compliance cue). */
+  eyebrow?: React.ReactNode;
   note?: React.ReactNode;
   actions: ActionProps[];
   stats: StatProps[];
@@ -61,16 +63,10 @@ const imageVariants: Variants = {
   visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: "easeOut" } }
 };
 
-const floatingVariants: Variants = {
-  animate: {
-    y: [0, -8, 0],
-    transition: { duration: 3, repeat: Infinity, ease: "easeInOut" }
-  }
-};
-
 export function HeroSection({
   title,
   subtitle,
+  eyebrow,
   note,
   actions,
   stats,
@@ -79,7 +75,7 @@ export function HeroSection({
   className
 }: HeroSectionProps) {
   const prefersReducedMotion = useReducedMotion();
-  const floatAnim = prefersReducedMotion ? undefined : "animate";
+  const initial = prefersReducedMotion ? false : "hidden";
 
   const ActionButton = ({ action }: { action: ActionProps }) => {
     if (action.href) {
@@ -103,9 +99,18 @@ export function HeroSection({
         <motion.div
           className="flex flex-col items-center text-center lg:items-start lg:text-left"
           variants={containerVariants}
-          initial="hidden"
+          initial={initial}
           animate="visible"
         >
+          {eyebrow ? (
+            <motion.span
+              className="mb-4 inline-flex items-center rounded-full bg-accent-soft px-3 py-1 text-micro font-semibold uppercase tracking-wide text-accent"
+              variants={itemVariants}
+            >
+              {eyebrow}
+            </motion.span>
+          ) : null}
+
           <motion.h1
             className="text-4xl font-bold tracking-tight text-text-strong sm:text-5xl lg:text-6xl"
             variants={itemVariants}
@@ -139,18 +144,24 @@ export function HeroSection({
           ) : null}
 
           <motion.div
-            className="mt-10 flex flex-wrap items-start justify-center gap-x-8 gap-y-6 lg:justify-start"
+            className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 lg:justify-start"
             variants={itemVariants}
           >
             {stats.map((stat, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-accent">
+              <div
+                key={i}
+                className={cn(
+                  "flex items-center gap-2",
+                  i > 0 && "sm:border-l sm:border-border sm:pl-5"
+                )}
+              >
+                <span className="text-accent [&_svg]:h-4 [&_svg]:w-4" aria-hidden="true">
                   {stat.icon}
-                </div>
-                <div className="text-left">
-                  <p className="text-lg font-semibold leading-tight text-text-strong">{stat.value}</p>
-                  <p className="text-xs text-text-muted">{stat.label}</p>
-                </div>
+                </span>
+                <span className="text-small font-semibold tabular-nums text-text-strong">
+                  {stat.value}
+                </span>
+                <span className="text-small text-text-muted">{stat.label}</span>
               </div>
             ))}
           </motion.div>
@@ -160,26 +171,13 @@ export function HeroSection({
         <motion.div
           className="relative mx-auto h-[440px] w-full max-w-[520px] sm:h-[480px]"
           variants={containerVariants}
-          initial="hidden"
+          initial={initial}
           animate="visible"
         >
-          {/* Soft decorative shapes (project palette) */}
-          <motion.div
-            className="absolute -top-3 left-[8%] h-14 w-14 rounded-full bg-accent-soft"
-            variants={floatingVariants}
-            animate={floatAnim}
-          />
-          <motion.div
-            className="absolute -bottom-2 right-[10%] h-10 w-10 rounded-lg bg-warning-soft"
-            variants={floatingVariants}
-            animate={floatAnim}
-            transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
-          />
-          <motion.div
-            className="absolute right-2 top-[34%] h-5 w-5 rounded-full bg-accent/20"
-            variants={floatingVariants}
-            animate={floatAnim}
-            transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 1.1 }}
+          {/* Static, subtle wash behind the document pair (no animation). */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -z-10 rounded-[32px] bg-[radial-gradient(60%_60%_at_50%_42%,hsl(var(--accent-soft)),transparent_70%)]"
           />
 
           {/* Source card — top-left */}
