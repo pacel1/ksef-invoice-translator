@@ -28,3 +28,6 @@ playwright/.cache
 .claude/
 .worktrees/
 .DS_Store
+
+# Brainstorming visual companion
+.superpowers/
