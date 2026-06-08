@@ -11,7 +11,9 @@ export const marketingCopy = {
       security: "Bezpieczeństwo",
       blog: "Blog",
       faq: "Pomoc",
-      login: "Zaloguj się"
+      login: "Zaloguj się",
+      menuOpen: "Otwórz menu",
+      menuClose: "Zamknij menu"
     },
     footer: {
       legalLabel: "© {year} {name} · NIP {nip} · REGON {regon} · {address}",
@@ -347,7 +349,9 @@ export const marketingCopy = {
       security: "Security",
       blog: "Blog",
       faq: "Help",
-      login: "Sign in"
+      login: "Sign in",
+      menuOpen: "Open menu",
+      menuClose: "Close menu"
     },
     footer: {
       legalLabel: "© {year} {name} · NIP {nip} · REGON {regon} · {address}",

@@ -76,4 +76,11 @@ describe("marketingCopy", () => {
     expect(marketingCopy.en.landing.pricingTeaser.eyebrow).toBeTruthy();
     expect(marketingCopy.en.landing.faq.eyebrow).toBeTruthy();
   });
+
+  it("publicHeader exposes mobile menu aria labels on both locales", () => {
+    expect(marketingCopy.pl.publicHeader.menuOpen).toBeTruthy();
+    expect(marketingCopy.pl.publicHeader.menuClose).toBeTruthy();
+    expect(marketingCopy.en.publicHeader.menuOpen).toBeTruthy();
+    expect(marketingCopy.en.publicHeader.menuClose).toBeTruthy();
+  });
 });
