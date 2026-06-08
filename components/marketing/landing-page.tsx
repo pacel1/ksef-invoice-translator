@@ -2,12 +2,11 @@ import Link from "next/link";
 import { Globe2, ShieldCheck, Zap } from "lucide-react";
 import { PublicHeader } from "@/components/layout/public-header";
 import { LegalFooter } from "@/components/layout/legal-footer";
-import { TrustStrip } from "@/components/trust/trust-strip";
-import { FounderCard } from "@/components/trust/founder-card";
 import { MarketingFAQ } from "@/components/marketing/marketing-faq";
 import { PublicPricingSlider } from "@/components/marketing/public-pricing-slider";
+import { HowItWorks } from "@/components/marketing/how-it-works";
+import { RiskReversal } from "@/components/marketing/risk-reversal";
 import { HeroSection } from "@/components/ui/hero-section-9";
-import { AnimatedTestimonials } from "@/components/ui/animated-testimonials";
 import {
   FeaturesSection,
   FieldMappingIllustration,
@@ -15,7 +14,6 @@ import {
   DataResidencyIllustration
 } from "@/components/ui/features-section";
 import { marketingCopy, type MarketingLocale } from "@/lib/marketing/copy";
-import { FOUNDER } from "@/lib/brand/founder";
 
 export interface LandingPageProps {
   locale: MarketingLocale;
@@ -37,7 +35,8 @@ export function LandingPage({ locale }: LandingPageProps) {
         <HeroSection
           title={t.heroHeadline}
           subtitle={t.heroSubhead}
-          note={t.heroFreeNote}
+          eyebrow={t.heroEyebrow}
+          note={t.heroProofLine}
           actions={[
             {
               text: t.heroCtaPrimary,
@@ -75,6 +74,14 @@ export function LandingPage({ locale }: LandingPageProps) {
           translationLabel="4 s"
         />
 
+        {/* How it works — 3 steps (muted band to separate from the hero) */}
+        <HowItWorks
+          eyebrow={t.howItWorks.eyebrow}
+          heading={t.howItWorks.heading}
+          steps={t.howItWorks.steps}
+          className="bg-surface-muted"
+        />
+
         {/* Features — 1 hero card + 2 small cards */}
         <div id="features" />
         <FeaturesSection
@@ -100,57 +107,47 @@ export function LandingPage({ locale }: LandingPageProps) {
           ]}
         />
 
-        {/* Testimonials */}
-        <AnimatedTestimonials
-          badgeText={t.testimonials.badge}
-          title={t.testimonials.heading}
-          subtitle={t.testimonials.subhead}
-          testimonials={t.testimonials.items}
+        {/* Pricing teaser */}
+        <section className="bg-surface-muted">
+          <div className="mx-auto w-full max-w-4xl px-5 py-20 md:px-8">
+            <div className="text-center">
+              <p className="text-micro uppercase tracking-wide text-accent">
+                {t.pricingTeaser.eyebrow}
+              </p>
+              <h2 className="mt-3 text-h2 text-text-strong">{t.pricingTeaser.heading}</h2>
+              <p className="mt-2 text-small text-text-muted">{t.pricingTeaser.sliderLabel}</p>
+            </div>
+            <div className="mt-8">
+              <PublicPricingSlider locale={locale} labels={pricingLabels} />
+            </div>
+            <div className="mt-6 text-center">
+              <Link
+                href="/pricing"
+                className="inline-flex text-small font-medium text-accent hover:text-accent-hover"
+              >
+                {t.pricingTeaser.cta} →
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Risk reversal — replaces the old testimonials slot */}
+        <RiskReversal
+          eyebrow={t.riskReversal.eyebrow}
+          heading={t.riskReversal.heading}
+          items={t.riskReversal.items}
+          ctaText={t.riskReversal.cta}
+          ctaHref="/login"
+          className="bg-surface"
         />
 
-        {/* TrustStrip */}
-        <section className="bg-surface-muted py-12">
-          <div className="mx-auto max-w-6xl px-5 md:px-8">
-            <TrustStrip locale={locale} />
-          </div>
-        </section>
-
-        {/* Pricing teaser */}
-        <section className="mx-auto w-full max-w-4xl px-5 py-20 md:px-8">
-          <div className="text-center">
-            <h2 className="text-h2 text-text-strong">{t.pricingTeaser.heading}</h2>
-            <p className="mt-2 text-small text-text-muted">{t.pricingTeaser.sliderLabel}</p>
-          </div>
-          <div className="mt-8">
-            <PublicPricingSlider locale={locale} labels={pricingLabels} />
-          </div>
-          <div className="mt-6 text-center">
-            <Link
-              href="/pricing"
-              className="inline-flex text-small font-medium text-accent hover:text-accent-hover"
-            >
-              {t.pricingTeaser.cta} →
-            </Link>
-          </div>
-        </section>
-
         {/* FAQ */}
-        <section className="mx-auto w-full max-w-3xl px-5 py-20 md:px-8">
-          <MarketingFAQ heading={t.faq.heading} items={t.faq.items} />
-        </section>
-
-        {/* Founder */}
-        <section className="bg-surface-muted py-16">
-          <div className="mx-auto max-w-3xl px-5 md:px-8">
-            <h2 className="text-center text-h2 text-text-strong">{t.founderHeading}</h2>
-            <div className="mt-8">
-              <FounderCard
-                name={FOUNDER.name}
-                photoUrl={FOUNDER.photoUrl}
-                statement={FOUNDER.statement}
-                contactEmail={FOUNDER.contactEmail}
-              />
-            </div>
+        <section className="bg-surface-muted">
+          <div className="mx-auto w-full max-w-3xl px-5 py-20 md:px-8">
+            <p className="mb-3 text-micro uppercase tracking-wide text-accent">
+              {t.faq.eyebrow}
+            </p>
+            <MarketingFAQ heading={t.faq.heading} items={t.faq.items} />
           </div>
         </section>
 
