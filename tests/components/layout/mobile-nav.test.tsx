@@ -53,4 +53,17 @@ describe("<MobileNav>", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("link", { name: "Cennik" })).not.toBeInTheDocument();
   });
+
+  it("closes when the backdrop is clicked", () => {
+    render(<MobileNav {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Otwórz menu" }));
+    fireEvent.click(screen.getByTestId("mobile-nav-backdrop"));
+    expect(screen.queryByRole("link", { name: "Cennik" })).not.toBeInTheDocument();
+  });
+
+  it("moves focus to the close button when opened", () => {
+    render(<MobileNav {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Otwórz menu" }));
+    expect(screen.getByRole("button", { name: "Zamknij menu" })).toHaveFocus();
+  });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,8 +27,22 @@ const ctaClass =
 
 export function MobileNav({ links, cta, openLabel, closeLabel, className }: MobileNavProps) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
 
   const close = () => setOpen(false);
+
+  // Focus management: move focus to the close button on open, restore to the
+  // trigger on a real open→closed transition (never on initial mount).
+  useEffect(() => {
+    if (open) {
+      closeRef.current?.focus();
+    } else if (wasOpen.current) {
+      triggerRef.current?.focus();
+    }
+    wasOpen.current = open;
+  }, [open]);
 
   // Close on Escape while open. Listener attached only while open and cleaned up on close/unmount.
   useEffect(() => {
@@ -58,6 +72,7 @@ export function MobileNav({ links, cta, openLabel, closeLabel, className }: Mobi
   return (
     <div className={cn(className)}>
       <button
+        ref={triggerRef}
         type="button"
         aria-label={openLabel}
         aria-expanded={open}
@@ -75,6 +90,7 @@ export function MobileNav({ links, cta, openLabel, closeLabel, className }: Mobi
             type="button"
             aria-hidden="true"
             tabIndex={-1}
+            data-testid="mobile-nav-backdrop"
             onClick={close}
             className="absolute inset-0 h-full w-full cursor-default bg-black/30"
           />
@@ -87,9 +103,9 @@ export function MobileNav({ links, cta, openLabel, closeLabel, className }: Mobi
           >
             <div className="flex items-center justify-end">
               <button
+                ref={closeRef}
                 type="button"
                 aria-label={closeLabel}
-                aria-expanded={open}
                 onClick={close}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-md text-text hover:text-text-strong"
               >
