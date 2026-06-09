@@ -80,7 +80,7 @@ export function MobileNavSheet({ links, ctaHref, ctaLabel, openLabel, closeLabel
             key={l.href}
             href={l.href}
             onClick={() => setOpen(false)}
-            className="rounded-[10px] px-3 py-3 font-dm text-[17px] text-ink hover:bg-paper-soft"
+            className="rounded-[10px] px-3 py-3 font-dm text-[17px] text-ink hover:bg-paper-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           >
             {l.label}
           </Link>
@@ -88,7 +88,7 @@ export function MobileNavSheet({ links, ctaHref, ctaLabel, openLabel, closeLabel
         <Link
           href={ctaHref}
           onClick={() => setOpen(false)}
-          className="mt-3 inline-flex h-12 w-full items-center justify-center rounded-[11px] bg-brand font-dm font-semibold text-white shadow-brand hover:bg-brand-hover"
+          className="mt-3 inline-flex h-12 w-full items-center justify-center rounded-[11px] bg-brand font-dm font-semibold text-white shadow-brand hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           {ctaLabel}
         </Link>

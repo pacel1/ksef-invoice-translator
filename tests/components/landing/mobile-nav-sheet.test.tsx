@@ -50,4 +50,11 @@ describe("<MobileNavSheet>", () => {
     fireEvent.click(screen.getByTestId("mobile-nav-backdrop"));
     expect(screen.queryByRole("link", { name: "Cennik" })).not.toBeInTheDocument();
   });
+
+  it("gives the in-sheet links and CTA a visible focus ring (keyboard a11y)", () => {
+    render(<MobileNavSheet {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Otwórz menu" }));
+    expect(screen.getByRole("link", { name: "Cennik" }).className).toMatch(/focus-visible:ring-2/);
+    expect(screen.getByRole("link", { name: "Zacznij za darmo" }).className).toMatch(/focus-visible:ring-2/);
+  });
 });
