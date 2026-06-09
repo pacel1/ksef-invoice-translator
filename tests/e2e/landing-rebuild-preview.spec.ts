@@ -44,7 +44,9 @@ test("mobile nav sheet paints above the page (no stacking bleed-through)", async
 test("hero renders with the level-1 headline and a CTA to the demo anchor", async ({ page }) => {
   await page.goto("/landing-preview");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Znowu przepisujesz fakturę");
-  await expect(page.getByRole("link", { name: "Przetłumacz swoją fakturę" })).toHaveAttribute("href", "#demo");
+  await expect(
+    page.locator("#hero").getByRole("link", { name: "Przetłumacz swoją fakturę" })
+  ).toHaveAttribute("href", "#demo");
   // the animated showcase renders its invoice card (Polish title visible first)
   await expect(page.getByText("FAKTURA").first()).toBeVisible();
 });
@@ -63,4 +65,19 @@ test("renders pricing + faq sections", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Zobacz pełny cennik" })).toHaveAttribute("href", "/pricing");
   await expect(page.getByRole("heading", { level: 2, name: /Najczęstsze pytania/ })).toBeVisible();
   await expect(page.getByText("Co z kodem QR?")).toBeVisible();
+});
+
+test("demo section reveals the sample and switches language on chip click", async ({ page }) => {
+  await page.goto("/landing-preview");
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Zobacz swoją fakturę w innym języku" })
+  ).toBeVisible();
+  const demo = page.locator("#demo");
+  // default English rendering
+  await expect(demo.getByText('Oak chair „Helena”')).toBeVisible();
+  // switch to German
+  await demo.getByRole("button", { name: "DE", exact: true }).click();
+  await expect(demo.getByText('Eichenstuhl „Helena”')).toBeVisible();
+  // the demo CTA points to /login
+  await expect(demo.getByRole("link", { name: "Przetłumacz swoją fakturę" })).toHaveAttribute("href", "/login");
 });
