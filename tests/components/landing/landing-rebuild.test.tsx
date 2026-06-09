@@ -28,5 +28,9 @@ describe("<LandingRebuild>", () => {
     expect(container.querySelector("#faq")).not.toBeNull();
     // hero is now real content (level-1 headline), not an empty placeholder
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/Znowu przepisujesz fakturę/);
+    // the four explainer sections now render real content (their level-2 headings)
+    expect(screen.getByRole("heading", { level: 2, name: /Trzy kroki/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /Zmienia się tylko język/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /czy masz jedną fakturę/ })).toBeInTheDocument();
   });
 });
