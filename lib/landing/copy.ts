@@ -31,7 +31,7 @@ export const landingCopy = {
       moreAria: "Więcej języków",
       moreHref: "/login",
       privacy: "Nie przechowujemy Twojej faktury.",
-      cta: "Przetłumacz swoją fakturę",
+      cta: "Przetłumacz własną fakturę",
       ctaHref: "/login"
     },
     whyOldWay: {
@@ -160,7 +160,7 @@ export const landingCopy = {
       moreAria: "More languages",
       moreHref: "/login",
       privacy: "We do not store your invoice.",
-      cta: "Translate your invoice",
+      cta: "Translate your own invoice",
       ctaHref: "/login"
     },
     whyOldWay: {

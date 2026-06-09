@@ -79,5 +79,5 @@ test("demo section reveals the sample and switches language on chip click", asyn
   await demo.getByRole("button", { name: "DE", exact: true }).click();
   await expect(demo.getByText('Eichenstuhl „Helena”')).toBeVisible();
   // the demo CTA points to /login
-  await expect(demo.getByRole("link", { name: "Przetłumacz swoją fakturę" })).toHaveAttribute("href", "/login");
+  await expect(demo.getByRole("link", { name: "Przetłumacz własną fakturę" })).toHaveAttribute("href", "/login");
 });

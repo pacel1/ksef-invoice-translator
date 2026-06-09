@@ -37,6 +37,6 @@ describe("<DemoSection>", () => {
 
   it("links the primary CTA to /login", () => {
     render(<DemoSection locale="pl" />);
-    expect(screen.getByRole("link", { name: "Przetłumacz swoją fakturę" })).toHaveAttribute("href", "/login");
+    expect(screen.getByRole("link", { name: "Przetłumacz własną fakturę" })).toHaveAttribute("href", "/login");
   });
 });
