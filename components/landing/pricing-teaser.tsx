@@ -48,7 +48,7 @@ export function PricingTeaser({ locale }: PricingTeaserProps) {
                       <span className={highlight ? "font-heading text-[16px] font-bold tabular-nums text-brand" : "font-heading text-[15px] font-semibold tabular-nums text-ink"}>
                         {row.perInvoice}
                       </span>
-                      <span className="font-dm text-[12px] font-normal text-copy-muted">{t.perInvoiceLabel}</span>
+                      <span className={highlight ? "font-dm text-[12px] font-normal text-brand" : "font-dm text-[12px] font-normal text-copy-muted"}>{t.perInvoiceLabel}</span>
                     </span>
                   </li>
                 );
