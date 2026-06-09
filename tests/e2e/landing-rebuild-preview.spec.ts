@@ -24,3 +24,19 @@ test("landing rebuild preview has no horizontal overflow at 375px", async ({ pag
   );
   expect(overflow).toBe(false);
 });
+
+test("mobile nav sheet paints above the page (no stacking bleed-through)", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("/landing-preview");
+  await page.getByRole("button", { name: "Otwórz menu" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const onTop = await page.evaluate(() => {
+    const d = document.querySelector('[role="dialog"]');
+    if (!d) return false;
+    const r = d.getBoundingClientRect();
+    const el = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+    return !!(el && d.contains(el));
+  });
+  expect(onTop).toBe(true);
+});
