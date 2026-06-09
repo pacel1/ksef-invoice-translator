@@ -34,4 +34,18 @@ describe("landingCopy", () => {
       expect(loc.hero.reassurance).toBeTruthy();
     }
   });
+
+  it("has the four explainer-section groups on both locales", () => {
+    for (const loc of [landingCopy.pl, landingCopy.en]) {
+      expect(loc.whyOldWay.heading).toBeTruthy();
+      expect(loc.whyOldWay.problems).toHaveLength(3);
+      expect(loc.whyOldWay.resolution).toBeTruthy();
+      expect(loc.howItWorks.steps).toHaveLength(3);
+      expect(loc.howItWorks.footnote).toBeTruthy();
+      expect(loc.whatStays.kept.length).toBeGreaterThanOrEqual(5);
+      expect(loc.whatStays.translated.length).toBeGreaterThanOrEqual(5);
+      expect(loc.whatStays.trust).toBeTruthy();
+      expect(loc.builtForTwo.lanes).toHaveLength(2);
+    }
+  });
 });
