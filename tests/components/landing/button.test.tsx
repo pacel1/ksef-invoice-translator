@@ -27,6 +27,19 @@ describe("<Button>", () => {
     fireEvent.click(screen.getByRole("button", { name: "Klik" }));
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  it("defaults the native button type to 'button'", () => {
+    render(<Button>Klik</Button>);
+    expect(screen.getByRole("button", { name: "Klik" })).toHaveAttribute("type", "button");
+  });
+
+  it("forwards onClick and aria-label to the anchor when href is set", () => {
+    const onClick = vi.fn();
+    render(<Button href="/x" onClick={onClick} aria-label="Idź">Idź</Button>);
+    const link = screen.getByRole("link", { name: "Idź" });
+    fireEvent.click(link);
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("<Eyebrow>", () => {
