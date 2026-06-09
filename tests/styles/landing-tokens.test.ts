@@ -22,4 +22,13 @@ describe("landing design tokens", () => {
     expect(sizes.hero).toBeDefined();
     expect(sizes["h2x"]).toBeDefined();
   });
+
+  it("registers the hero bob + showcase-scan animations", () => {
+    const animation = (config.theme?.extend?.animation ?? {}) as Record<string, string>;
+    expect(animation.bob).toBeDefined();
+    expect(animation["showcase-scan"]).toBeDefined();
+    const keyframes = (config.theme?.extend?.keyframes ?? {}) as Record<string, unknown>;
+    expect(keyframes.bob).toBeDefined();
+    expect(keyframes["showcase-scan"]).toBeDefined();
+  });
 });
