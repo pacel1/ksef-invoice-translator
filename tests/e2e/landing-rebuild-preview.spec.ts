@@ -56,3 +56,11 @@ test("renders the four explainer sections in order", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 3, name: "Zostaje bez zmian" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 3, name: "Prowadzisz biuro rachunkowe" })).toBeVisible();
 });
+
+test("renders pricing + faq sections", async ({ page }) => {
+  await page.goto("/landing-preview");
+  await expect(page.getByRole("heading", { level: 2, name: /Płacisz tylko za faktury/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Zobacz pełny cennik" })).toHaveAttribute("href", "/pricing");
+  await expect(page.getByRole("heading", { level: 2, name: /Najczęstsze pytania/ })).toBeVisible();
+  await expect(page.getByText("Co z kodem QR?")).toBeVisible();
+});

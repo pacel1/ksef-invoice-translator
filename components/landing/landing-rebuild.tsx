@@ -5,6 +5,8 @@ import { OldWayComparison } from "@/components/landing/old-way-comparison";
 import { HowItWorksSteps } from "@/components/landing/how-it-works-steps";
 import { PreservedVsTranslated } from "@/components/landing/preserved-vs-translated";
 import { AudienceCards } from "@/components/landing/audience-cards";
+import { PricingTeaser } from "@/components/landing/pricing-teaser";
+import { FaqAccordion } from "@/components/landing/faq-accordion";
 import { FinalCta } from "@/components/landing/final-cta";
 import { SiteFooter } from "@/components/landing/site-footer";
 
@@ -18,14 +20,14 @@ export function LandingRebuild({ locale }: LandingRebuildProps) {
       <SiteNav locale={locale} />
       <main className="flex-1">
         <Hero locale={locale} />
-        {/* Reserved placeholders for later sprints */}
+        {/* Reserved placeholder for the demo sprint */}
         <section id="demo" aria-hidden="true" />
         <OldWayComparison locale={locale} />
         <HowItWorksSteps locale={locale} />
         <PreservedVsTranslated locale={locale} />
         <AudienceCards locale={locale} />
-        <section id="cennik" aria-hidden="true" />
-        <section id="faq" aria-hidden="true" />
+        <PricingTeaser locale={locale} />
+        <FaqAccordion locale={locale} />
       </main>
       <FinalCta locale={locale} />
       <SiteFooter locale={locale} />
