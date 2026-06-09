@@ -48,3 +48,11 @@ test("hero renders with the level-1 headline and a CTA to the demo anchor", asyn
   // the animated showcase renders its invoice card (Polish title visible first)
   await expect(page.getByText("FAKTURA").first()).toBeVisible();
 });
+
+test("renders the four explainer sections in order", async ({ page }) => {
+  await page.goto("/landing-preview");
+  await expect(page.getByText("Wysyłasz polski PDF.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: /Trzy kroki/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 3, name: "Zostaje bez zmian" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 3, name: "Prowadzisz biuro rachunkowe" })).toBeVisible();
+});
