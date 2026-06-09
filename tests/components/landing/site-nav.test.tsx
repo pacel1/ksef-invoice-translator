@@ -27,4 +27,10 @@ describe("<SiteNav>", () => {
     render(<SiteNav locale="en" />);
     expect(screen.getAllByRole("link", { name: "Start free" })[0]).toHaveAttribute("href", "/login");
   });
+
+  it("gives the desktop nav links and CTA a visible focus ring (keyboard a11y)", () => {
+    render(<SiteNav locale="pl" />);
+    expect(screen.getByRole("link", { name: "Cennik" }).className).toMatch(/focus-visible:ring-2/);
+    expect(screen.getAllByRole("link", { name: "Zacznij za darmo" })[0].className).toMatch(/focus-visible:ring-2/);
+  });
 });
