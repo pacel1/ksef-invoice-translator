@@ -48,4 +48,19 @@ describe("landingCopy", () => {
       expect(loc.builtForTwo.lanes).toHaveLength(2);
     }
   });
+
+  it("has pricing and faq groups on both locales", () => {
+    for (const loc of [landingCopy.pl, landingCopy.en]) {
+      expect(loc.pricing.heading).toBeTruthy();
+      expect(loc.pricing.promises.length).toBeGreaterThanOrEqual(5);
+      expect(loc.pricing.ladder).toHaveLength(3);
+      expect(loc.pricing.ctaHref).toMatch(/pricing/);
+      expect(loc.faq.heading).toBeTruthy();
+      expect(loc.faq.items).toHaveLength(6);
+      for (const item of loc.faq.items) {
+        expect(item.q).toBeTruthy();
+        expect(item.a).toBeTruthy();
+      }
+    }
+  });
 });
