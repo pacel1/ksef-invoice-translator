@@ -21,7 +21,8 @@ export function Hero({ locale }: HeroProps) {
           <Eyebrow>{t.eyebrow}</Eyebrow>
           <h1 className="mt-5 font-heading text-hero text-ink">
             {t.headlineLead}{" "}
-            <span className="bg-gradient-to-r from-iris to-plum bg-clip-text text-transparent">{t.headlineTurn}</span>
+            {/* Gradient kept >=3:1 on white for large text (brand ~5.8:1, iris ~3.45:1). */}
+            <span className="bg-gradient-to-r from-brand to-iris bg-clip-text text-transparent">{t.headlineTurn}</span>
           </h1>
           <p className="mt-5 max-w-[34em] text-[clamp(0.95rem,1.4vw,1.05rem)] leading-relaxed text-copy">{t.subline}</p>
           <div className="mt-7 flex flex-wrap gap-3">
