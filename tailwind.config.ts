@@ -99,10 +99,21 @@ const config: Config = {
           "0%": { transform: "translateX(-100%)" },
           "60%": { transform: "translateX(220%)" },
           "100%": { transform: "translateX(220%)" }
+        },
+        bob: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" }
+        },
+        "showcase-scan": {
+          "0%": { opacity: "0", transform: "translateY(-70%)" },
+          "30%": { opacity: "1" },
+          "100%": { opacity: "0", transform: "translateY(180%)" }
         }
       },
       animation: {
-        "translate-progress": "translate-progress 1.6s ease-in-out infinite"
+        "translate-progress": "translate-progress 1.6s ease-in-out infinite",
+        bob: "bob 6s ease-in-out infinite",
+        "showcase-scan": "showcase-scan 1s ease-in-out"
       }
     }
   },

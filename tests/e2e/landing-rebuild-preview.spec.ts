@@ -40,3 +40,11 @@ test("mobile nav sheet paints above the page (no stacking bleed-through)", async
   });
   expect(onTop).toBe(true);
 });
+
+test("hero renders with the level-1 headline and a CTA to the demo anchor", async ({ page }) => {
+  await page.goto("/landing-preview");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Znowu przepisujesz fakturę");
+  await expect(page.getByRole("link", { name: "Przetłumacz swoją fakturę" })).toHaveAttribute("href", "#demo");
+  // the animated showcase renders its invoice card (Polish title visible first)
+  await expect(page.getByText("FAKTURA").first()).toBeVisible();
+});

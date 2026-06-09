@@ -24,17 +24,17 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   href?: string;
 }
 
-export function Button({ variant = "primary", size = "md", href, className, children, ...props }: ButtonProps) {
+export function Button({ variant = "primary", size = "md", href, type, className, children, ...props }: ButtonProps) {
   const classes = cn(base, variants[variant], sizes[size], className);
   if (href) {
     return (
-      <a href={href} className={classes}>
+      <a href={href} className={classes} {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}>
         {children}
       </a>
     );
   }
   return (
-    <button className={classes} {...props}>
+    <button type={type ?? "button"} className={classes} {...props}>
       {children}
     </button>
   );

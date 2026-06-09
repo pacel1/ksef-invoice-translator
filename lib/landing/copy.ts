@@ -12,6 +12,15 @@ export interface NavLink {
 
 export const landingCopy = {
   pl: {
+    hero: {
+      eyebrow: "Faktura KSeF dla kontrahenta z zagranicy",
+      headlineLead: "Znowu przepisujesz fakturę z KSeF do Worda, żeby klient z zagranicy ją zrozumiał?",
+      headlineTurn: "Już nie musisz.",
+      subline: "Wgrywasz fakturę z KSeF, a po kilku sekundach masz jej profesjonalną wersję w języku klienta. Bez przepisywania. Numery, kwoty i kod QR zostają nietknięte.",
+      ctaPrimary: "Przetłumacz swoją fakturę",
+      ctaSecondary: "Zobacz na przykładzie",
+      reassurance: "Pierwsza faktura w miesiącu za darmo, bez karty. Dane w UE, kasujemy po 30 dniach."
+    },
     nav: {
       links: [
         { href: "#jak-to-dziala", label: "Jak to działa" },
@@ -47,6 +56,15 @@ export const landingCopy = {
     }
   },
   en: {
+    hero: {
+      eyebrow: "KSeF invoice for a foreign client",
+      headlineLead: "Still retyping your KSeF invoice into Word so a foreign client can read it?",
+      headlineTurn: "You don't have to anymore.",
+      subline: "Upload your KSeF invoice and in a few seconds you have a professional version in your client's language. No retyping. Numbers, amounts and the QR code stay untouched.",
+      ctaPrimary: "Translate your invoice",
+      ctaSecondary: "See it on a sample",
+      reassurance: "First invoice each month is free, no card. Data in the EU, deleted after 30 days."
+    },
     nav: {
       links: [
         { href: "#jak-to-dziala", label: "How it works" },

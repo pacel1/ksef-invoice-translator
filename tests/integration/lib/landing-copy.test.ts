@@ -22,4 +22,16 @@ describe("landingCopy", () => {
     const flat = JSON.stringify(landingCopy);
     expect(flat).not.toMatch(/—|–/);
   });
+
+  it("has a hero group with headline parts, two CTAs, and reassurance on both locales", () => {
+    for (const loc of [landingCopy.pl, landingCopy.en]) {
+      expect(loc.hero.eyebrow).toBeTruthy();
+      expect(loc.hero.headlineLead).toBeTruthy();
+      expect(loc.hero.headlineTurn).toBeTruthy();
+      expect(loc.hero.subline).toBeTruthy();
+      expect(loc.hero.ctaPrimary).toBeTruthy();
+      expect(loc.hero.ctaSecondary).toBeTruthy();
+      expect(loc.hero.reassurance).toBeTruthy();
+    }
+  });
 });
