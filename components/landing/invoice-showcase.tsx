@@ -21,14 +21,18 @@ export function InvoiceShowcase() {
       setIndex(1); // static English, no cycle
       return;
     }
+    let swapTimer: ReturnType<typeof setTimeout>;
     const id = setInterval(() => {
       setSwapping(true);
-      setTimeout(() => {
+      swapTimer = setTimeout(() => {
         setIndex((i) => (i + 1) % SHOWCASE_ORDER.length);
         setSwapping(false);
       }, 180);
     }, SHOWCASE_CYCLE_MS);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      clearTimeout(swapTimer);
+    };
   }, []);
 
   const code = SHOWCASE_ORDER[index];
