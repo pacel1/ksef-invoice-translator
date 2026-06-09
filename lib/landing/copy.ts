@@ -58,6 +58,41 @@ export const landingCopy = {
         { title: "Prowadzisz biuro rachunkowe", body: "Robisz obcojęzyczne wersje dla wielu klientów w kilka sekund. Bez abonamentu, płacisz tylko za to, co realnie tłumaczysz, a niewykorzystane pakiety się sumują." }
       ]
     },
+    pricing: {
+      eyebrow: "Cennik",
+      heading: "Płacisz tylko za faktury, które tłumaczysz.",
+      sub: "Żadnego abonamentu. Pierwsza faktura w miesiącu jest za darmo. Im większy pakiet, tym taniej za sztukę.",
+      promises: [
+        "1 faktura w miesiącu za darmo, bez karty.",
+        "Pakiety od 5 do 100 faktur.",
+        "Cena spada z każdym większym pakietem.",
+        "Niewykorzystane faktury nie przepadają.",
+        "Do każdego zakupu dostajesz fakturę VAT."
+      ],
+      ladderLabel: "Im większy pakiet, tym taniej za fakturę",
+      packUnit: "faktur",
+      perInvoiceLabel: "za fakturę",
+      ladder: [
+        { size: "5", perInvoice: "6,99 zł" },
+        { size: "25", perInvoice: "4,99 zł" },
+        { size: "100", perInvoice: "2,99 zł" }
+      ],
+      note: "Ceny netto. VAT 23% dolicza się przy zakupie.",
+      cta: "Zobacz pełny cennik",
+      ctaHref: "/pricing"
+    },
+    faq: {
+      eyebrow: "FAQ",
+      heading: "Najczęstsze pytania",
+      items: [
+        { q: "Czy tłumaczenie zastępuje fakturę z KSeF?", a: "Nie. Fakturą jest dokument w KSeF. To, co tworzymy, to jej czytelna wersja w języku klienta. Oryginał zostaje nienaruszony." },
+        { q: "Czy faktura z KSeF może być po angielsku albo niemiecku?", a: "Tak. Klient dostaje wersję w swoim języku, a oryginał dalej żyje w KSeF po polsku." },
+        { q: "Co z kodem QR?", a: "Zostaje. Dzięki niemu wizualizację da się powiązać z fakturą źródłową i zweryfikować." },
+        { q: "Muszę coś instalować albo integrować się z KSeF?", a: "Nie. Wgrywasz plik XML lub PDF i tyle. Nie łączymy się z KSeF i nie logujemy Cię do Ministerstwa Finansów." },
+        { q: "Czy dostanę fakturę VAT za zakup?", a: "Tak. Po każdym zakupie pakietu wysyłamy fakturę VAT mailem." },
+        { q: "Czy moje dane są bezpieczne?", a: "Pliki trzymamy w UE (Frankfurt) i kasujemy po 30 dniach. Nie używamy ich do trenowania modeli." }
+      ]
+    },
     nav: {
       links: [
         { href: "#jak-to-dziala", label: "Jak to działa" },
@@ -137,6 +172,41 @@ export const landingCopy = {
       lanes: [
         { title: "You run a business and sell abroad", body: "You issue the invoice in KSeF, and your client gets a readable version in their language. You look professional and get paid faster." },
         { title: "You run an accounting office", body: "You produce foreign-language versions for many clients in seconds. No subscription, you pay only for what you actually translate, and unused packs add up." }
+      ]
+    },
+    pricing: {
+      eyebrow: "Pricing",
+      heading: "You pay only for the invoices you translate.",
+      sub: "No subscription. The first invoice each month is free. The bigger the pack, the cheaper per invoice.",
+      promises: [
+        "1 free invoice each month, no card.",
+        "Packs from 5 to 100 invoices.",
+        "The price drops with every bigger pack.",
+        "Unused invoices never expire.",
+        "Every purchase comes with a VAT invoice."
+      ],
+      ladderLabel: "The bigger the pack, the cheaper per invoice",
+      packUnit: "invoices",
+      perInvoiceLabel: "per invoice",
+      ladder: [
+        { size: "5", perInvoice: "PLN 6.99" },
+        { size: "25", perInvoice: "PLN 4.99" },
+        { size: "100", perInvoice: "PLN 2.99" }
+      ],
+      note: "Prices net of VAT. 23% VAT is added at checkout.",
+      cta: "See full pricing",
+      ctaHref: "/en/pricing"
+    },
+    faq: {
+      eyebrow: "FAQ",
+      heading: "Frequent questions",
+      items: [
+        { q: "Does the translation replace the KSeF invoice?", a: "No. The invoice is the document in KSeF. What we create is a readable version in your client's language. The original stays untouched." },
+        { q: "Can a KSeF invoice be in English or German?", a: "Yes. Your client gets a version in their language, while the original still lives in KSeF in Polish." },
+        { q: "What about the QR code?", a: "It stays. It lets the rendering be linked back to the source invoice and verified." },
+        { q: "Do I need to install anything or integrate with KSeF?", a: "No. You upload an XML or PDF file and that is it. We never connect to KSeF and never log you into the Ministry of Finance." },
+        { q: "Will I get a VAT invoice for my purchase?", a: "Yes. After every pack purchase we email you a VAT invoice." },
+        { q: "Is my data safe?", a: "We store files in the EU (Frankfurt) and delete them after 30 days. We do not use them to train models." }
       ]
     },
     nav: {

@@ -32,5 +32,8 @@ describe("<LandingRebuild>", () => {
     expect(screen.getByRole("heading", { level: 2, name: /Trzy kroki/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: /Zmienia się tylko język/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: /czy masz jedną fakturę/ })).toBeInTheDocument();
+    // pricing + faq now render real content
+    expect(screen.getByRole("heading", { level: 2, name: /Płacisz tylko za faktury/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /Najczęstsze pytania/ })).toBeInTheDocument();
   });
 });
