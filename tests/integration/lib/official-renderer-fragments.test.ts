@@ -3,6 +3,7 @@ import pdfParse from "pdf-parse";
 import type { Invoice } from "@/types/invoice";
 import {
   applyAppFreeTextToOfficialXml,
+  expandBilingualKsefHeader,
   localizeOfficialBooleanTexts,
   parseOfficialFa3Xml,
   renderOfficialFa3Pdf
@@ -207,6 +208,112 @@ describe("official FA(3) renderer static text overrides", () => {
     polishDictionaryResidues.forEach((residue) => {
       expect(text).not.toContain(residue);
     });
+  });
+});
+
+describe("official FA(3) bilingual KSeF header", () => {
+  it("expands the three-part header into styled EN / PL runs with the red 'e' on both sides", () => {
+    const docDefinition = {
+      content: [
+        {
+          text: [
+            { text: "National System ", fontSize: 18 },
+            { text: "e", color: "red", bold: true, fontSize: 18 },
+            { text: "-Invoices", bold: true, fontSize: 18 }
+          ]
+        }
+      ]
+    };
+
+    expandBilingualKsefHeader(
+      { docDefinition, getBuffer: () => undefined },
+      ["Krajowy System ", "e", "-Faktur"]
+    );
+
+    const runs = docDefinition.content[0].text as Array<Record<string, unknown>>;
+    expect(runs.map((run) => run.text).join("")).toBe(
+      "National System e-Invoices / Krajowy System e-Faktur"
+    );
+    // The signature red "e" must survive on both the English and Polish phrase.
+    expect(runs.filter((run) => run.color === "red").map((run) => run.text)).toEqual(["e", "e"]);
+    // The "-Invoices" / "-Faktur" tails stay bold on both sides.
+    expect(runs.filter((run) => run.bold === true).map((run) => run.text)).toEqual([
+      "e",
+      "-Invoices",
+      "e",
+      "-Faktur"
+    ]);
+  });
+
+  it("leaves the header untouched when EN and PL parts are identical", () => {
+    const docDefinition = {
+      content: [
+        {
+          text: [
+            { text: "Krajowy System ", fontSize: 18 },
+            { text: "e", color: "red", bold: true, fontSize: 18 },
+            { text: "-Faktur", bold: true, fontSize: 18 }
+          ]
+        }
+      ]
+    };
+
+    expandBilingualKsefHeader(
+      { docDefinition, getBuffer: () => undefined },
+      ["Krajowy System ", "e", "-Faktur"]
+    );
+
+    expect(docDefinition.content[0].text).toHaveLength(3);
+  });
+
+  it("provides all three KSeF header parts for every supported language", () => {
+    supportedLanguages.forEach((language) => {
+      const overrides = getOfficialTextOverrides(language);
+      ["invoice.header.ksefPart1", "invoice.header.ksefPart2", "invoice.header.ksefPart3"].forEach((key) => {
+        expect(overrides[key], `${language} ${key}`).toBeTruthy();
+      });
+    });
+  });
+
+  it("renders the bilingual KSeF header for a non-English language without interleaving", async () => {
+    const sourceXml = staticOfficialTextXml();
+    const parsed = parseKsefXml(sourceXml);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const pdf = await renderOfficialFa3Pdf({
+      sourceXml,
+      invoice: parsed.invoice,
+      language: "de",
+      bilingual: true,
+      translated: true
+    });
+    const text = normalizePdfText((await pdfParse(pdf)).text);
+
+    expect(text).toContain("Nationales System e-Rechnungen");
+    expect(text).toContain("Krajowy System e-Faktur");
+    expect(text).not.toContain("Krajowy System e-Rechnungen");
+  });
+
+  it("renders the bilingual KSeF header with correct EN / PL word order", async () => {
+    const sourceXml = staticOfficialTextXml();
+    const parsed = parseKsefXml(sourceXml);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const pdf = await renderOfficialFa3Pdf({
+      sourceXml,
+      invoice: parsed.invoice,
+      language: "en",
+      bilingual: true,
+      translated: true
+    });
+    const text = normalizePdfText((await pdfParse(pdf)).text);
+
+    expect(text).toContain("National System e-Invoices");
+    expect(text).toContain("Krajowy System e-Faktur");
+    // The old per-fragment join interleaved the languages — guard against regressions.
+    expect(text).not.toContain("Krajowy System e-Invoices");
   });
 });
 

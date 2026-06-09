@@ -58,6 +58,10 @@ export async function renderOfficialFa3Pdf({
   const pdf = generateFA3(faktura, officialAdditionalData(invoice));
   if (translated) {
     localizeOfficialBooleanTexts(pdf, language, bilingual);
+    if (bilingual) {
+      const polishParts = ksefHeaderPolishParts(i18next);
+      if (polishParts) expandBilingualKsefHeader(pdf, polishParts);
+    }
   }
   ensureRobotoVfs(pdf);
   return createdPdfToBuffer(pdf);
@@ -288,6 +292,73 @@ function replaceExactTextLeaves(node: unknown, replacements: Record<string, stri
   return record;
 }
 
+const KSEF_HEADER_PART_PATHS = new Set([
+  "invoice.header.ksefPart1",
+  "invoice.header.ksefPart2",
+  "invoice.header.ksefPart3"
+]);
+
+type HeaderRun = OfficialXmlRecord & { text: string; fontSize: number };
+
+/**
+ * The generator renders the "Krajowy System e-Faktur" title as exactly three
+ * styled runs: a plain prefix, the red bold "e", and the bold "-Faktur" tail.
+ * In bilingual mode those runs carry translation-only text; this rebuilds the
+ * full header as "<translated phrase> / <polish phrase>" while cloning the run
+ * styling onto both halves, so the red "e" survives on either language.
+ */
+export function expandBilingualKsefHeader(pdf: OfficialPdfDocument, polishParts: [string, string, string]) {
+  const docDefinition = pdf.docDefinition;
+  if (!docDefinition) return;
+  expandKsefHeaderRuns(docDefinition, polishParts);
+}
+
+function expandKsefHeaderRuns(node: unknown, polishParts: [string, string, string]) {
+  if (Array.isArray(node)) {
+    node.forEach((entry) => expandKsefHeaderRuns(entry, polishParts));
+    return;
+  }
+
+  const record = asRecord(node);
+  if (!record) return;
+
+  if (isKsefHeaderRuns(record.text)) {
+    record.text = buildBilingualHeaderRuns(record.text, polishParts);
+    return;
+  }
+
+  Object.values(record).forEach((value) => expandKsefHeaderRuns(value, polishParts));
+}
+
+function isKsefHeaderRuns(value: unknown): value is HeaderRun[] {
+  if (!Array.isArray(value) || value.length !== 3) return false;
+  const everyRunStyled = value.every((run) => {
+    const record = asRecord(run);
+    return Boolean(record) && typeof record!.text === "string" && record!.fontSize === 18;
+  });
+  return everyRunStyled && asRecord(value[1])?.color === "red";
+}
+
+function buildBilingualHeaderRuns(translatedRuns: HeaderRun[], polishParts: [string, string, string]): HeaderRun[] {
+  const matchesPolish = translatedRuns.every((run, index) => run.text === polishParts[index]);
+  if (matchesPolish) return translatedRuns;
+
+  const separator: HeaderRun = { ...translatedRuns[0], text: " / " };
+  const polishRuns = translatedRuns.map((run, index) => ({ ...run, text: polishParts[index] }));
+  return [...translatedRuns, separator, ...polishRuns];
+}
+
+function ksefHeaderPolishParts(
+  i18next: ReturnType<typeof officialGenerator>["i18next"]
+): [string, string, string] | undefined {
+  const bundle = i18next?.getResourceBundle?.("pl", "translation");
+  if (!bundle) return undefined;
+
+  const parts = [...KSEF_HEADER_PART_PATHS].map((path) => getNestedString(bundle, path));
+  if (parts.some((part) => part == null)) return undefined;
+  return parts as [string, string, string];
+}
+
 function officialGenerator(): OfficialGeneratorModule {
   return officialMfGenerator as unknown as OfficialGeneratorModule;
 }
@@ -311,7 +382,12 @@ function configureOfficialTranslations(
   const staticTranslations = getOfficialTextOverrides(language);
   for (const [path, translatedValue] of Object.entries(staticTranslations)) {
     const polishValue = getNestedString(polishBundle, path);
-    const value = bilingual && polishValue && translatedValue !== polishValue
+    // The KSeF title is rendered as three separately styled runs (normal /
+    // red "e" / bold tail). Joining each run with " / " on its own interleaves
+    // the languages ("National System  / Krajowy System e-Invoices / -Faktur").
+    // Keep these runs translation-only here; expandBilingualKsefHeader rebuilds
+    // the full "EN / PL" header from the generated document instead.
+    const value = bilingual && polishValue && translatedValue !== polishValue && !KSEF_HEADER_PART_PATHS.has(path)
       ? `${translatedValue} / ${polishValue}`
       : translatedValue;
     setNestedValue(appBundle, path, value);
