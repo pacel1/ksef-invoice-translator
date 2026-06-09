@@ -36,17 +36,33 @@ const config: Config = {
         foreground: "hsl(var(--text-strong))",
         background: "hsl(var(--surface))",
         primary: { DEFAULT: "hsl(var(--accent))", foreground: "0 0% 100%" },
-        muted: { DEFAULT: "hsl(var(--surface-muted))", foreground: "hsl(var(--text-muted))" }
+        muted: { DEFAULT: "hsl(var(--surface-muted))", foreground: "hsl(var(--text-muted))" },
+        // ---- Landing rebuild (bold modern SaaS), specs/2026-06-09. Collision-safe names. ----
+        brand: { DEFAULT: "#4F46E5", hover: "#4338CA", soft: "#EEF0FF" },
+        ink: { DEFAULT: "#0B1020", panel: "#121A2E" },
+        paper: "#FFFFFF",
+        "paper-soft": "#F7F8FB",
+        line: { DEFAULT: "#E7EBF2", soft: "#EEF1F5" },
+        copy: { DEFAULT: "#475069", muted: "#697386" },
+        mint: "#10B981",
+        iris: "#8B5CF6",
+        plum: "#D946EF",
+        negative: "#DC2626"
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"]
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        heading: ["var(--font-space-grotesk)", "ui-sans-serif", "system-ui", "sans-serif"],
+        dm: ["var(--font-dm-sans)", "ui-sans-serif", "system-ui", "sans-serif"]
       },
       boxShadow: {
         sm: "0 1px 2px 0 rgba(10, 37, 64, 0.04), 0 1px 3px 0 rgba(10, 37, 64, 0.06)",
         md: "0 4px 6px -1px rgba(10, 37, 64, 0.07), 0 2px 4px -2px rgba(10, 37, 64, 0.05)",
         lg: "0 10px 24px -3px rgba(10, 37, 64, 0.10), 0 4px 8px -4px rgba(10, 37, 64, 0.06)",
         // Legacy alias kept for the existing components until Sprint 2/3.
-        soft: "0 1px 2px 0 rgba(10, 37, 64, 0.04), 0 1px 3px 0 rgba(10, 37, 64, 0.06)"
+        soft: "0 1px 2px 0 rgba(10, 37, 64, 0.04), 0 1px 3px 0 rgba(10, 37, 64, 0.06)",
+        brand: "0 12px 24px -8px rgba(79, 70, 229, 0.5)",
+        raised: "0 30px 60px -22px rgba(10, 20, 40, 0.32)",
+        card: "0 16px 38px -16px rgba(10, 20, 40, 0.26)"
       },
       borderRadius: {
         md: "6px",
@@ -70,7 +86,9 @@ const config: Config = {
         body: ["16px", { lineHeight: "24px", fontWeight: "400" }],
         small: ["14px", { lineHeight: "20px", fontWeight: "400" }],
         micro: ["12px", { lineHeight: "16px", fontWeight: "500" }],
-        "number-xl": ["56px", { lineHeight: "64px", fontWeight: "600" }]
+        "number-xl": ["56px", { lineHeight: "64px", fontWeight: "600" }],
+        hero: ["clamp(1.5rem, 4.4vw, 2.7rem)", { lineHeight: "1.09", letterSpacing: "-0.03em", fontWeight: "700" }],
+        "h2x": ["clamp(1.6rem, 3.2vw, 2.25rem)", { lineHeight: "1.15", letterSpacing: "-0.02em", fontWeight: "700" }]
       },
       // Indeterminate progress bar used by <TranslationProgress> on the
       // single-file delivery view (spec follow-up 2026-05-20). Slides a
