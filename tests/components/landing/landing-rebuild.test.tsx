@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 vi.mock("next/link", () => ({
@@ -6,6 +6,14 @@ vi.mock("next/link", () => ({
     <a href={href} {...props}>{children}</a>
   )
 }));
+
+beforeEach(() => {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: false, media: q, onchange: null,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn()
+  }));
+});
 
 import { LandingRebuild } from "@/components/landing/landing-rebuild";
 
@@ -18,5 +26,7 @@ describe("<LandingRebuild>", () => {
     // section placeholder anchors exist for later sprints
     expect(container.querySelector("#jak-to-dziala")).not.toBeNull();
     expect(container.querySelector("#faq")).not.toBeNull();
+    // hero is now real content (level-1 headline), not an empty placeholder
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/Znowu przepisujesz fakturę/);
   });
 });
