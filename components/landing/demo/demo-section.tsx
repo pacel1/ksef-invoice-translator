@@ -6,6 +6,7 @@ import { DEMO_DEFAULT_LANG, type DemoLang } from "@/lib/landing/demo-sample";
 import { LanguageChips } from "@/components/landing/demo/language-chips";
 import { InvoiceStage } from "@/components/landing/demo/invoice-stage";
 import { DownloadGate } from "@/components/landing/demo/download-gate";
+import { UploadPanel, type DemoUpload } from "@/components/landing/demo/upload-panel";
 
 export interface DemoSectionProps {
   locale: LandingLocale;
@@ -15,6 +16,7 @@ export function DemoSection({ locale }: DemoSectionProps) {
   const t = landingCopy[locale].demo;
   const [lang, setLang] = useState<DemoLang>(DEMO_DEFAULT_LANG);
   const [gateOpen, setGateOpen] = useState(false);
+  const [upload, setUpload] = useState<DemoUpload | null>(null);
 
   return (
     <section id="demo" className="bg-ink">
@@ -38,12 +40,18 @@ export function DemoSection({ locale }: DemoSectionProps) {
         </div>
 
         <div className="mt-9">
-          <InvoiceStage lang={lang} watermark={t.watermark} />
+          <InvoiceStage
+            lang={lang}
+            watermark={t.watermark}
+            upload={upload ? { invoice: upload.invoice, lang: upload.lang } : null}
+          />
         </div>
+
+        <UploadPanel lang={lang} t={t} onResult={setUpload} />
 
         <div className="mt-8 flex flex-col items-center gap-4">
           {gateOpen ? (
-            <DownloadGate lang={lang} t={t} />
+            <DownloadGate lang={lang} t={t} upload={upload} />
           ) : (
             <button
               type="button"

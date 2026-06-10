@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { DemoSection } from "@/components/landing/demo/demo-section";
+import { buildDemoInvoice } from "@/lib/landing/demo-sample";
 
 function mockMatchMedia(reduced: boolean) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -40,5 +41,38 @@ describe("<DemoSection>", () => {
     expect(screen.queryByLabelText("Adres e-mail")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Pobierz PDF" }));
     expect(screen.getByLabelText("Adres e-mail")).toBeInTheDocument();
+  });
+
+  it("reveals the upload dropzone and renders the uploaded invoice in the stage", async () => {
+    const uploaded = {
+      ...buildDemoInvoice("en"),
+      items: [
+        {
+          name: "Deska tarasowa modrzewiowa",
+          translatedName: "Larch decking board",
+          quantity: 10,
+          unit: "szt",
+          translatedUnit: "pcs",
+          unitPrice: 50,
+          netValue: 500,
+          vatRate: "0",
+          grossValue: 500
+        }
+      ]
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ invoice: uploaded, sourceXml: "<Faktura/>", uploadToken: "tok" })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoSection locale="pl" />);
+    expect(screen.queryByLabelText("Przeciągnij plik tutaj albo kliknij, aby wybrać")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "albo wgraj własną fakturę" }));
+    const input = screen.getByLabelText("Przeciągnij plik tutaj albo kliknij, aby wybrać");
+    fireEvent.change(input, { target: { files: [new File(["<Faktura/>"], "faktura.xml", { type: "application/xml" })] } });
+    await waitFor(() => expect(screen.getByText("Larch decking board")).toBeInTheDocument());
+    expect(screen.queryByText('Oak chair „Helena”')).not.toBeInTheDocument();
   });
 });
