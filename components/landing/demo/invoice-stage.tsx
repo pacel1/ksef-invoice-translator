@@ -10,15 +10,37 @@ export interface InvoiceStageProps {
   watermark: string;
 }
 
+// The A4 preview is 794px wide. We scale it to fit the stage width so the whole
+// invoice (including the right-hand amounts column) is always visible at every
+// breakpoint, and clip the height to a fixed top slice of the page.
+const SOURCE_WIDTH = 794;
+const VISIBLE_SOURCE_HEIGHT = 965; // top slice of the ~1123px A4 we reveal
+const MAX_SCALE = 0.58;
+
 /**
- * Renders the demo invoice scaled to fit the dark stage. The full A4 preview is
- * 794px wide; we scale it down and clip the height, fading out the bottom. On a
- * language change we play a brief shimmer, unless the user prefers reduced motion.
+ * Renders the demo invoice scaled to fit the dark stage width (no horizontal
+ * clipping of the amounts), clipping the height to a top slice and fading out the
+ * bottom. On a language change it plays a brief shimmer, unless the user prefers
+ * reduced motion.
  */
 export function InvoiceStage({ lang, watermark }: InvoiceStageProps) {
   const [swapping, setSwapping] = useState(false);
+  const [scale, setScale] = useState(MAX_SCALE);
   const first = useRef(true);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
+  // Fit the preview to the stage width; recompute on resize.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const fit = () => setScale(Math.min(el.clientWidth / SOURCE_WIDTH, MAX_SCALE) || MAX_SCALE);
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Brief shimmer on language change (skipped on first render / reduced motion).
   useEffect(() => {
     if (first.current) {
       first.current = false;
@@ -34,13 +56,16 @@ export function InvoiceStage({ lang, watermark }: InvoiceStageProps) {
   }, [lang]);
 
   return (
-    <div className="relative mx-auto w-full max-w-[460px]">
-      <div className="relative overflow-hidden rounded-2xl bg-white shadow-raised" style={{ height: 560 }}>
+    <div ref={wrapRef} className="relative mx-auto w-full max-w-[460px]">
+      <div
+        className="relative overflow-hidden rounded-2xl bg-white shadow-raised"
+        style={{ height: Math.round(VISIBLE_SOURCE_HEIGHT * scale) }}
+      >
         {/* scaled A4 preview; decorative, the chips + copy carry the meaning */}
         <div
           aria-hidden="true"
           className={cn("transition-opacity duration-150", swapping ? "opacity-0" : "opacity-100")}
-          style={{ width: 794, transform: "scale(0.58)", transformOrigin: "top left" }}
+          style={{ width: SOURCE_WIDTH, transform: `scale(${scale})`, transformOrigin: "top left" }}
         >
           <InvoicePreview invoice={buildDemoInvoice(lang)} language={lang} bilingual={false} translated />
         </div>
