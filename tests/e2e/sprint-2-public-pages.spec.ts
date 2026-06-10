@@ -2,17 +2,15 @@ import { test, expect } from "@playwright/test";
 
 test("landing page (/) renders with new chrome", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1, name: /Faktura KSeF dla klienta z zagranicy/i })).toBeVisible();
-  // The refreshed landing renders the primary CTA twice (hero + risk-reversal); both link to /login.
-  await expect(page.getByRole("link", { name: /Zacznij za darmo/i }).first()).toHaveAttribute("href", "/login");
-  await expect(page.getByText(/NIP/).first()).toBeVisible(); // LegalFooter
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Znowu przepisujesz fakturę");
+  // The rebuilt landing's nav CTA still links to /login.
+  await expect(page.getByRole("link", { name: "Zacznij za darmo" }).first()).toHaveAttribute("href", "/login");
+  await expect(page.getByText(/NIP/).first()).toBeVisible(); // footer
 });
 
 test("EN landing page (/en) renders", async ({ page }) => {
   await page.goto("/en");
-  await expect(page.getByRole("heading", { level: 1, name: /Polish KSeF invoice, translated/i })).toBeVisible();
-  // The refreshed landing renders the primary CTA twice (hero + risk-reversal).
-  await expect(page.getByRole("link", { name: /Start free/i }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Still retyping your KSeF invoice");
 });
 
 test("pricing page renders the slider + ladder", async ({ page }) => {

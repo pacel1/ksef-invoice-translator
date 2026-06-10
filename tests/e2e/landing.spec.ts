@@ -5,7 +5,7 @@ test("landing rebuild preview renders chrome with no console errors", async ({ p
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
   });
-  await page.goto("/landing-preview");
+  await page.goto("/");
 
   await expect(page.getByText("TłumaczKSeF").first()).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: /Wgraj pierwszą fakturę/i })).toBeVisible();
@@ -18,7 +18,7 @@ test("landing rebuild preview renders chrome with no console errors", async ({ p
 
 test("landing rebuild preview has no horizontal overflow at 375px", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
-  await page.goto("/landing-preview");
+  await page.goto("/");
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
   );
@@ -27,7 +27,7 @@ test("landing rebuild preview has no horizontal overflow at 375px", async ({ pag
 
 test("mobile nav sheet paints above the page (no stacking bleed-through)", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 });
-  await page.goto("/landing-preview");
+  await page.goto("/");
   await page.getByRole("button", { name: "Otwórz menu" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -42,7 +42,7 @@ test("mobile nav sheet paints above the page (no stacking bleed-through)", async
 });
 
 test("hero renders with the level-1 headline and a CTA to the demo anchor", async ({ page }) => {
-  await page.goto("/landing-preview");
+  await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Znowu przepisujesz fakturę");
   await expect(
     page.locator("#hero").getByRole("link", { name: "Przetłumacz swoją fakturę" })
@@ -52,7 +52,7 @@ test("hero renders with the level-1 headline and a CTA to the demo anchor", asyn
 });
 
 test("renders the four explainer sections in order", async ({ page }) => {
-  await page.goto("/landing-preview");
+  await page.goto("/");
   await expect(page.getByText("Wysyłasz polski PDF.")).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: /Trzy kroki/ })).toBeVisible();
   await expect(page.getByRole("heading", { level: 3, name: "Zostaje bez zmian" })).toBeVisible();
@@ -60,7 +60,7 @@ test("renders the four explainer sections in order", async ({ page }) => {
 });
 
 test("renders pricing + faq sections", async ({ page }) => {
-  await page.goto("/landing-preview");
+  await page.goto("/");
   await expect(page.getByRole("heading", { level: 2, name: /Płacisz tylko za faktury/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Zobacz pełny cennik" })).toHaveAttribute("href", "/pricing");
   await expect(page.getByRole("heading", { level: 2, name: /Najczęstsze pytania/ })).toBeVisible();
@@ -68,7 +68,7 @@ test("renders pricing + faq sections", async ({ page }) => {
 });
 
 test("demo section reveals the sample and switches language on chip click", async ({ page }) => {
-  await page.goto("/landing-preview");
+  await page.goto("/");
   await expect(
     page.getByRole("heading", { level: 2, name: "Zobacz swoją fakturę w innym języku" })
   ).toBeVisible();
@@ -110,7 +110,7 @@ test("demo upload lane renders an uploaded invoice through the mocked translate 
   await page.route("**/api/demo/translate", (route) =>
     route.fulfill({ json: { invoice: uploadedInvoice, sourceXml: "<Faktura/>", uploadToken: "e2e-token" } })
   );
-  await page.goto("/landing-preview");
+  await page.goto("/");
   const demo = page.locator("#demo");
   await demo.getByRole("button", { name: "albo wgraj własną fakturę" }).click();
   await demo
@@ -118,4 +118,17 @@ test("demo upload lane renders an uploaded invoice through the mocked translate 
     .setInputFiles({ name: "faktura.xml", mimeType: "application/xml", buffer: Buffer.from("<Faktura/>") });
   await expect(demo.getByText("Larch decking board")).toBeVisible();
   await expect(demo.getByText('Oak chair „Helena”')).not.toBeVisible();
+});
+
+test("english landing renders at /en with the live demo", async ({ page }) => {
+  await page.goto("/en");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Still retyping your KSeF invoice");
+  await expect(
+    page.locator("#demo").getByRole("heading", { level: 2, name: "See your invoice in another language" })
+  ).toBeVisible();
+});
+
+test("the live landing is indexable (no noindex robots meta)", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator('meta[name="robots"][content*="noindex"]')).toHaveCount(0);
 });

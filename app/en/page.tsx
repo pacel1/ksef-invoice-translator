@@ -1,5 +1,5 @@
-import { LandingPage } from "@/components/marketing/landing-page";
+import { LandingRebuild } from "@/components/landing/landing-rebuild";
 
 export default function EnHomePage() {
-  return <LandingPage locale="en" />;
+  return <LandingRebuild locale="en" />;
 }
