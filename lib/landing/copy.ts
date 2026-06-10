@@ -42,7 +42,18 @@ export const landingCopy = {
       submit: "Wyślij i pobierz",
       success: "Gotowe. Plik się pobiera, a link do konta jest w drodze na Twój e-mail.",
       gateError: "Coś poszło nie tak. Spróbuj ponownie za chwilę.",
-      rateLimited: "Limit demo na dziś wyczerpany. Załóż darmowe konto, aby tłumaczyć dalej."
+      rateLimited: "Limit demo na dziś wyczerpany. Załóż darmowe konto, aby tłumaczyć dalej.",
+      uploadLink: "albo wgraj własną fakturę",
+      uploadDropLabel: "Przeciągnij plik tutaj albo kliknij, aby wybrać",
+      uploadHint: "XML lub PDF z KSeF. Maks 1 MB dla XML, 8 MB dla PDF.",
+      uploadBusy: "Tłumaczymy Twoją fakturę...",
+      uploadErrUnsupported: "Obsługujemy pliki XML i PDF z KSeF.",
+      uploadErrTooLarge: "Plik jest za duży. Maks 1 MB dla XML, 8 MB dla PDF.",
+      uploadErrParse: "Nie udało się odczytać tej faktury. Upewnij się, że to plik FA(3) z KSeF.",
+      uploadErrBreaker: "Demo chwilowo przeciążone. Załóż darmowe konto, aby przetłumaczyć własną fakturę.",
+      uploadErrTurnstile: "Weryfikacja nie powiodła się. Odśwież stronę i spróbuj ponownie.",
+      uploadErrTranslate: "Coś poszło nie tak przy tłumaczeniu. Spróbuj ponownie za chwilę.",
+      pdfFailed: "Nie udało się wygenerować PDF. Spróbuj ponownie."
     },
     whyOldWay: {
       eyebrow: "Dlaczego nie wystarczy polski plik",
@@ -181,7 +192,18 @@ export const landingCopy = {
       submit: "Send and download",
       success: "Done. Your file is downloading and a sign in link is on the way to your email.",
       gateError: "Something went wrong. Please try again in a moment.",
-      rateLimited: "Daily demo limit reached. Create a free account to keep translating."
+      rateLimited: "Daily demo limit reached. Create a free account to keep translating.",
+      uploadLink: "or upload your own invoice",
+      uploadDropLabel: "Drag a file here or click to choose",
+      uploadHint: "XML or PDF from KSeF. Max 1 MB for XML, 8 MB for PDF.",
+      uploadBusy: "Translating your invoice...",
+      uploadErrUnsupported: "We support XML and PDF files from KSeF.",
+      uploadErrTooLarge: "The file is too large. Max 1 MB for XML, 8 MB for PDF.",
+      uploadErrParse: "We could not read this invoice. Make sure it is an FA(3) file from KSeF.",
+      uploadErrBreaker: "The demo is temporarily overloaded. Create a free account to translate your own invoice.",
+      uploadErrTurnstile: "Verification failed. Refresh the page and try again.",
+      uploadErrTranslate: "Something went wrong while translating. Please try again in a moment.",
+      pdfFailed: "We could not generate the PDF. Please try again."
     },
     whyOldWay: {
       eyebrow: "Why the Polish file is not enough",

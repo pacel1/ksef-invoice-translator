@@ -82,3 +82,40 @@ test("demo section reveals the sample and switches language on chip click", asyn
   await demo.getByRole("button", { name: "Pobierz PDF" }).click();
   await expect(demo.getByLabel("Adres e-mail")).toBeVisible();
 });
+
+test("demo upload lane renders an uploaded invoice through the mocked translate API", async ({ page }) => {
+  const uploadedInvoice = {
+    invoiceNumber: "FV 2026/06/0007",
+    invoiceType: "VAT",
+    issueDate: "2026-06-01",
+    saleDate: "2026-06-01",
+    currency: "EUR",
+    seller: { name: "Tartak Modrzew Sp. z o.o.", vatId: "5252389632", address: "ul. Leśna 2, 10-100 Olsztyn, PL" },
+    buyer: { name: "Nordholz GmbH", vatId: "DE129273398", address: "Holzweg 8, 20095 Hamburg, DE" },
+    items: [
+      {
+        name: "Deska tarasowa modrzewiowa",
+        translatedName: "Larch decking board",
+        quantity: 100,
+        unit: "szt",
+        translatedUnit: "pcs",
+        unitPrice: 18,
+        netValue: 1800,
+        vatRate: "0",
+        grossValue: 1800
+      }
+    ],
+    totals: { net: 1800, vat: 0, gross: 1800 }
+  };
+  await page.route("**/api/demo/translate", (route) =>
+    route.fulfill({ json: { invoice: uploadedInvoice, sourceXml: "<Faktura/>", uploadToken: "e2e-token" } })
+  );
+  await page.goto("/landing-preview");
+  const demo = page.locator("#demo");
+  await demo.getByRole("button", { name: "albo wgraj własną fakturę" }).click();
+  await demo
+    .locator('input[type="file"]')
+    .setInputFiles({ name: "faktura.xml", mimeType: "application/xml", buffer: Buffer.from("<Faktura/>") });
+  await expect(demo.getByText("Larch decking board")).toBeVisible();
+  await expect(demo.getByText('Oak chair „Helena”')).not.toBeVisible();
+});

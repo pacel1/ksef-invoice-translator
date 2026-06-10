@@ -5,11 +5,14 @@ vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdminClient: () => ({ rpc })
 }));
 
-import { hashIp, clientIpFrom, consumeUnlock } from "@/lib/demo/rate-limit";
+import { hashIp, clientIpFrom, consumeUnlock, consumeTranslate, consumePdf } from "@/lib/demo/rate-limit";
 
 beforeEach(() => {
   rpc.mockReset();
   process.env.DEMO_IP_SALT = "test-salt";
+  delete process.env.DEMO_TRANSLATE_PER_IP_PER_DAY;
+  delete process.env.DEMO_GLOBAL_TRANSLATE_PER_DAY;
+  delete process.env.DEMO_PDF_PER_IP_PER_DAY;
 });
 
 describe("demo rate-limit", () => {
@@ -42,5 +45,53 @@ describe("demo rate-limit", () => {
   it("fails open if the counter errors (does not block real users on infra hiccups)", async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { message: "down" } });
     expect(await consumeUnlock("1.2.3.4")).toEqual({ allowed: true, count: 0 });
+  });
+
+  it("consumeTranslate allows under both caps and reports counts", async () => {
+    process.env.DEMO_TRANSLATE_PER_IP_PER_DAY = "5";
+    process.env.DEMO_GLOBAL_TRANSLATE_PER_DAY = "500";
+    rpc.mockResolvedValueOnce({ data: [{ ip_count: 3, global_count: 120 }], error: null });
+    expect(await consumeTranslate("1.2.3.4")).toEqual({ allowed: true, ipCount: 3, globalCount: 120 });
+    expect(rpc).toHaveBeenLastCalledWith("increment_demo_translate", { p_ip_hash: hashIp("1.2.3.4") });
+  });
+
+  it("consumeTranslate blocks with reason ip past the per-IP cap", async () => {
+    process.env.DEMO_TRANSLATE_PER_IP_PER_DAY = "5";
+    process.env.DEMO_GLOBAL_TRANSLATE_PER_DAY = "500";
+    rpc.mockResolvedValueOnce({ data: [{ ip_count: 6, global_count: 10 }], error: null });
+    expect(await consumeTranslate("1.2.3.4")).toEqual({
+      allowed: false,
+      reason: "ip",
+      ipCount: 6,
+      globalCount: 10
+    });
+  });
+
+  it("consumeTranslate blocks with reason global past the daily breaker", async () => {
+    process.env.DEMO_TRANSLATE_PER_IP_PER_DAY = "5";
+    process.env.DEMO_GLOBAL_TRANSLATE_PER_DAY = "500";
+    rpc.mockResolvedValueOnce({ data: [{ ip_count: 1, global_count: 501 }], error: null });
+    expect(await consumeTranslate("1.2.3.4")).toEqual({
+      allowed: false,
+      reason: "global",
+      ipCount: 1,
+      globalCount: 501
+    });
+  });
+
+  it("consumeTranslate fails open on infra errors", async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "down" } });
+    expect(await consumeTranslate("1.2.3.4")).toEqual({ allowed: true, ipCount: 0, globalCount: 0 });
+  });
+
+  it("consumePdf allows up to the cap, blocks beyond it, and fails open", async () => {
+    process.env.DEMO_PDF_PER_IP_PER_DAY = "2";
+    rpc.mockResolvedValueOnce({ data: 2, error: null });
+    expect(await consumePdf("1.2.3.4")).toEqual({ allowed: true, count: 2 });
+    rpc.mockResolvedValueOnce({ data: 3, error: null });
+    expect(await consumePdf("1.2.3.4")).toEqual({ allowed: false, count: 3 });
+    expect(rpc).toHaveBeenLastCalledWith("increment_demo_pdf", { p_ip_hash: hashIp("1.2.3.4") });
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "down" } });
+    expect(await consumePdf("1.2.3.4")).toEqual({ allowed: true, count: 0 });
   });
 });

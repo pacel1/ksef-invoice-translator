@@ -14,7 +14,8 @@ const bodySchema = z.object({
   email: z.string().email(),
   lang: z.enum(DEMO_LANG_CODES),
   turnstileToken: z.string().min(1),
-  marketingOptIn: z.boolean().optional()
+  marketingOptIn: z.boolean().optional(),
+  source: z.enum(["sample", "upload"]).optional()
 });
 
 export async function POST(request: Request) {
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { email, lang, turnstileToken, marketingOptIn } = parsed.data;
+  const { email, lang, turnstileToken, marketingOptIn, source } = parsed.data;
   const ip = clientIpFrom(request);
 
   const turnstile = await verifyTurnstile(turnstileToken, ip);
@@ -39,6 +40,6 @@ export async function POST(request: Request) {
   // but .catch so a slow or failing provider can never block or 500 the download.
   await sendDemoOtp(email, marketingOptIn ?? false).catch(() => undefined);
 
-  const downloadToken = signDownloadToken({ lang, source: "sample" });
+  const downloadToken = signDownloadToken({ lang, source: source ?? "sample" });
   return NextResponse.json({ downloadToken });
 }
