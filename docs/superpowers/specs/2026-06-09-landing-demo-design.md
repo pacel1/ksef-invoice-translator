@@ -22,6 +22,8 @@ Fill the `#demo` placeholder on the rebuilt landing (`components/landing/landing
 | Bot defense | Cloudflare Turnstile on the public, money or email spending endpoints. |
 | Layout | Centered stage on a dark navy panel. The translated invoice is the focus of the section. |
 
+> Update 2026-06-10: the upload lane accepts XML only. PDF uploads return 415 and `DEMO_MAX_PDF_BYTES` was dropped. The authenticated app flow keeps its PDF support; only the public demo is XML only.
+
 ## 3. Non goals
 
 - Do not loosen or reuse the existing authenticated routes (`/api/translate`, `/api/pdf`, `/api/upload*`). The demo gets its own isolated, stateless `/api/demo/*` endpoints.
