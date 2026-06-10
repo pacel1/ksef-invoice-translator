@@ -100,7 +100,7 @@ export function DownloadGate({ lang, t, upload }: DownloadGateProps) {
         className="rounded-xl border border-white/15 bg-ink-panel px-4 py-2.5 text-[14px] text-white placeholder:text-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
       />
       <label className="flex items-start gap-2 text-[12px] text-white/60">
-        <input type="checkbox" checked={marketingOptIn} onChange={(e) => setMarketingOptIn(e.target.checked)} className="mt-0.5" />
+        <input type="checkbox" checked={marketingOptIn} onChange={(e) => setMarketingOptIn(e.target.checked)} className="mt-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-ink" />
         {t.marketingOptIn}
       </label>
       {siteKey ? <Turnstile ref={turnstileRef} siteKey={siteKey} onSuccess={setToken} onExpire={() => setToken("")} onError={() => setToken("")} options={{ theme: "dark" }} /> : null}
