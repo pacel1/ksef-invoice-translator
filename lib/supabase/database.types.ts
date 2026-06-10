@@ -110,6 +110,27 @@ export type Database = {
           },
         ]
       }
+      demo_usage: {
+        Row: {
+          day: string
+          ip_hash: string
+          translate_count: number
+          unlock_count: number
+        }
+        Insert: {
+          day: string
+          ip_hash: string
+          translate_count?: number
+          unlock_count?: number
+        }
+        Update: {
+          day?: string
+          ip_hash?: string
+          translate_count?: number
+          unlock_count?: number
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           created_at: string
@@ -391,6 +412,7 @@ export type Database = {
         Args: { p_amount: number; p_purchase: string; p_user: string }
         Returns: undefined
       }
+      increment_demo_unlock: { Args: { p_ip_hash: string }; Returns: number }
       refund_paid_credits: {
         Args: { p_amount: number; p_purchase: string; p_user: string }
         Returns: undefined
