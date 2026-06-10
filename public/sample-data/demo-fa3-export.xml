@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+  <Naglowek>
+    <KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</KodFormularza>
+    <WariantFormularza>3</WariantFormularza>
+    <DataWytworzeniaFa>2026-05-12T09:12:00Z</DataWytworzeniaFa>
+    <SystemInfo>TlumaczKSeF Demo</SystemInfo>
+  </Naglowek>
+  <Podmiot1>
+    <DaneIdentyfikacyjne>
+      <NIP>7811924552</NIP>
+      <Nazwa>Meble Dębowe Nowak Sp. z o.o.</Nazwa>
+    </DaneIdentyfikacyjne>
+    <Adres>
+      <KodKraju>PL</KodKraju>
+      <AdresL1>ul. Przemysłowa 14</AdresL1>
+      <AdresL2>61-001 Poznań</AdresL2>
+    </Adres>
+  </Podmiot1>
+  <Podmiot2>
+    <DaneIdentyfikacyjne>
+      <NIP>DE811569244</NIP>
+      <Nazwa>Holzkontor Brandt GmbH</Nazwa>
+    </DaneIdentyfikacyjne>
+    <Adres>
+      <KodKraju>DE</KodKraju>
+      <AdresL1>Chausseestraße 22</AdresL1>
+      <AdresL2>10115 Berlin</AdresL2>
+    </Adres>
+  </Podmiot2>
+  <Fa>
+    <KodWaluty>EUR</KodWaluty>
+    <P_1>2026-05-12</P_1>
+    <P_1M>Poznań</P_1M>
+    <P_2>FV 2026/05/0142</P_2>
+    <P_6>2026-05-12</P_6>
+    <P_13_6_2>10200.00</P_13_6_2>
+    <P_15>10200.00</P_15>
+    <RodzajFaktury>VAT</RodzajFaktury>
+    <DodatkowyOpis>
+      <Klucz>Podstawa zastosowania stawki 0%</Klucz>
+      <Wartosc>Wewnątrzwspólnotowa dostawa towarów, stawka 0% (art. 42 ust. 1 ustawy o VAT)</Wartosc>
+    </DodatkowyOpis>
+    <FaWiersz>
+      <NrWierszaFa>1</NrWierszaFa>
+      <P_7>Stół dębowy „Helena” 180 cm</P_7>
+      <P_8A>szt</P_8A>
+      <P_8B>12</P_8B>
+      <P_9A>420.00</P_9A>
+      <P_11>5040.00</P_11>
+      <P_12>0</P_12>
+    </FaWiersz>
+    <FaWiersz>
+      <NrWierszaFa>2</NrWierszaFa>
+      <P_7>Krzesło dębowe „Helena”</P_7>
+      <P_8A>szt</P_8A>
+      <P_8B>48</P_8B>
+      <P_9A>95.00</P_9A>
+      <P_11>4560.00</P_11>
+      <P_12>0</P_12>
+    </FaWiersz>
+    <FaWiersz>
+      <NrWierszaFa>3</NrWierszaFa>
+      <P_7>Transport i pakowanie</P_7>
+      <P_8A>usł</P_8A>
+      <P_8B>1</P_8B>
+      <P_9A>600.00</P_9A>
+      <P_11>600.00</P_11>
+      <P_12>0</P_12>
+    </FaWiersz>
+  </Fa>
+  <Platnosc>
+    <TerminPlatnosci>2026-05-26</TerminPlatnosci>
+    <FormaPlatnosci>przelew bankowy</FormaPlatnosci>
+    <NrRB>PL61109010140000071219812874</NrRB>
+  </Platnosc>
+  <Stopka>
+    <Informacje>
+      <StopkaFaktury>Kapitał zakładowy 200 000 zł</StopkaFaktury>
+    </Informacje>
+    <Rejestry>
+      <KRS>0000412857</KRS>
+      <REGON>302419774</REGON>
+      <BDO>000158472</BDO>
+    </Rejestry>
+  </Stopka>
+</Faktura>

@@ -1,6 +1,7 @@
 import type { LandingLocale } from "@/lib/landing/copy";
 import { SiteNav } from "@/components/landing/site-nav";
 import { Hero } from "@/components/landing/hero";
+import { DemoSection } from "@/components/landing/demo/demo-section";
 import { OldWayComparison } from "@/components/landing/old-way-comparison";
 import { HowItWorksSteps } from "@/components/landing/how-it-works-steps";
 import { PreservedVsTranslated } from "@/components/landing/preserved-vs-translated";
@@ -20,8 +21,7 @@ export function LandingRebuild({ locale }: LandingRebuildProps) {
       <SiteNav locale={locale} />
       <main className="flex-1">
         <Hero locale={locale} />
-        {/* Reserved placeholder for the demo sprint */}
-        <section id="demo" aria-hidden="true" />
+        <DemoSection locale={locale} />
         <OldWayComparison locale={locale} />
         <HowItWorksSteps locale={locale} />
         <PreservedVsTranslated locale={locale} />

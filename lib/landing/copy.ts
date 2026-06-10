@@ -21,6 +21,19 @@ export const landingCopy = {
       ctaSecondary: "Zobacz na przykładzie",
       reassurance: "Pierwsza faktura w miesiącu za darmo, bez karty. Dane w UE, kasujemy po 30 dniach."
     },
+    demo: {
+      eyebrow: "Demo na żywo",
+      heading: "Zobacz swoją fakturę w innym języku",
+      sub: "Wybierz język i zobacz tłumaczenie od razu. Liczby, NIP, IBAN i kwoty zostają takie same.",
+      watermark: "PODGLĄD",
+      languagesLabel: "Język",
+      moreLabel: "+ więcej",
+      moreAria: "Więcej języków",
+      moreHref: "/login",
+      privacy: "Nie przechowujemy Twojej faktury.",
+      cta: "Przetłumacz własną fakturę",
+      ctaHref: "/login"
+    },
     whyOldWay: {
       eyebrow: "Dlaczego nie wystarczy polski plik",
       heading: "„Wyślę polską fakturę albo przetłumaczę w Google.” Znamy to. I wiemy, czym się to kończy.",
@@ -136,6 +149,19 @@ export const landingCopy = {
       ctaPrimary: "Translate your invoice",
       ctaSecondary: "See it on a sample",
       reassurance: "First invoice each month is free, no card. Data in the EU, deleted after 30 days."
+    },
+    demo: {
+      eyebrow: "Live demo",
+      heading: "See your invoice in another language",
+      sub: "Pick a language and see the translation right away. Numbers, tax IDs, IBAN and amounts stay exactly the same.",
+      watermark: "PREVIEW",
+      languagesLabel: "Language",
+      moreLabel: "+ more",
+      moreAria: "More languages",
+      moreHref: "/login",
+      privacy: "We do not store your invoice.",
+      cta: "Translate your own invoice",
+      ctaHref: "/login"
     },
     whyOldWay: {
       eyebrow: "Why the Polish file is not enough",
