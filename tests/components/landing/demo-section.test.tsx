@@ -35,8 +35,10 @@ describe("<DemoSection>", () => {
     expect(screen.getByRole("button", { name: "DE" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("links the primary CTA to /login", () => {
+  it("opens the download gate when the primary CTA is clicked", () => {
     render(<DemoSection locale="pl" />);
-    expect(screen.getByRole("link", { name: "Przetłumacz własną fakturę" })).toHaveAttribute("href", "/login");
+    expect(screen.queryByLabelText("Adres e-mail")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Pobierz PDF" }));
+    expect(screen.getByLabelText("Adres e-mail")).toBeInTheDocument();
   });
 });
