@@ -67,4 +67,16 @@ describe("POST /api/demo/unlock", () => {
     const res = await POST(post({ email: "a@b.com", lang: "en", turnstileToken: "t" }));
     expect(res.status).toBe(200);
   });
+
+  it("signs source upload into the download token when requested", async () => {
+    const res = await POST(post({ email: "a@b.com", lang: "de", turnstileToken: "t", source: "upload" }));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(verifyDownloadToken(json.downloadToken).payload).toMatchObject({ lang: "de", source: "upload" });
+  });
+
+  it("rejects an unknown source (400)", async () => {
+    const res = await POST(post({ email: "a@b.com", lang: "de", turnstileToken: "t", source: "evil" }));
+    expect(res.status).toBe(400);
+  });
 });
