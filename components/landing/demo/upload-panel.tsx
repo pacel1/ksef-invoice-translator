@@ -68,6 +68,8 @@ export function UploadPanel({ lang, t, onResult }: UploadPanelProps) {
   // Spec: switching language after an upload re-translates the retained file
   // (each call counts against the per-IP cap). On failure the previous result
   // stays on the stage and an inline error explains why.
+  // Deliberately keyed on lang only: translate() re-reads the latest token via
+  // state and the file via a ref, so wider deps would double-fire the request.
   useEffect(() => {
     if (fileRef.current && translatedLangRef.current && translatedLangRef.current !== lang) {
       void translate(fileRef.current, lang);
@@ -139,6 +141,15 @@ export function UploadPanel({ lang, t, onResult }: UploadPanelProps) {
     }
   }
 
+  function failQueuedTranslate() {
+    setToken("");
+    if (pendingLang) {
+      setPendingLang(null);
+      setBusy(false);
+      setErrorKey("uploadErrTurnstile");
+    }
+  }
+
   if (!open) {
     return (
       <div className="mt-6 text-center">
@@ -192,8 +203,8 @@ export function UploadPanel({ lang, t, onResult }: UploadPanelProps) {
           ref={turnstileRef}
           siteKey={siteKey}
           onSuccess={onToken}
-          onExpire={() => setToken("")}
-          onError={() => setToken("")}
+          onExpire={failQueuedTranslate}
+          onError={failQueuedTranslate}
           options={{ theme: "dark" }}
         />
       ) : null}

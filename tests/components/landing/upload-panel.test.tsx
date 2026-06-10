@@ -1,8 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { UploadPanel } from "@/components/landing/demo/upload-panel";
 import { buildDemoInvoice } from "@/lib/landing/demo-sample";
 import { maxXmlBytes } from "@/lib/demo/upload-limits";
+
+const turnstileMock = vi.hoisted(() => ({ props: {} as Record<string, unknown> }));
+vi.mock("@marsidev/react-turnstile", async () => {
+  const React = await import("react");
+  return {
+    Turnstile: React.forwardRef(function MockTurnstile(props: Record<string, unknown>, ref: React.Ref<unknown>) {
+      Object.assign(turnstileMock.props, props);
+      React.useImperativeHandle(ref, () => ({ reset: () => undefined }));
+      return React.createElement("div", { "data-testid": "turnstile" });
+    })
+  };
+});
 
 // No NEXT_PUBLIC_TURNSTILE_SITE_KEY in tests -> widget skipped, token "dev".
 const fetchMock = vi.fn();
@@ -11,6 +23,8 @@ beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
 });
+
+afterEach(() => vi.unstubAllEnvs());
 
 function copy() {
   return {
@@ -116,6 +130,39 @@ describe("<UploadPanel>", () => {
   it("does not re-translate on language change before any upload", () => {
     const view = render(<UploadPanel lang="en" t={copy()} onResult={vi.fn()} />);
     view.rerender(<UploadPanel lang="de" t={copy()} onResult={vi.fn()} />);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("<UploadPanel> with a Turnstile site key", () => {
+  it("queues a translate while the widget is solving and drains it on token arrival", async () => {
+    vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "sk-test");
+    fetchMock.mockResolvedValueOnce(okResponse());
+    const onResult = vi.fn();
+    render(<UploadPanel lang="en" t={copy()} onResult={onResult} />);
+    openPanel();
+    selectFile(new File(["<Faktura/>"], "faktura.xml", { type: "application/xml" }));
+    // queued: busy, nothing sent yet
+    expect(screen.getByText("Tłumaczymy...")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+    act(() => {
+      (turnstileMock.props.onSuccess as (token: string) => void)("cf-tok");
+    });
+    await waitFor(() => expect(onResult).toHaveBeenCalled());
+    expect((fetchMock.mock.calls[0][1].body as FormData).get("turnstileToken")).toBe("cf-tok");
+  });
+
+  it("recovers with an error when the widget fails while a translate is queued", async () => {
+    vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "sk-test");
+    render(<UploadPanel lang="en" t={copy()} onResult={vi.fn()} />);
+    openPanel();
+    selectFile(new File(["<Faktura/>"], "faktura.xml", { type: "application/xml" }));
+    expect(screen.getByText("Tłumaczymy...")).toBeInTheDocument();
+    act(() => {
+      (turnstileMock.props.onError as () => void)();
+    });
+    expect(screen.getByText("Weryfikacja.")).toBeInTheDocument();
+    expect(screen.getByText("Przeciągnij plik tutaj albo kliknij, aby wybrać")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
