@@ -44,4 +44,11 @@ describe("<InvoiceStage>", () => {
     expect(screen.getByText("Lärchen-Terrassendiele")).toBeInTheDocument();
     expect(screen.queryByText('Oak chair „Helena”')).not.toBeInTheDocument();
   });
+
+  it("keeps the scan overlay invisible at rest (no purple artifact)", () => {
+    const { container } = render(<InvoiceStage lang="en" watermark="PODGLĄD" />);
+    const scan = container.querySelector('[class*="showcase-scan"]');
+    expect(scan).not.toBeNull();
+    expect(scan!.className).toContain("opacity-0");
+  });
 });

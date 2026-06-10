@@ -87,7 +87,7 @@ export function InvoiceStage({ lang, watermark, upload }: InvoiceStageProps) {
         <div
           aria-hidden="true"
           key={lang}
-          className="pointer-events-none absolute inset-x-0 top-0 h-2/3 motion-safe:animate-showcase-scan"
+          className="pointer-events-none absolute inset-x-0 top-0 h-2/3 opacity-0 motion-safe:animate-showcase-scan"
           style={{ background: "linear-gradient(180deg, transparent, rgba(79,70,229,0.10) 60%, rgba(139,92,246,0.18))" }}
         />
 

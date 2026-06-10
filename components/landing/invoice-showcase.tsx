@@ -58,7 +58,7 @@ export function InvoiceShowcase() {
               {c}
             </span>
           ))}
-          <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-mint">
+          <span className="inline-flex w-full items-center justify-end gap-1.5 text-[11px] font-semibold text-mint min-[480px]:ml-auto min-[480px]:w-auto">
             <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-mint text-[9px] text-white" aria-hidden="true">✓</span>
             <span className={t}>{L.status}</span>
           </span>
@@ -66,7 +66,7 @@ export function InvoiceShowcase() {
 
         {/* body */}
         <div className="relative px-5 py-5">
-          <div aria-hidden="true" key={index} className="pointer-events-none absolute inset-x-0 top-0 h-3/5 motion-safe:animate-showcase-scan" style={{ background: "linear-gradient(180deg, transparent, rgba(79,70,229,0.10) 60%, rgba(139,92,246,0.18))" }} />
+          <div aria-hidden="true" key={index} className="pointer-events-none absolute inset-x-0 top-0 h-3/5 opacity-0 motion-safe:animate-showcase-scan" style={{ background: "linear-gradient(180deg, transparent, rgba(79,70,229,0.10) 60%, rgba(139,92,246,0.18))" }} />
 
           <div className="mb-3.5 flex items-start justify-between">
             <div className="flex items-center gap-2.5">
