@@ -32,7 +32,17 @@ export const landingCopy = {
       moreHref: "/login",
       privacy: "Nie przechowujemy Twojej faktury.",
       cta: "Przetłumacz własną fakturę",
-      ctaHref: "/login"
+      ctaHref: "/login",
+      download: "Pobierz PDF",
+      gateHeading: "Wpisz e-mail, wyślemy Ci plik",
+      emailLabel: "Adres e-mail",
+      emailPlaceholder: "twoj@email.pl",
+      consent: "Wyślemy plik na podany adres i link do logowania. Zero spamu.",
+      marketingOptIn: "Chcę dostawać wskazówki o KSeF i fakturowaniu (opcjonalnie).",
+      submit: "Wyślij i pobierz",
+      success: "Gotowe. Plik się pobiera, a link do konta jest w drodze na Twój e-mail.",
+      gateError: "Coś poszło nie tak. Spróbuj ponownie za chwilę.",
+      rateLimited: "Limit demo na dziś wyczerpany. Załóż darmowe konto, aby tłumaczyć dalej."
     },
     whyOldWay: {
       eyebrow: "Dlaczego nie wystarczy polski plik",
@@ -161,7 +171,17 @@ export const landingCopy = {
       moreHref: "/login",
       privacy: "We do not store your invoice.",
       cta: "Translate your own invoice",
-      ctaHref: "/login"
+      ctaHref: "/login",
+      download: "Download PDF",
+      gateHeading: "Enter your email and we will send you the file",
+      emailLabel: "Email address",
+      emailPlaceholder: "you@email.com",
+      consent: "We will send the file and a sign in link to this address. No spam.",
+      marketingOptIn: "I want tips about KSeF and invoicing (optional).",
+      submit: "Send and download",
+      success: "Done. Your file is downloading and a sign in link is on the way to your email.",
+      gateError: "Something went wrong. Please try again in a moment.",
+      rateLimited: "Daily demo limit reached. Create a free account to keep translating."
     },
     whyOldWay: {
       eyebrow: "Why the Polish file is not enough",

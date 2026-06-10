@@ -63,6 +63,21 @@ describe("landingCopy", () => {
     }
   });
 
+  it("has the demo gate copy on both locales", () => {
+    for (const loc of [landingCopy.pl, landingCopy.en]) {
+      expect(loc.demo.download).toBeTruthy();
+      expect(loc.demo.gateHeading).toBeTruthy();
+      expect(loc.demo.emailLabel).toBeTruthy();
+      expect(loc.demo.emailPlaceholder).toBeTruthy();
+      expect(loc.demo.consent).toBeTruthy();
+      expect(loc.demo.marketingOptIn).toBeTruthy();
+      expect(loc.demo.submit).toBeTruthy();
+      expect(loc.demo.success).toBeTruthy();
+      expect(loc.demo.gateError).toBeTruthy();
+      expect(loc.demo.rateLimited).toBeTruthy();
+    }
+  });
+
   it("has pricing and faq groups on both locales", () => {
     for (const loc of [landingCopy.pl, landingCopy.en]) {
       expect(loc.pricing.heading).toBeTruthy();
