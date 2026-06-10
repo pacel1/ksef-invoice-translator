@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import type { DemoLang } from "@/lib/landing/demo-sample";
+import type { DemoUpload } from "@/components/landing/demo/upload-panel";
 
 export interface DownloadGateCopy {
   gateHeading: string;
@@ -14,18 +15,20 @@ export interface DownloadGateCopy {
   success: string;
   gateError: string;
   rateLimited: string;
+  pdfFailed: string;
 }
 
-type Status = "idle" | "submitting" | "success" | "error" | "rate_limited";
+type Status = "idle" | "submitting" | "success" | "error" | "rate_limited" | "pdf_failed";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface DownloadGateProps {
   lang: DemoLang;
   t: DownloadGateCopy;
+  upload?: DemoUpload | null;
 }
 
-export function DownloadGate({ lang, t }: DownloadGateProps) {
+export function DownloadGate({ lang, t, upload }: DownloadGateProps) {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const [email, setEmail] = useState("");
   const [marketingOptIn, setMarketingOptIn] = useState(false);
@@ -33,7 +36,7 @@ export function DownloadGate({ lang, t }: DownloadGateProps) {
   const [status, setStatus] = useState<Status>("idle");
   const turnstileRef = useRef<TurnstileInstance>(null);
 
-  function fail(next: "error" | "rate_limited") {
+  function fail(next: "error" | "rate_limited" | "pdf_failed") {
     setStatus(next);
     if (siteKey) {
       turnstileRef.current?.reset();
@@ -49,7 +52,13 @@ export function DownloadGate({ lang, t }: DownloadGateProps) {
       const unlock = await fetch("/api/demo/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, lang, turnstileToken: token, marketingOptIn })
+        body: JSON.stringify({
+          email,
+          lang,
+          turnstileToken: token,
+          marketingOptIn,
+          source: upload ? "upload" : "sample"
+        })
       });
       if (unlock.status === 429) return fail("rate_limited");
       if (!unlock.ok) return fail("error");
@@ -58,10 +67,15 @@ export function DownloadGate({ lang, t }: DownloadGateProps) {
       const pdf = await fetch("/api/demo/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ downloadToken })
+        body: JSON.stringify(
+          upload
+            ? { downloadToken, invoice: upload.invoice, sourceXml: upload.sourceXml, uploadToken: upload.uploadToken }
+            : { downloadToken }
+        )
       });
-      if (!pdf.ok) return fail("error");
-      triggerDownload(await pdf.blob(), `tlumaczksef-demo-${lang}.pdf`);
+      if (pdf.status === 429) return fail("rate_limited");
+      if (!pdf.ok) return fail("pdf_failed");
+      triggerDownload(await pdf.blob(), `tlumaczksef-demo-${upload ? upload.lang : lang}.pdf`);
       setStatus("success");
     } catch {
       fail("error");
@@ -101,6 +115,7 @@ export function DownloadGate({ lang, t }: DownloadGateProps) {
       <p className="text-center text-[12px] text-white/50">{t.consent}</p>
       {status === "error" ? <p role="alert" className="text-center text-[12px] text-negative">{t.gateError}</p> : null}
       {status === "rate_limited" ? <p role="alert" className="text-center text-[12px] text-white/80">{t.rateLimited}</p> : null}
+      {status === "pdf_failed" ? <p role="alert" className="text-center text-[12px] text-negative">{t.pdfFailed}</p> : null}
     </form>
   );
 }
