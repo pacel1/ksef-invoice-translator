@@ -3,11 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { InvoicePreview } from "@/components/invoice-preview";
 import { buildDemoInvoice, type DemoLang } from "@/lib/landing/demo-sample";
+import type { Invoice } from "@/types/invoice";
 import { cn } from "@/lib/utils";
+
+export interface InvoiceStageUpload {
+  invoice: Invoice;
+  /** The language the upload was translated into (may trail the chips if a re-translate failed). */
+  lang: DemoLang;
+}
 
 export interface InvoiceStageProps {
   lang: DemoLang;
   watermark: string;
+  upload?: InvoiceStageUpload | null;
 }
 
 // The A4 preview is 794px wide. We scale it to fit the stage width so the whole
@@ -23,7 +31,7 @@ const MAX_SCALE = 0.58;
  * bottom. On a language change it plays a brief shimmer, unless the user prefers
  * reduced motion.
  */
-export function InvoiceStage({ lang, watermark }: InvoiceStageProps) {
+export function InvoiceStage({ lang, watermark, upload }: InvoiceStageProps) {
   const [swapping, setSwapping] = useState(false);
   const [scale, setScale] = useState(MAX_SCALE);
   const first = useRef(true);
@@ -53,7 +61,7 @@ export function InvoiceStage({ lang, watermark }: InvoiceStageProps) {
     setSwapping(true);
     const t = setTimeout(() => setSwapping(false), 180);
     return () => clearTimeout(t);
-  }, [lang]);
+  }, [lang, upload]);
 
   return (
     <div ref={wrapRef} className="relative mx-auto w-full max-w-[460px]">
@@ -67,7 +75,12 @@ export function InvoiceStage({ lang, watermark }: InvoiceStageProps) {
           className={cn("transition-opacity duration-150", swapping ? "opacity-0" : "opacity-100")}
           style={{ width: SOURCE_WIDTH, transform: `scale(${scale})`, transformOrigin: "top left" }}
         >
-          <InvoicePreview invoice={buildDemoInvoice(lang)} language={lang} bilingual={false} translated />
+          <InvoicePreview
+            invoice={upload ? upload.invoice : buildDemoInvoice(lang)}
+            language={upload ? upload.lang : lang}
+            bilingual={false}
+            translated
+          />
         </div>
 
         {/* swap shimmer, replays on language change */}
