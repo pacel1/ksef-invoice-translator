@@ -44,6 +44,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
   }
 
+  // The cap is deliberately consumed before upload-payload validation: it also
+  // bounds the hash/validation work, and the counter fails open on infra errors.
   const limit = await consumePdf(clientIpFrom(request));
   if (!limit.allowed) {
     return NextResponse.json({ error: "Daily demo limit reached", code: "rate_limited" }, { status: 429 });

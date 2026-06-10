@@ -131,4 +131,17 @@ describe("POST /api/demo/pdf (upload source)", () => {
     expect(res.status).toBe(429);
     expect(renderOfficialFa3Pdf).not.toHaveBeenCalled();
   });
+
+  it("ignores upload payload when the download token says sample (no content smuggling)", async () => {
+    const body = await uploadBody();
+    const res = await POST(
+      post({ ...body, downloadToken: signDownloadToken({ lang: "de", source: "sample" }) })
+    );
+    expect(res.status).toBe(200);
+    const arg = renderOfficialFa3Pdf.mock.calls[0][0];
+    // renders the baked sample, not the posted payload
+    expect(arg.sourceXml).not.toBe(UPLOAD_XML);
+    expect(arg.sourceXml).toContain("FA (3)");
+    expect(arg.invoice.invoiceNumber).toBe("FV 2026/05/0142");
+  });
 });
