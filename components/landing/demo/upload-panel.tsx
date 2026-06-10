@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import type { Invoice } from "@/types/invoice";
 import type { DemoLang } from "@/lib/landing/demo-sample";
-import { DEMO_UPLOAD_ACCEPT, detectDemoUploadType, maxBytesFor } from "@/lib/demo/upload-limits";
+import { DEMO_UPLOAD_ACCEPT, isDemoXmlUpload, maxXmlBytes } from "@/lib/demo/upload-limits";
 import { cn } from "@/lib/utils";
 
 /** What Lane 2 hands to the stage and the download gate. Held only in client memory. */
@@ -80,12 +80,11 @@ export function UploadPanel({ lang, t, onResult }: UploadPanelProps) {
   function handleFiles(list: FileList | null) {
     const file = list?.[0];
     if (!file) return;
-    const type = detectDemoUploadType(file.name, file.type);
-    if (!type) {
+    if (!isDemoXmlUpload(file.name, file.type)) {
       setErrorKey("uploadErrUnsupported");
       return;
     }
-    if (file.size > maxBytesFor(type)) {
+    if (file.size > maxXmlBytes()) {
       setErrorKey("uploadErrTooLarge");
       return;
     }

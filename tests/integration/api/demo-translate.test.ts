@@ -2,16 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const { verifyTurnstile, consumeTranslate, translateInvoiceFreeText, parseKsefPdf } = vi.hoisted(() => ({
+const { verifyTurnstile, consumeTranslate, translateInvoiceFreeText } = vi.hoisted(() => ({
   verifyTurnstile: vi.fn(),
   consumeTranslate: vi.fn(),
-  translateInvoiceFreeText: vi.fn(),
-  parseKsefPdf: vi.fn()
+  translateInvoiceFreeText: vi.fn()
 }));
 vi.mock("@/lib/demo/turnstile", () => ({ verifyTurnstile }));
 vi.mock("@/lib/demo/rate-limit", () => ({ consumeTranslate, clientIpFrom: () => "1.2.3.4" }));
 vi.mock("@/lib/translation/engine", () => ({ translateInvoiceFreeText }));
-vi.mock("@/lib/pdf/parser", () => ({ parseKsefPdf }));
 
 import { POST } from "@/app/api/demo/translate/route";
 import { verifyUploadToken, demoContentHash } from "@/lib/demo/upload-token";
@@ -37,7 +35,6 @@ beforeEach(() => {
   translateInvoiceFreeText
     .mockReset()
     .mockImplementation(async (invoice: object, language: string) => ({ ...invoice, language }));
-  parseKsefPdf.mockReset();
   process.env.DEMO_TOKEN_SECRET = "unit-secret";
 });
 
@@ -64,28 +61,6 @@ describe("POST /api/demo/translate", () => {
     expect(json.invoice.verification?.qrLink).toContain("https://qr.ksef.mf.gov.pl/invoice/");
   });
 
-  it("translates a PDF upload through parseKsefPdf and returns a synthetic sourceXml", async () => {
-    parseKsefPdf.mockResolvedValueOnce({
-      ok: true,
-      warnings: [],
-      invoice: {
-        invoiceNumber: "FV 9/2026",
-        issueDate: "2026-06-01",
-        currency: "PLN",
-        seller: { name: "Test Sp. z o.o.", vatId: "1111111111" },
-        buyer: { name: "Buyer GmbH" },
-        items: [{ name: "Usługa", quantity: 1, unit: "szt", unitPrice: 100, netValue: 100, vatRate: "23", grossValue: 123 }],
-        totals: { net: 100, vat: 23, gross: 123 }
-      }
-    });
-    const pdfFile = new File(["%PDF-1.7"], "faktura.pdf", { type: "application/pdf" });
-    const res = await POST(post({ file: pdfFile, lang: "en", turnstileToken: "t" }));
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(typeof json.sourceXml).toBe("string");
-    expect(json.sourceXml).toContain("Faktura");
-  });
-
   it("returns 403 when Turnstile fails (and never consumes the cap)", async () => {
     verifyTurnstile.mockResolvedValueOnce({ ok: false });
     const res = await POST(post({ file: xmlFile(), lang: "en", turnstileToken: "bad" }));
@@ -107,9 +82,11 @@ describe("POST /api/demo/translate", () => {
     expect((await res.json()).code).toBe("circuit_breaker");
   });
 
-  it("returns 415 for an unsupported file type (after the cap is consumed, per the locked spec order)", async () => {
-    const res = await POST(post({ file: new File(["x"], "notes.txt", { type: "text/plain" }), lang: "en", turnstileToken: "t" }));
-    expect(res.status).toBe(415);
+  it("returns 415 for any non-XML file, including PDFs (after the cap is consumed, per the locked spec order)", async () => {
+    const pdf = new File(["%PDF-1.7"], "faktura.pdf", { type: "application/pdf" });
+    expect((await POST(post({ file: pdf, lang: "en", turnstileToken: "t" }))).status).toBe(415);
+    const txt = new File(["x"], "notes.txt", { type: "text/plain" });
+    expect((await POST(post({ file: txt, lang: "en", turnstileToken: "t" }))).status).toBe(415);
     expect(consumeTranslate).toHaveBeenCalled();
     expect(translateInvoiceFreeText).not.toHaveBeenCalled();
   });

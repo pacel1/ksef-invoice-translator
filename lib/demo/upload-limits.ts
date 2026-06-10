@@ -1,38 +1,22 @@
 /**
- * Shared constants and pure helpers for the demo upload lane, importable from
- * BOTH the client (fast feedback in the dropzone) and the server (authoritative
- * checks in /api/demo/translate). Type detection mirrors detectSourceType in
- * lib/invoice/upload-service.ts, which is not exported and not client-safe.
- * Env cap overrides only take effect server-side: non-NEXT_PUBLIC vars are
- * undefined in the browser bundle, so the client sees the defaults.
+ * Shared constants and pure helpers for the demo upload lane (XML only),
+ * importable from BOTH the client (fast feedback in the dropzone) and the
+ * server (authoritative checks in /api/demo/translate). Detection mirrors the
+ * XML branch of detectSourceType in lib/invoice/upload-service.ts, which is
+ * not exported and not client-safe. The env cap override only takes effect
+ * server-side: non-NEXT_PUBLIC vars are undefined in the browser bundle, so
+ * the client sees the default.
  */
-export type DemoUploadType = "xml" | "pdf";
-
-export const DEMO_UPLOAD_ACCEPT = ".xml,.pdf,application/xml,text/xml,application/pdf";
+export const DEMO_UPLOAD_ACCEPT = ".xml,application/xml,text/xml";
 
 const DEFAULT_MAX_XML_BYTES = 1024 * 1024; // 1 MB
-const DEFAULT_MAX_PDF_BYTES = 8 * 1024 * 1024; // 8 MB
 
-export function detectDemoUploadType(name: string, mime: string): DemoUploadType | null {
-  const lower = name.toLowerCase();
-  if (mime === "application/pdf" || lower.endsWith(".pdf")) return "pdf";
-  if (mime === "application/xml" || mime === "text/xml" || lower.endsWith(".xml")) return "xml";
-  return null;
-}
-
-function capFromEnv(name: string, fallback: number): number {
-  const raw = Number(process.env[name]);
-  return Number.isFinite(raw) && raw > 0 ? raw : fallback;
+/** The demo translates KSeF XML only; PDFs and anything else are rejected. */
+export function isDemoXmlUpload(name: string, mime: string): boolean {
+  return mime === "application/xml" || mime === "text/xml" || name.toLowerCase().endsWith(".xml");
 }
 
 export function maxXmlBytes(): number {
-  return capFromEnv("DEMO_MAX_XML_BYTES", DEFAULT_MAX_XML_BYTES);
-}
-
-export function maxPdfBytes(): number {
-  return capFromEnv("DEMO_MAX_PDF_BYTES", DEFAULT_MAX_PDF_BYTES);
-}
-
-export function maxBytesFor(type: DemoUploadType): number {
-  return type === "xml" ? maxXmlBytes() : maxPdfBytes();
+  const raw = Number(process.env.DEMO_MAX_XML_BYTES);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_MAX_XML_BYTES;
 }

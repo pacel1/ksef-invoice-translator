@@ -33,7 +33,7 @@ function copy() {
     uploadHint: "XML lub PDF z KSeF.",
     uploadBusy: "Tłumaczymy...",
     rateLimited: "Limit.",
-    uploadErrUnsupported: "Tylko XML i PDF.",
+    uploadErrUnsupported: "Tylko XML.",
     uploadErrTooLarge: "Za duży.",
     uploadErrParse: "Nie odczytano.",
     uploadErrBreaker: "Przeciążone.",
@@ -71,7 +71,9 @@ describe("<UploadPanel>", () => {
     render(<UploadPanel lang="en" t={copy()} onResult={vi.fn()} />);
     openPanel();
     selectFile(new File(["x"], "notes.txt", { type: "text/plain" }));
-    expect(screen.getByText("Tylko XML i PDF.")).toBeInTheDocument();
+    expect(screen.getByText("Tylko XML.")).toBeInTheDocument();
+    selectFile(new File(["%PDF-1.7"], "faktura.pdf", { type: "application/pdf" }));
+    expect(screen.getByText("Tylko XML.")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
