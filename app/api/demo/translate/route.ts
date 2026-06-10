@@ -4,10 +4,9 @@ import { DEMO_LANGS } from "@/lib/landing/demo-sample";
 import { verifyTurnstile } from "@/lib/demo/turnstile";
 import { consumeTranslate, clientIpFrom } from "@/lib/demo/rate-limit";
 import { demoContentHash, signUploadToken } from "@/lib/demo/upload-token";
-import { detectDemoUploadType, maxBytesFor, maxPdfBytes, type DemoUploadType } from "@/lib/demo/upload-limits";
+import { isDemoXmlUpload, maxXmlBytes } from "@/lib/demo/upload-limits";
 import { parseKsefXml } from "@/lib/xml/parser";
 import { buildKsefXmlVerificationLink } from "@/lib/xml/verification";
-import { buildSyntheticFa3Xml } from "@/lib/mf-fa3/invoice-to-fa3-xml";
 import { translateInvoiceFreeText } from "@/lib/translation/engine";
 import type { Invoice, LanguageCode } from "@/types/invoice";
 
@@ -34,7 +33,7 @@ export async function POST(request: Request) {
   // overhead gets 1 MiB of slack; the deploy platform additionally enforces its
   // own request-body cap upstream of this handler.
   const contentLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > maxPdfBytes() + 1024 * 1024) {
+  if (Number.isFinite(contentLength) && contentLength > maxXmlBytes() + 1024 * 1024) {
     return NextResponse.json({ error: "File too large", code: "too_large" }, { status: 413 });
   }
 
@@ -63,16 +62,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Daily demo limit reached", code: "rate_limited" }, { status: 429 });
   }
 
-  const type = detectDemoUploadType(file.name, file.type);
-  if (!type) {
+  if (!isDemoXmlUpload(file.name, file.type)) {
     return NextResponse.json({ error: "Unsupported file type", code: "unsupported" }, { status: 415 });
   }
-  if (file.size > maxBytesFor(type)) {
+  if (file.size > maxXmlBytes()) {
     return NextResponse.json({ error: "File too large", code: "too_large" }, { status: 413 });
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const sourced = await parseUpload(type, bytes);
+  const sourced = await parseXmlUpload(bytes);
   if (!sourced.ok) {
     console.warn("[demo] upload parse failed", sourced.error);
     return NextResponse.json({ error: "Could not read this invoice", code: "parse_failed" }, { status: 422 });
@@ -97,24 +95,18 @@ export async function POST(request: Request) {
 
 type ParsedUpload = { ok: true; invoice: Invoice; sourceXml: string } | { ok: false; error: string };
 
-async function parseUpload(type: DemoUploadType, bytes: Buffer): Promise<ParsedUpload> {
-  if (type === "xml") {
-    const xml = new TextDecoder().decode(bytes);
-    const parsed = parseKsefXml(xml);
-    if (!parsed.ok) return { ok: false, error: parsed.error };
-    // Same QR-link fidelity as the authenticated upload path (pure, no network).
-    const qrLink = await buildKsefXmlVerificationLink(
-      new Uint8Array(bytes).buffer,
-      parsed.invoice.issueDate,
-      parsed.invoice.seller.vatId
-    );
-    const invoice = qrLink
-      ? { ...parsed.invoice, verification: { ...parsed.invoice.verification, qrLink } }
-      : parsed.invoice;
-    return { ok: true, invoice, sourceXml: xml };
-  }
-  const { parseKsefPdf } = await import("@/lib/pdf/parser");
-  const parsed = await parseKsefPdf(bytes);
+async function parseXmlUpload(bytes: Buffer): Promise<ParsedUpload> {
+  const xml = new TextDecoder().decode(bytes);
+  const parsed = parseKsefXml(xml);
   if (!parsed.ok) return { ok: false, error: parsed.error };
-  return { ok: true, invoice: parsed.invoice, sourceXml: buildSyntheticFa3Xml(parsed.invoice) };
+  // Same QR-link fidelity as the authenticated upload path (pure, no network).
+  const qrLink = await buildKsefXmlVerificationLink(
+    new Uint8Array(bytes).buffer,
+    parsed.invoice.issueDate,
+    parsed.invoice.seller.vatId
+  );
+  const invoice = qrLink
+    ? { ...parsed.invoice, verification: { ...parsed.invoice.verification, qrLink } }
+    : parsed.invoice;
+  return { ok: true, invoice, sourceXml: xml };
 }
