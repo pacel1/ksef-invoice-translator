@@ -114,18 +114,21 @@ export type Database = {
         Row: {
           day: string
           ip_hash: string
+          pdf_count: number
           translate_count: number
           unlock_count: number
         }
         Insert: {
           day: string
           ip_hash: string
+          pdf_count?: number
           translate_count?: number
           unlock_count?: number
         }
         Update: {
           day?: string
           ip_hash?: string
+          pdf_count?: number
           translate_count?: number
           unlock_count?: number
         }
@@ -411,6 +414,14 @@ export type Database = {
       grant_paid_credits: {
         Args: { p_amount: number; p_purchase: string; p_user: string }
         Returns: undefined
+      }
+      increment_demo_pdf: { Args: { p_ip_hash: string }; Returns: number }
+      increment_demo_translate: {
+        Args: { p_ip_hash: string }
+        Returns: {
+          global_count: number
+          ip_count: number
+        }[]
       }
       increment_demo_unlock: { Args: { p_ip_hash: string }; Returns: number }
       refund_paid_credits: {
