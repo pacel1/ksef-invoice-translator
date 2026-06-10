@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { InvoiceShowcase } from "@/components/landing/invoice-showcase";
 
@@ -61,5 +61,22 @@ describe("<InvoiceShowcase>", () => {
     });
     expect(screen.getByText("INVOICE")).toBeInTheDocument();
     expect(screen.queryByText("RECHNUNG")).not.toBeInTheDocument();
+  });
+
+  it("keeps the scan overlay invisible at rest (no purple artifact)", () => {
+    mockMatchMedia(false);
+    const { container } = render(<InvoiceShowcase />);
+    const scan = container.querySelector('[class*="showcase-scan"]');
+    expect(scan).not.toBeNull();
+    expect(scan!.className).toContain("opacity-0");
+  });
+
+  it("pins the status to a stable layout so the strip height never depends on the language", () => {
+    mockMatchMedia(false);
+    render(<InvoiceShowcase />);
+    const status = screen.getByText("Gotowe").closest("span.inline-flex");
+    expect(status).not.toBeNull();
+    expect(status!.className).toContain("w-full");
+    expect(status!.className).toContain("min-[480px]:w-auto");
   });
 });
