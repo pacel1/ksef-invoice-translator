@@ -40,11 +40,7 @@ export function DemoSection({ locale }: DemoSectionProps) {
         </div>
 
         <div className="mt-9">
-          <InvoiceStage
-            lang={lang}
-            watermark={t.watermark}
-            upload={upload ? { invoice: upload.invoice, lang: upload.lang } : null}
-          />
+          <InvoiceStage lang={lang} watermark={t.watermark} upload={upload} />
         </div>
 
         <UploadPanel lang={lang} t={t} onResult={setUpload} />
