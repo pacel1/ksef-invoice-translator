@@ -17,7 +17,11 @@ export function hashIp(ip: string): string {
   return createHash("sha256").update(`${salt}:${ip}`).digest("hex");
 }
 
-/** First hop of x-forwarded-for, or a placeholder. */
+/**
+ * First hop of x-forwarded-for, or a placeholder. Forwarded headers are
+ * client-influenced, so per-IP caps are best effort; the global daily
+ * breaker is the authoritative spend bound.
+ */
 export function clientIpFrom(request: Request): string {
   const fwd = request.headers.get("x-forwarded-for");
   const first = fwd?.split(",")[0]?.trim();

@@ -4,7 +4,7 @@ import { DEMO_LANGS } from "@/lib/landing/demo-sample";
 import { verifyTurnstile } from "@/lib/demo/turnstile";
 import { consumeTranslate, clientIpFrom } from "@/lib/demo/rate-limit";
 import { demoContentHash, signUploadToken } from "@/lib/demo/upload-token";
-import { detectDemoUploadType, maxBytesFor, type DemoUploadType } from "@/lib/demo/upload-limits";
+import { detectDemoUploadType, maxBytesFor, maxPdfBytes, type DemoUploadType } from "@/lib/demo/upload-limits";
 import { parseKsefXml } from "@/lib/xml/parser";
 import { buildKsefXmlVerificationLink } from "@/lib/xml/verification";
 import { buildSyntheticFa3Xml } from "@/lib/mf-fa3/invoice-to-fa3-xml";
@@ -28,6 +28,14 @@ const fieldsSchema = z.object({
 export async function POST(request: Request) {
   if (!process.env.DEMO_TOKEN_SECRET) {
     return NextResponse.json({ error: "Demo upload is not configured" }, { status: 500 });
+  }
+
+  // Bound memory before request.formData() buffers the whole body. Multipart
+  // overhead gets 1 MiB of slack; the deploy platform additionally enforces its
+  // own request-body cap upstream of this handler.
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > maxPdfBytes() + 1024 * 1024) {
+    return NextResponse.json({ error: "File too large", code: "too_large" }, { status: 413 });
   }
 
   const form = await request.formData().catch(() => null);
@@ -80,7 +88,9 @@ export async function POST(request: Request) {
 
   // Bind the exact response payload into a signed token so /api/demo/pdf can
   // verify it renders only what this pipeline produced (see the plan's
-  // security decision). Nothing is persisted.
+  // security decision). The hash recipe (JSON.stringify(invoice) + "\0" +
+  // sourceXml) is a contract shared with /api/demo/pdf via demoContentHash;
+  // both sides must hash the identical byte recipe. Nothing is persisted.
   const uploadToken = signUploadToken({ hash: await demoContentHash(invoice, sourced.sourceXml), lang });
   return NextResponse.json({ invoice, sourceXml: sourced.sourceXml, uploadToken });
 }

@@ -137,4 +137,16 @@ describe("POST /api/demo/translate", () => {
     expect((await POST(post({ lang: "en", turnstileToken: "t" }))).status).toBe(400);
     expect((await POST(post({ file: xmlFile(), lang: "xx", turnstileToken: "t" }))).status).toBe(400);
   });
+
+  it("rejects an oversized body via Content-Length before reading the form", async () => {
+    const formData = vi.fn();
+    const request = {
+      headers: new Headers({ "content-length": String(100 * 1024 * 1024) }),
+      formData
+    } as unknown as Request;
+    const res = await POST(request);
+    expect(res.status).toBe(413);
+    expect((await res.json()).code).toBe("too_large");
+    expect(formData).not.toHaveBeenCalled();
+  });
 });
