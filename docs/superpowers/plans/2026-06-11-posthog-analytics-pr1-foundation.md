@@ -1650,3 +1650,18 @@ Before merge (manual, outside the repo): add `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`
 
 - **PR 2 — acquisition funnel** (plan to be written after PR 1 merges): demo + landing + contact events, server-side auth completion (`signup_completed`/`login_completed`/`auth_failed` in `app/auth/callback/route.ts`), onboarding events, demo + activation dashboards. Event list: spec §5.
 - **PR 3 — product depth**: `paywall_hit`, wizard language/bilingual/retry events, editor events, `credit_drawer_opened`, `checkout_cancelled`, account events + PostHog person erasure on account deletion, paywall + quality dashboards. Event list: spec §5.
+
+---
+
+## Addendum (2026-06-11, after PR #63 merged): consent integration pivot
+
+PR #63 shipped a site-wide RODO consent system (`components/consent/`, `lib/consent/`) with an `analytics` category, banner, settings modal, and versioned `cookie_consent` cookie. Decision (user-approved): that system is the single consent source of truth; the standalone `ConsentPrompt` from Task 8 is removed.
+
+Revised consent architecture:
+
+- `lib/analytics/consent.ts` becomes a thin adapter: `persistenceFor(state: ConsentState | null)` returns `"localStorage+cookie"` only when `state.analytics` is true, plus `analyticsPersistenceFromCookie(cookieString)` composing `readStoredConsent` from `lib/consent/storage`.
+- `instrumentation-client.ts` derives initial persistence from `document.cookie` via the adapter.
+- New `components/analytics/posthog-consent-sync.tsx`, mounted inside `ConsentProvider` next to `GoogleAdsTag`: on analytics consent it upgrades persistence; on decline/revoke it calls `posthog.reset()` first (clearing any prior `ph_*` storage residue) and drops to memory.
+- `identifyAuthenticatedUser` no longer force-upgrades persistence: the banner's analytics category governs PostHog cookies for everyone, logged-in or not. Identification by Supabase user id still happens regardless (memory persistence just means it re-links each page load).
+- Task 11 privacy text must describe analytics cookies as governed by the cookie banner's analytics category (PostHog stays in the sub-processor list).
+- Task 13 e2e flows through the #63 banner UI; assertions must ignore the dev-only `ph_debug` localStorage key and also check sessionStorage stays clean.
