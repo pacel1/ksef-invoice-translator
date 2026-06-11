@@ -11,26 +11,38 @@ const baseCopy = {
   sentBodyPrefix: "Link logowania wysłany na",
   sentResend: "Wyślij ponownie",
   errorGeneric: "Nie udało się wysłać linku. Spróbuj ponownie.",
-  errorRateLimited: "Za dużo prób."
+  errorRateLimited: "Za dużo prób.",
+  googleButton: "Kontynuuj przez Google",
+  divider: "albo",
+  googleError: "Nie udało się połączyć z Google. Spróbuj ponownie albo użyj linku e-mail."
 };
 
 const signInWithOtpMock = vi.fn();
+const signInWithOAuthMock = vi.fn();
 
 vi.mock("@/lib/supabase/browser", () => ({
   createSupabaseBrowserClient: () => ({
-    auth: { signInWithOtp: signInWithOtpMock }
+    auth: { signInWithOtp: signInWithOtpMock, signInWithOAuth: signInWithOAuthMock }
   })
 }));
 
 beforeEach(() => {
   signInWithOtpMock.mockReset();
+  signInWithOAuthMock.mockReset();
 });
 
 afterEach(() => {
   signInWithOtpMock.mockReset();
+  signInWithOAuthMock.mockReset();
 });
 
 describe("<LoginForm>", () => {
+  it("renders the Google button and divider above the email form", () => {
+    render(<LoginForm copy={baseCopy} />);
+    expect(screen.getByRole("button", { name: /Kontynuuj przez Google/i })).toBeInTheDocument();
+    expect(screen.getByText("albo")).toBeInTheDocument();
+  });
+
   it("renders email input + submit button (idle state)", () => {
     render(<LoginForm copy={baseCopy} />);
     expect(screen.getByLabelText(/Adres e-mail/i)).toBeInTheDocument();
