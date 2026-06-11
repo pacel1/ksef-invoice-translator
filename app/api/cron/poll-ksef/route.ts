@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { constantTimeEqual } from "@/lib/security/constant-time-equal";
 import { buildIfirmaFaktura } from "@/lib/billing/build-ifirma-faktura";
 import {
   issueFaktura,
@@ -68,7 +69,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
   const auth = request.headers.get("authorization") ?? "";
-  if (auth !== `Bearer ${secret}`) {
+  if (!constantTimeEqual(auth, `Bearer ${secret}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
