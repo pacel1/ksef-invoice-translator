@@ -1,3 +1,10 @@
+> **Historical artifact.** This is the verbatim output of `npx @posthog/wizard`
+> (2026-06-11), kept for the dashboard links below. Several claims no longer
+> match the shipped code: identification now happens post-auth by Supabase user
+> id (never by email at OTP send), and the server client moved from
+> `lib/posthog-server.ts` to `lib/analytics/server.ts`. The source of truth is
+> `docs/analytics.md` and `docs/superpowers/specs/2026-06-11-posthog-analytics-design.md`.
+
 <wizard-report>
 # PostHog post-wizard report
 

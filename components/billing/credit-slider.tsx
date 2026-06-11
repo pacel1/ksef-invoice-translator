@@ -70,7 +70,7 @@ export function CreditSlider({
   async function onContinue() {
     captureClient("checkout_initiated", {
       package_size: size,
-      total_net_pln: quote ? quote.totalAmountCents / 100 : undefined
+      total_net_pln: quote ? Number((quote.totalAmountCents / 100).toFixed(2)) : undefined
     });
     setCreating(true);
     setError(null);
