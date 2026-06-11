@@ -41,6 +41,10 @@ describe("analytics event catalog", () => {
     );
   });
 
+  it("derives frozen property key lists", () => {
+    expect(Object.isFrozen(EVENT_PROPERTY_KEYS)).toBe(true);
+  });
+
   it("contains no forbidden PII property keys", () => {
     for (const [event, keys] of Object.entries(EVENT_PROPERTY_KEYS)) {
       for (const key of keys) {

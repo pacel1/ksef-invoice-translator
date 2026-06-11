@@ -8,7 +8,7 @@
  *   durations, credit package sizes and package prices, internal UUIDs
  *   (invoice_id, user id) and Stripe ids.
  *
- * Adding an event: extend AnalyticsEventMap AND EVENT_PROPERTY_KEYS.
+ * Adding an event: extend AnalyticsEventMap AND EVENT_PROPERTY_WITNESS.
  * The `satisfies` clause keeps the two in sync at compile time; the PII
  * test in tests/lib/analytics/events.test.ts vets the property names.
  */
@@ -66,38 +66,56 @@ export interface AnalyticsEventMap {
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
 
-export const EVENT_PROPERTY_KEYS = {
-  login_submitted: ["method"],
-  google_signin_clicked: [],
-  login_email_sent: ["method"],
-  files_uploaded: ["file_count", "success_count", "failure_count"],
-  translation_started: ["file_count", "language", "bilingual"],
-  translation_batch_cancelled: ["total", "done"],
-  pdf_downloaded: ["invoice_id", "language", "bilingual", "context"],
-  zip_downloaded: ["invoice_count", "language", "bilingual"],
-  checkout_initiated: ["package_size", "total_net_pln"],
-  checkout_session_created: [
-    "package_size",
-    "total_amount_cents",
-    "currency",
-    "stripe_session_id"
-  ],
-  payment_completed: [
-    "package_size",
-    "total_amount_cents",
-    "currency",
-    "stripe_session_id"
-  ],
-  payment_failed: ["stripe_session_id", "purchase_id"],
-  payment_refunded: ["package_size", "stripe_charge_id"],
-  invoice_translated: [
-    "invoice_id",
-    "language",
-    "bilingual",
-    "cache_hit",
-    "used_ai",
-    "duration_ms"
-  ]
-} as const satisfies {
+/**
+ * Witness object: Record<keyof Payload, true> forces every payload key
+ * (including optional ones) to be listed, and rejects unknown keys, so the
+ * runtime key list below can never silently miss a property added to
+ * AnalyticsEventMap. The PII guard test scans EVENT_PROPERTY_KEYS, which is
+ * derived from this witness.
+ */
+const EVENT_PROPERTY_WITNESS: {
+  [K in AnalyticsEventName]: Record<keyof AnalyticsEventMap[K], true>;
+} = {
+  login_submitted: { method: true },
+  google_signin_clicked: {},
+  login_email_sent: { method: true },
+  files_uploaded: { file_count: true, success_count: true, failure_count: true },
+  translation_started: { file_count: true, language: true, bilingual: true },
+  translation_batch_cancelled: { total: true, done: true },
+  pdf_downloaded: { invoice_id: true, language: true, bilingual: true, context: true },
+  zip_downloaded: { invoice_count: true, language: true, bilingual: true },
+  checkout_initiated: { package_size: true, total_net_pln: true },
+  checkout_session_created: {
+    package_size: true,
+    total_amount_cents: true,
+    currency: true,
+    stripe_session_id: true
+  },
+  payment_completed: {
+    package_size: true,
+    total_amount_cents: true,
+    currency: true,
+    stripe_session_id: true
+  },
+  payment_failed: { stripe_session_id: true, purchase_id: true },
+  payment_refunded: { package_size: true, stripe_charge_id: true },
+  invoice_translated: {
+    invoice_id: true,
+    language: true,
+    bilingual: true,
+    cache_hit: true,
+    used_ai: true,
+    duration_ms: true
+  }
+};
+
+export const EVENT_PROPERTY_KEYS = Object.freeze(
+  Object.fromEntries(
+    Object.entries(EVENT_PROPERTY_WITNESS).map(([event, witness]) => [
+      event,
+      Object.keys(witness)
+    ])
+  )
+) as unknown as {
   [K in AnalyticsEventName]: readonly (keyof AnalyticsEventMap[K] & string)[];
 };
