@@ -156,16 +156,12 @@ export const marketingCopy = {
     terms: {
       heroHeadline: "Regulamin świadczenia usług",
       lastUpdated: "Ostatnia aktualizacja",
-      tocHeading: "Spis treści",
-      placeholderHeading: "Treść regulaminu",
-      placeholderBody: "Pełna treść regulaminu zostanie dodana przed uruchomieniem produkcyjnym. W razie pytań prosimy o kontakt z administratorem."
+      tocHeading: "Spis treści"
     },
     privacy: {
       heroHeadline: "Polityka prywatności",
       lastUpdated: "Ostatnia aktualizacja",
-      tocHeading: "Spis treści",
-      placeholderHeading: "Treść polityki prywatności",
-      placeholderBody: "Pełna treść polityki prywatności zostanie dodana przed uruchomieniem produkcyjnym. Już teraz przestrzegamy zasad RODO — szczegóły w sekcji Bezpieczeństwo."
+      tocHeading: "Spis treści"
     },
     login: {
       title: "Zaloguj się",
@@ -179,6 +175,12 @@ export const marketingCopy = {
       sentResend: "Wyślij ponownie",
       sentResendCooldown: "Wyślij ponownie za {seconds}s",
       noAccountHint: "Konto powstaje automatycznie przy pierwszym logowaniu.",
+      legalNotice: {
+        prefix: "Logując się po raz pierwszy, zakładasz konto i akceptujesz",
+        termsLabel: "Regulamin",
+        conjunction: "oraz",
+        privacyLabel: "Politykę prywatności"
+      },
       backToHome: "Wracam na stronę główną",
       errorGeneric: "Nie udało się wysłać linku. Spróbuj ponownie.",
       errorRateLimited: "Za dużo prób. Odczekaj chwilę i spróbuj jeszcze raz."
@@ -368,16 +370,12 @@ export const marketingCopy = {
     terms: {
       heroHeadline: "Terms of service",
       lastUpdated: "Last updated",
-      tocHeading: "Table of contents",
-      placeholderHeading: "Terms content",
-      placeholderBody: "Full terms will be added before production launch. For questions please contact the administrator."
+      tocHeading: "Table of contents"
     },
     privacy: {
       heroHeadline: "Privacy policy",
       lastUpdated: "Last updated",
-      tocHeading: "Table of contents",
-      placeholderHeading: "Privacy policy content",
-      placeholderBody: "Full privacy policy will be added before production launch. We already follow GDPR — see the Security page for details."
+      tocHeading: "Table of contents"
     },
     login: {
       title: "Sign in",
@@ -391,6 +389,12 @@ export const marketingCopy = {
       sentResend: "Resend",
       sentResendCooldown: "Resend in {seconds}s",
       noAccountHint: "Your account is created automatically on first sign-in.",
+      legalNotice: {
+        prefix: "By signing in for the first time, you create an account and accept the",
+        termsLabel: "Terms of Service",
+        conjunction: "and the",
+        privacyLabel: "Privacy Policy"
+      },
       backToHome: "Back to homepage",
       errorGeneric: "Failed to send the link. Please try again.",
       errorRateLimited: "Too many attempts. Please wait a moment and try again."

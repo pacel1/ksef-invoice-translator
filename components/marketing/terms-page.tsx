@@ -1,9 +1,8 @@
 import { PublicHeader } from "@/components/layout/public-header";
 import { LegalFooter } from "@/components/layout/legal-footer";
 import { LegalDocLayout } from "@/components/marketing/legal-doc-layout";
+import { getTermsSections, TERMS_LAST_UPDATED } from "@/lib/legal/terms";
 import { marketingCopy, type MarketingLocale } from "@/lib/marketing/copy";
-
-const LAST_UPDATED = "2026-05-18";
 
 export interface TermsPageProps {
   locale: MarketingLocale;
@@ -11,9 +10,7 @@ export interface TermsPageProps {
 
 export function TermsPage({ locale }: TermsPageProps) {
   const t = marketingCopy[locale].terms;
-  const sections = [
-    { id: "wstep", title: t.placeholderHeading, content: t.placeholderBody }
-  ];
+  const sections = getTermsSections(locale);
 
   return (
     <div className="flex min-h-screen flex-col bg-surface text-text-strong">
@@ -22,7 +19,7 @@ export function TermsPage({ locale }: TermsPageProps) {
         <LegalDocLayout
           title={t.heroHeadline}
           lastUpdatedLabel={t.lastUpdated}
-          lastUpdatedDate={LAST_UPDATED}
+          lastUpdatedDate={TERMS_LAST_UPDATED}
           tocHeading={t.tocHeading}
           sections={sections}
         />
