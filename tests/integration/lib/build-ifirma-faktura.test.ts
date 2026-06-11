@@ -56,6 +56,20 @@ describe("buildIfirmaFaktura", () => {
     expect(body.Zaplacono).toBe(95.94);
   });
 
+  // iFirma rejects fakturakraj.json when these documented-required fields are
+  // absent (live rejection 2026-06-11: Kod 201 on RodzajPodpisuOdbiorcy).
+  it("includes the required iFirma fields: RodzajPodpisuOdbiorcy, ZaplaconoNaDokumencie, WidocznyNumerGios, Numer", () => {
+    const body = buildIfirmaFaktura(samplePurchase);
+    // BPO = bez podpisu odbiorcy — automated e-invoice, nobody signs.
+    expect(body.RodzajPodpisuOdbiorcy).toBe("BPO");
+    // Card payments are fully paid up front: amount shown on the document
+    // equals the gross paid.
+    expect(body.ZaplaconoNaDokumencie).toBe(95.94);
+    expect(body.WidocznyNumerGios).toBe(false);
+    // null tells iFirma to auto-assign the next number in the series.
+    expect(body.Numer).toBeNull();
+  });
+
   it("uses the purchase created_at date for DataWystawienia and DataSprzedazy", () => {
     const body = buildIfirmaFaktura(samplePurchase);
     expect(body.DataWystawienia).toBe("2026-05-28");

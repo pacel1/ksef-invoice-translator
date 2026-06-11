@@ -32,10 +32,19 @@ export interface IfirmaKontrahent {
   OsobaFizyczna: boolean;
 }
 
+/**
+ * Recipient signature type. "BPO" = bez podpisu odbiorcy (no recipient
+ * signature) — the right value for automated e-invoices; "OUP" = authorized
+ * person; "UPO" = authorization on file; "BWO" = neither party signs.
+ */
+export type IfirmaRodzajPodpisuOdbiorcy = "OUP" | "UPO" | "BPO" | "BWO";
+
 /** Body for POST /iapi/fakturakraj.json. */
 export interface IfirmaInvoiceRequest {
   /** Gross amount paid. */
   Zaplacono: number;
+  /** Gross amount shown as paid on the document; required by iFirma. */
+  ZaplaconoNaDokumencie: number;
   /** "NET" = prices are net; "BRT" = prices are gross. */
   LiczOd: "NET" | "BRT";
   DataWystawienia: string;
@@ -45,6 +54,11 @@ export interface IfirmaInvoiceRequest {
   /** "PRZ" = przelew (bank transfer). */
   SposobZaplaty: string;
   NazwaSeriiNumeracji: string;
+  RodzajPodpisuOdbiorcy: IfirmaRodzajPodpisuOdbiorcy;
+  /** Whether the GIOŚ registration number prints on the invoice; required. */
+  WidocznyNumerGios: boolean;
+  /** Explicit invoice number, or null to auto-assign from the series. */
+  Numer: string | null;
   Pozycje: IfirmaPozycja[];
   Kontrahent: IfirmaKontrahent;
 }
@@ -56,6 +70,9 @@ export interface IfirmaKorektaRequest {
   PowodKorekty: string;
   Zaplacono: number;
   SposobZaplaty: string;
+  RodzajPodpisuOdbiorcy: IfirmaRodzajPodpisuOdbiorcy;
+  /** Statutory correction conditions met (required by iFirma). */
+  SpelnionoWarunki: boolean;
   Pozycje: IfirmaPozycja[];
 }
 
