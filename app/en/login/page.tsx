@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getOptionalUser } from "@/lib/auth/require-user";
 import { BrandLockup } from "@/components/brand/brand-lockup";
 import { LegalFooter } from "@/components/layout/legal-footer";
+import { LoginLegalNotice } from "@/components/auth/login-legal-notice";
 import { LoginForm } from "@/app/login/login-form";
 import { marketingCopy } from "@/lib/marketing/copy";
 
@@ -25,6 +26,9 @@ export default async function EnLoginPage() {
             <LoginForm copy={t} />
           </div>
           <p className="mt-6 text-center text-small text-text-muted">{t.noAccountHint}</p>
+          <div className="mt-3">
+            <LoginLegalNotice locale="en" />
+          </div>
         </div>
       </main>
       <LegalFooter locale="en" />
