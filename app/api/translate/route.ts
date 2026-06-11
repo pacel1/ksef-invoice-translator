@@ -13,7 +13,7 @@ import {
   refundTranslationCredit
 } from "@/lib/billing/credit-enforcement";
 import type { Invoice, LanguageCode } from "@/types/invoice";
-import { getPostHogClient } from "@/lib/posthog-server";
+import { captureServer } from "@/lib/analytics/server";
 
 /**
  * Tłumacz redesign behavior (spec §6.2), made permanent in PR #E:
@@ -41,7 +41,9 @@ export async function POST(request: Request) {
 
   const cached = cachedRequestSchema.safeParse(body);
   if (cached.success) {
-    return translateCached(cached.data);
+    const posthogSessionId =
+      request.headers.get("x-posthog-session-id") ?? undefined;
+    return translateCached(cached.data, posthogSessionId);
   }
 
   const inline = inlineRequestSchema.safeParse(body);
@@ -52,7 +54,10 @@ export async function POST(request: Request) {
   return NextResponse.json({ error: "Provide either { invoiceId } or { invoice }" }, { status: 400 });
 }
 
-async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
+async function translateCached(
+  params: z.infer<typeof cachedRequestSchema>,
+  posthogSessionId?: string
+) {
   const timings: Record<string, number | string | boolean> = {};
   const routeStarted = performance.now();
   if (!(params.language in supportedLanguages)) {
@@ -161,15 +166,16 @@ async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
     }
   }
 
+  const totalMs = elapsedMs(routeStarted);
   Object.assign(timings, result.timings, {
     cached: result.cached,
     usedAi: result.usedAi,
     engineVersion: result.engineVersion,
-    totalMs: elapsedMs(routeStarted)
+    totalMs
   });
   console.info("[api/translate] timings", timings);
 
-  getPostHogClient().capture({
+  captureServer({
     distinctId: userData.user.id,
     event: "invoice_translated",
     properties: {
@@ -178,8 +184,9 @@ async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
       bilingual: params.bilingual !== false,
       cache_hit: result.cached,
       used_ai: result.usedAi,
-      duration_ms: timings.totalMs
-    }
+      duration_ms: totalMs
+    },
+    sessionId: posthogSessionId
   });
 
   return NextResponse.json({

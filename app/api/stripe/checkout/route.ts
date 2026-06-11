@@ -10,7 +10,7 @@ import {
   priceForPackage
 } from "@/lib/billing/pricing";
 import { AbuseCapError, assertWithinAbuseCaps } from "@/lib/billing/abuse-caps";
-import { getPostHogClient } from "@/lib/posthog-server";
+import { captureServer } from "@/lib/analytics/server";
 
 export const runtime = "nodejs";
 
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       .update({ stripe_checkout_session_id: session.id })
       .eq("id", pending.data.id);
 
-    getPostHogClient().capture({
+    captureServer({
       distinctId: userData.user.id,
       event: "checkout_session_created",
       properties: {

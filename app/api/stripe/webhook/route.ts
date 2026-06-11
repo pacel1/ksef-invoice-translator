@@ -6,7 +6,7 @@ import { buildIfirmaFaktura } from "@/lib/billing/build-ifirma-faktura";
 import { issueFaktura, sendToKsef } from "@/lib/billing/ifirma";
 import { sendPaymentConfirmationEmail } from "@/lib/billing/payment-confirmation-email";
 import { createResendSendFn } from "@/lib/email/resend-sender";
-import { getPostHogClient } from "@/lib/posthog-server";
+import { captureServer } from "@/lib/analytics/server";
 
 export const runtime = "nodejs";
 
@@ -241,7 +241,7 @@ async function handleCheckoutCompleted(
     throw new Error("grant_paid_credits failed");
   }
 
-  getPostHogClient().capture({
+  captureServer({
     distinctId: purchase.data.user_id,
     event: "payment_completed",
     properties: {
@@ -430,7 +430,7 @@ async function handleAsyncPaymentFailed(
     console.warn(
       `[webhook] delayed payment failed for session ${session.id} — purchase ${purchase.data.id} marked failed`
     );
-    getPostHogClient().capture({
+    captureServer({
       distinctId: purchase.data.user_id,
       event: "payment_failed",
       properties: {
@@ -486,7 +486,7 @@ async function handleChargeRefunded(
     throw new Error("refund_paid_credits failed");
   }
 
-  getPostHogClient().capture({
+  captureServer({
     distinctId: purchase.data.user_id,
     event: "payment_refunded",
     properties: {
