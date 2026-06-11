@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { Webhook } from "standardwebhooks";
 import type { Database } from "@/lib/supabase/database.types";
 import { renderAuthEmail } from "@/emails/render-template";
+import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 
 export class AuthHookError extends Error {
   constructor(message: string, public readonly status = 400) {
@@ -79,7 +80,9 @@ export async function processAuthEmailHook(
   const email = payload.user?.email;
   const tokenHash = payload.email_data?.token_hash;
   const actionType = payload.email_data?.email_action_type ?? "magiclink";
-  const redirectTo = payload.email_data?.redirect_to ?? "/app";
+  // Defense in depth: the callback re-sanitises on consumption, but never bake an
+  // attacker-influenced redirect target into an outbound auth email either.
+  const redirectTo = safeRedirectPath(payload.email_data?.redirect_to);
 
   if (!email || !tokenHash) {
     throw new AuthHookError("Payload missing email or token_hash", 400);

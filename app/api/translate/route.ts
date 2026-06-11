@@ -181,6 +181,17 @@ async function translateInline(params: z.infer<typeof inlineRequestSchema>) {
   if (!(params.language in supportedLanguages)) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
   }
+
+  // Require a session: this path calls the OpenAI-backed engine directly with
+  // no credit meter, so it must never be reachable anonymously (the wizard
+  // always uses the authenticated { invoiceId } path; anonymous translation
+  // goes through the rate-limited /api/demo lane).
+  const supabase = await createSupabaseServerClient();
+  const { data: userData, error: authError } = await supabase.auth.getUser();
+  if (authError || !userData.user) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const invoice = invoiceSchema.parse(params.invoice);
   const usedAi = Boolean(process.env.OPENAI_API_KEY);
   const translated = await translateInvoiceFreeText(invoice, params.language as LanguageCode);

@@ -13,7 +13,7 @@ beforeAll(async () => {
 });
 
 describe("POST /api/translate", () => {
-  it("translates an inline invoice payload anonymously (legacy mode)", async () => {
+  it("requires auth on the inline path (no anonymous OpenAI calls)", async () => {
     const xml = readFileSync(samplePath, "utf8");
     const { parseKsefXml } = await import("@/lib/xml/parser");
     const parsed = parseKsefXml(xml);
@@ -25,11 +25,7 @@ describe("POST /api/translate", () => {
       body: JSON.stringify({ invoice: parsed.invoice, language: "en", bilingual: true })
     });
 
-    expect(res.status).toBe(200);
-    const payload = await res.json();
-    expect(payload.invoice).toBeTruthy();
-    expect(payload.invoice.invoiceNumber).toBe(parsed.invoice.invoiceNumber);
-    expect(payload.cached).toBe(false);
+    expect(res.status).toBe(401);
   });
 
   it("rejects payload missing both invoiceId and invoice", async () => {
