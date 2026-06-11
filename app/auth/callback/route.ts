@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 
 // Supabase's email-based OTP types. Validating against this allowlist prevents
 // the caller from coaxing `verifyOtp` into an unintended flow via the URL.
@@ -11,7 +12,9 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const rawType = url.searchParams.get("type");
-  const redirectTo = url.searchParams.get("redirect_to") ?? "/app";
+  // Never trust redirect_to verbatim: an absolute/protocol-relative value would
+  // bounce a freshly-authenticated user to an attacker host (open redirect).
+  const redirectTo = safeRedirectPath(url.searchParams.get("redirect_to"));
 
   const supabase = await createSupabaseServerClient();
 
