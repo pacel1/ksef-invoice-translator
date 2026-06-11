@@ -34,7 +34,7 @@ export interface ServerCaptureArgs<E extends AnalyticsEventName> {
   distinctId: string;
   event: E;
   properties: AnalyticsEventMap[E];
-  /** posthog-js session id forwarded by the client (X-POSTHOG-SESSION-ID). */
+  /** posthog-js session id forwarded by the client (POSTHOG_SESSION_HEADER). */
   sessionId?: string;
 }
 

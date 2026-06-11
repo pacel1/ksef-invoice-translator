@@ -9,8 +9,11 @@
  *   (invoice_id, user id) and Stripe ids.
  *
  * Adding an event: extend AnalyticsEventMap AND EVENT_PROPERTY_WITNESS.
- * The `satisfies` clause keeps the two in sync at compile time; the PII
- * test in tests/lib/analytics/events.test.ts vets the property names.
+ * EVENT_PROPERTY_WITNESS is typed Record<keyof Payload, true> per event, so
+ * the compiler forces every property (optional ones included) to be listed
+ * and rejects unknown keys; the runtime key list can never silently miss a
+ * property added to the map. The PII test in
+ * tests/lib/analytics/events.test.ts vets the property names.
  */
 
 export interface AnalyticsEventMap {
