@@ -7,7 +7,11 @@ import {
   SHOWCASE_FIXED,
   SHOWCASE_CYCLE_MS
 } from "@/lib/landing/invoice-showcase";
+import { SHOWCASE_QR_ROWS, SHOWCASE_QR_SIZE } from "@/lib/landing/showcase-qr";
+import { qrSvgPath } from "@/lib/landing/qr-svg";
 import { cn } from "@/lib/utils";
+
+const QR_PATH = qrSvgPath(SHOWCASE_QR_ROWS);
 
 export function InvoiceShowcase() {
   const [index, setIndex] = useState(0);
@@ -76,7 +80,17 @@ export function InvoiceShowcase() {
                 <div className={cn("text-[10px] uppercase tracking-wide text-copy-muted", t)}>{L.title}</div>
               </div>
             </div>
-            <span className="h-[42px] w-[42px] rounded-md" style={{ background: "repeating-linear-gradient(0deg,#0B1020 0 3px,transparent 3px 6px), repeating-linear-gradient(90deg,#0B1020 0 3px,transparent 3px 6px)", backgroundColor: "#fff" }} aria-hidden="true" />
+            {/* Real, scannable QR (encodes HTTPS://TLUMACZKSEF.PL); the white padding doubles as its quiet zone. */}
+            <span className="flex h-[42px] w-[42px] rounded-md bg-white p-[3px]" aria-hidden="true">
+              <svg
+                data-showcase-qr
+                viewBox={`0 0 ${SHOWCASE_QR_SIZE} ${SHOWCASE_QR_SIZE}`}
+                className="h-full w-full"
+                shapeRendering="crispEdges"
+              >
+                <path d={QR_PATH} fill="#0B1020" />
+              </svg>
+            </span>
           </div>
 
           <div className="border-t border-line-soft pt-3">
