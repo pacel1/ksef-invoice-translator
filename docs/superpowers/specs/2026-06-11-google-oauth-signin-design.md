@@ -120,7 +120,7 @@ The local Supabase stack reads these on `supabase start` / `supabase db reset` v
 
 Per the project tooling rule, the hosted project is configured via CLI or Management API only:
 
-Enablement is an explicit, committed change: set both env vars, flip `enabled = true` in `config.toml`, then apply the change remotely with the Management API.
+Hosted enablement was completed 2026-06-11 via the Management API PATCH below. The committed `config.toml` default stays `enabled = false` so the local stack boots without credentials; the config reconciliation follow-up task owns making the file truthful about the hosted state.
 
 - **Use the Management API** (targeted, only touches the Google fields):
 
@@ -131,9 +131,9 @@ Enablement is an explicit, committed change: set both env vars, flip `enabled = 
     "external_google_secret": "..." }
   ```
 
-- **Do NOT use `supabase config push` on this project.** Discovered during rollout (2026-06-11): config push replaces the WHOLE remote auth config with the local `config.toml`, and the repo's config.toml has drifted from production (it would revert `site_url` to localhost, disable the send-email hook, wipe the Resend SMTP settings, and flip email confirmations). The attempted push was rejected with HTTP 402 because the org's plan cannot configure the password/MFA verification hooks present in the local file, which is the only reason production was not clobbered. Until `supabase/config.toml` is reconciled with the hosted project, the targeted PATCH is the only safe path. The committed `enabled = true` flip remains the documentation of record.
+- **Do NOT use `supabase config push` on this project.** Discovered during rollout (2026-06-11): config push replaces the WHOLE remote auth config with the local `config.toml`, and the repo's config.toml has drifted from production (it would revert `site_url` to localhost, disable the send-email hook, wipe the Resend SMTP settings, and flip email confirmations). The attempted push was rejected with HTTP 402 because the org's plan cannot configure the password/MFA verification hooks present in the local file, which is the only reason production was not clobbered. Until `supabase/config.toml` is reconciled with the hosted project, the targeted PATCH is the only safe path.
 
-The hosted project's redirect allow-list already contains the production `/auth/callback` URL (magic links use it today), so no change is expected there. Verify during rollout.
+**Redirect allow-list (correction discovered at rollout):** the hosted allow-list did NOT contain any `/auth/callback` URL; it held only the bare origins (`https://ksef-invoice-translator.vercel.app/`, `https://tlumaczksef.pl`). Magic links never hit the allow-list because the custom Resend email hook builds its own link, but OAuth's `redirect_to` is checked against it, and a non-matching value silently falls back to `site_url` (the homepage), losing the login. Supabase matches allow-list entries exactly unless wildcards are used, so the callback URLs must be added explicitly via the same Management API (`uri_allow_list`, comma-separated, keeping the existing entries).
 
 ---
 
