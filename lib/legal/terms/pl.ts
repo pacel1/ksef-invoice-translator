@@ -4,8 +4,8 @@ import { FOUNDER } from "@/lib/brand/founder";
 
 /**
  * Regulamin (PL). Binding version of the terms of service.
- * Operator identity and contact come from lib/brand so the
- * REPLACE_BEFORE_LAUNCH swap happens in one place.
+ * Operator identity and contact come from lib/brand so identity
+ * changes happen in one place.
  */
 export const TERMS_SECTIONS_PL: ReadonlyArray<LegalSection> = [
   {

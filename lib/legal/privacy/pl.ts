@@ -4,10 +4,10 @@ import { FOUNDER } from "@/lib/brand/founder";
 
 /**
  * Polityka Prywatności (PL). Binding version. Administrator identity and
- * contact come from lib/brand so the REPLACE_BEFORE_LAUNCH swap happens in
- * one place. Retention periods mirror the security page and the actual
- * implementation (30-day invoice retention, 60-minute magic links, 90-day
- * logs, 5-year accounting records).
+ * contact come from lib/brand so identity changes happen in one place.
+ * Retention periods mirror the security page and the actual implementation
+ * (30-day invoice retention, 60-minute magic links, 90-day logs, 5-year
+ * accounting records).
  */
 export const PRIVACY_SECTIONS_PL: ReadonlyArray<LegalSection> = [
   {
