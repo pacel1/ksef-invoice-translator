@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getPrivacySections, PRIVACY_LAST_UPDATED } from "@/lib/legal/privacy";
 import { LEGAL_ENTITY } from "@/lib/brand/legal";
-import { FOUNDER } from "@/lib/brand/founder";
 
 describe("getPrivacySections", () => {
   it("returns a substantive document for both locales", () => {
@@ -23,12 +22,12 @@ describe("getPrivacySections", () => {
     expect(enIds).toEqual(plIds);
   });
 
-  it("identifies the administrator from LEGAL_ENTITY and the contact email from FOUNDER", () => {
+  it("identifies the administrator and contact email from LEGAL_ENTITY", () => {
     const all = getPrivacySections("pl").map((s) => s.content).join("\n");
     expect(all).toContain(LEGAL_ENTITY.name);
     expect(all).toContain(LEGAL_ENTITY.nip);
     expect(all).toContain(LEGAL_ENTITY.address);
-    expect(all).toContain(FOUNDER.contactEmail);
+    expect(all).toContain(LEGAL_ENTITY.contactEmail);
   });
 
   it("covers the art. 13 RODO catalogue: purposes, legal bases, retention, rights, PUODO", () => {

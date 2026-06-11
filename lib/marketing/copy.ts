@@ -149,7 +149,6 @@ export const marketingCopy = {
       mfHeading: "Zgodność z MF i KSeF",
       mfBody: "Wynikowy PDF jest zgodny ze schematem FA(3) Ministerstwa Finansów wersja 2025-06-25. QR code KSeF jest zachowany — twój oryginalny dokument pozostaje walidowalny.",
       mfSchemaLink: "Schemat MF FA(3) — gov.pl",
-      founderHeading: "Stoi za tym konkretny człowiek",
       incidentsHeading: "Polityka incydentów",
       incidentsBody: "Logi zachowujemy przez 90 dni. W razie naruszenia bezpieczeństwa danych powiadamiamy poszkodowanych w ciągu 72 godzin, zgodnie z art. 34 RODO."
     },
@@ -363,7 +362,6 @@ export const marketingCopy = {
       mfHeading: "MF and KSeF compliance",
       mfBody: "Output PDFs conform to the Polish Ministry of Finance FA(3) schema version 2025-06-25. The KSeF QR code is preserved — your original document stays validatable.",
       mfSchemaLink: "MF FA(3) schema — gov.pl",
-      founderHeading: "Run by a real person",
       incidentsHeading: "Incident policy",
       incidentsBody: "Logs are retained for 90 days. In case of a data breach, we notify affected users within 72 hours per GDPR Article 34."
     },

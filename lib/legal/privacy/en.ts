@@ -1,6 +1,5 @@
 import type { LegalSection } from "@/components/marketing/legal-doc-layout";
 import { LEGAL_ENTITY } from "@/lib/brand/legal";
-import { FOUNDER } from "@/lib/brand/founder";
 
 /**
  * Privacy Policy (EN). Convenience translation of the Polish Polityka
@@ -12,7 +11,7 @@ export const PRIVACY_SECTIONS_EN: ReadonlyArray<LegalSection> = [
     id: "administrator",
     title: "1. Data controller",
     content: `The controller of personal data processed in the tlumaczksef.pl service (the Service) is ${LEGAL_ENTITY.name}, NIP (tax id): ${LEGAL_ENTITY.nip}, REGON: ${LEGAL_ENTITY.regon}, address: ${LEGAL_ENTITY.address} (the Controller).
-For all matters concerning personal data you can contact us at: ${FOUNDER.contactEmail}.
+For all matters concerning personal data you can contact us at: ${LEGAL_ENTITY.contactEmail}.
 This policy fulfils the information obligations under art. 13 and 14 of Regulation (EU) 2016/679 (GDPR). This English text is a convenience translation; the Polish language version is the binding one.`
   },
   {
@@ -84,7 +83,7 @@ Files uploaded in the demo are subject to the same rules as files uploaded from 
 4. restrict processing (art. 18 GDPR),
 5. data portability (art. 20 GDPR); a JSON export of Account data is available in the Account settings,
 6. object to processing based on legitimate interest (art. 21 GDPR).
-To exercise these rights, write to: ${FOUNDER.contactEmail}. We respond without undue delay, at the latest within one month.
+To exercise these rights, write to: ${LEGAL_ENTITY.contactEmail}. We respond without undue delay, at the latest within one month.
 You also have the right to lodge a complaint with the supervisory authority: the President of the Personal Data Protection Office (Prezes Urzędu Ochrony Danych Osobowych), ul. Stawki 2, 00-193 Warszawa, uodo.gov.pl.`
   },
   {

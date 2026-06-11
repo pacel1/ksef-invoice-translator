@@ -1,6 +1,5 @@
 import type { LegalSection } from "@/components/marketing/legal-doc-layout";
 import { LEGAL_ENTITY } from "@/lib/brand/legal";
-import { FOUNDER } from "@/lib/brand/founder";
 
 /**
  * Polityka Prywatności (PL). Binding version. Administrator identity and
@@ -14,7 +13,7 @@ export const PRIVACY_SECTIONS_PL: ReadonlyArray<LegalSection> = [
     id: "administrator",
     title: "1. Administrator danych",
     content: `Administratorem danych osobowych przetwarzanych w serwisie tlumaczksef.pl (dalej: Serwis) jest ${LEGAL_ENTITY.name}, NIP: ${LEGAL_ENTITY.nip}, REGON: ${LEGAL_ENTITY.regon}, adres: ${LEGAL_ENTITY.address} (dalej: Administrator).
-We wszystkich sprawach dotyczących danych osobowych można kontaktować się pod adresem e-mail: ${FOUNDER.contactEmail}.
+We wszystkich sprawach dotyczących danych osobowych można kontaktować się pod adresem e-mail: ${LEGAL_ENTITY.contactEmail}.
 Niniejsza polityka realizuje obowiązki informacyjne wynikające z art. 13 i 14 rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679 (RODO).`
   },
   {
@@ -86,7 +85,7 @@ Pliki przesłane w wersji demonstracyjnej podlegają tym samym zasadom co pliki 
 4. ograniczenia przetwarzania (art. 18 RODO),
 5. przenoszenia danych (art. 20 RODO); eksport danych Konta w formacie JSON jest dostępny w ustawieniach Konta,
 6. sprzeciwu wobec przetwarzania opartego na prawnie uzasadnionym interesie (art. 21 RODO).
-Aby skorzystać z tych praw, napisz na adres: ${FOUNDER.contactEmail}. Odpowiadamy bez zbędnej zwłoki, najpóźniej w ciągu miesiąca.
+Aby skorzystać z tych praw, napisz na adres: ${LEGAL_ENTITY.contactEmail}. Odpowiadamy bez zbędnej zwłoki, najpóźniej w ciągu miesiąca.
 Masz również prawo wniesienia skargi do organu nadzorczego: Prezesa Urzędu Ochrony Danych Osobowych, ul. Stawki 2, 00-193 Warszawa, uodo.gov.pl.`
   },
   {

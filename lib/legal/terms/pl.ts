@@ -1,6 +1,5 @@
 import type { LegalSection } from "@/components/marketing/legal-doc-layout";
 import { LEGAL_ENTITY } from "@/lib/brand/legal";
-import { FOUNDER } from "@/lib/brand/founder";
 
 /**
  * Regulamin (PL). Binding version of the terms of service.
@@ -13,7 +12,7 @@ export const TERMS_SECTIONS_PL: ReadonlyArray<LegalSection> = [
     title: "§ 1. Postanowienia ogólne",
     content: `1. Niniejszy Regulamin określa zasady świadczenia usług drogą elektroniczną za pośrednictwem serwisu internetowego tlumaczksef.pl (dalej: Serwis), zgodnie z art. 8 ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną.
 2. Usługodawcą i operatorem Serwisu jest ${LEGAL_ENTITY.name}, NIP: ${LEGAL_ENTITY.nip}, REGON: ${LEGAL_ENTITY.regon}, adres: ${LEGAL_ENTITY.address} (dalej: Usługodawca).
-3. Kontakt z Usługodawcą jest możliwy pod adresem e-mail: ${FOUNDER.contactEmail}.
+3. Kontakt z Usługodawcą jest możliwy pod adresem e-mail: ${LEGAL_ENTITY.contactEmail}.
 4. Regulamin jest udostępniany nieodpłatnie w Serwisie przed zawarciem umowy, w formie umożliwiającej jego pozyskanie, odtwarzanie, utrwalanie i wydrukowanie.
 5. Zasady przetwarzania danych osobowych opisuje Polityka Prywatności dostępna w Serwisie. Polityka Prywatności stanowi odrębny dokument informacyjny.`
   },
@@ -102,7 +101,7 @@ c) aktywny adres e-mail.
   {
     id: "reklamacje",
     title: "§ 10. Reklamacje",
-    content: `1. Reklamacje dotyczące działania Serwisu, w tym jakości Tłumaczeń i rozliczeń, można składać na adres e-mail: ${FOUNDER.contactEmail}.
+    content: `1. Reklamacje dotyczące działania Serwisu, w tym jakości Tłumaczeń i rozliczeń, można składać na adres e-mail: ${LEGAL_ENTITY.contactEmail}.
 2. Reklamacja powinna zawierać: adres e-mail przypisany do Konta, opis problemu oraz, w miarę możliwości, datę zdarzenia i identyfikator Tłumaczenia, którego dotyczy.
 3. Usługodawca rozpatruje reklamacje w terminie 14 dni od dnia ich otrzymania i udziela odpowiedzi na adres e-mail, z którego wysłano reklamację.
 4. W odniesieniu do Konsumentów oraz Przedsiębiorców na prawach konsumenta do odpowiedzialności za zgodność usługi cyfrowej z umową stosuje się przepisy rozdziału 5b ustawy z dnia 30 maja 2014 r. o prawach konsumenta. W przypadku niezgodności usługi z umową Użytkownik może żądać doprowadzenia do zgodności, a w dalszej kolejności złożyć oświadczenie o obniżeniu ceny albo odstąpieniu od umowy.`
