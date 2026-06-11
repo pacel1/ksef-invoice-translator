@@ -10,6 +10,7 @@ import {
   priceForPackage
 } from "@/lib/billing/pricing";
 import { AbuseCapError, assertWithinAbuseCaps } from "@/lib/billing/abuse-caps";
+import { captureServer } from "@/lib/analytics/server";
 
 export const runtime = "nodejs";
 
@@ -103,6 +104,17 @@ export async function POST(request: NextRequest) {
       .from("stripe_purchases")
       .update({ stripe_checkout_session_id: session.id })
       .eq("id", pending.data.id);
+
+    captureServer({
+      distinctId: userData.user.id,
+      event: "checkout_session_created",
+      properties: {
+        package_size: packageSize,
+        total_amount_cents: quote.totalAmountCents,
+        currency: quote.currency,
+        stripe_session_id: session.id
+      }
+    });
 
     return NextResponse.json({ url: session.url });
   } catch (error) {

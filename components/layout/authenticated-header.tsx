@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BrandLockup } from "@/components/brand/brand-lockup";
+import { SignOutButton } from "@/components/layout/sign-out-button";
 
 export interface AuthenticatedHeaderLabels {
   workspace: string;
@@ -42,12 +43,7 @@ export function AuthenticatedHeader({
             {email}
           </Link>
           <form action={signOutAction}>
-            <button
-              type="submit"
-              className="rounded-md px-3 py-2 text-small text-text hover:bg-surface-muted"
-            >
-              {labels.signOut}
-            </button>
+            <SignOutButton label={labels.signOut} />
           </form>
         </nav>
       </div>

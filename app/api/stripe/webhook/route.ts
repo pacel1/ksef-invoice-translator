@@ -6,6 +6,7 @@ import { buildIfirmaFaktura } from "@/lib/billing/build-ifirma-faktura";
 import { issueFaktura, sendToKsef } from "@/lib/billing/ifirma";
 import { sendPaymentConfirmationEmail } from "@/lib/billing/payment-confirmation-email";
 import { createResendSendFn } from "@/lib/email/resend-sender";
+import { captureServer } from "@/lib/analytics/server";
 
 export const runtime = "nodejs";
 
@@ -278,6 +279,22 @@ async function handleCheckoutCompleted(
     throw new Error("grant_paid_credits failed");
   }
 
+  // Revenue-truth event. Placed after the irreversible credit grant: if a
+  // later step throws and the route 500s, after() still flushes this event
+  // (it fires on response close, not on 2xx), and Stripe's retry is skipped
+  // by the status === "paid" idempotency guard above — so the event is
+  // exactly-once across delivery attempts. Keep it after the grant.
+  captureServer({
+    distinctId: purchase.data.user_id,
+    event: "payment_completed",
+    properties: {
+      package_size: purchase.data.package_size,
+      total_amount_cents: purchase.data.total_amount_cents,
+      currency: purchase.data.currency,
+      stripe_session_id: session.id
+    }
+  });
+
   await trySendPaymentConfirmationEmail(admin, session, {
     userId: purchase.data.user_id,
     packageSize: purchase.data.package_size,
@@ -449,13 +466,21 @@ async function handleAsyncPaymentFailed(
     .update({ status: "failed" })
     .eq("stripe_checkout_session_id", session.id)
     .eq("status", "pending")
-    .select("id")
+    .select("id, user_id")
     .maybeSingle();
 
   if (purchase.data) {
     console.warn(
       `[webhook] delayed payment failed for session ${session.id} — purchase ${purchase.data.id} marked failed`
     );
+    captureServer({
+      distinctId: purchase.data.user_id,
+      event: "payment_failed",
+      properties: {
+        stripe_session_id: session.id,
+        purchase_id: purchase.data.id
+      }
+    });
   }
 }
 
@@ -522,6 +547,15 @@ async function handleChargeRefunded(
     console.error("[webhook] refund_paid_credits failed:", refund.error);
     throw new Error("refund_paid_credits failed");
   }
+
+  captureServer({
+    distinctId: purchase.data.user_id,
+    event: "payment_refunded",
+    properties: {
+      package_size: purchase.data.package_size,
+      stripe_charge_id: charge.id
+    }
+  });
 
   // Look up the original vat faktura to link the korekta.
   const original = await admin

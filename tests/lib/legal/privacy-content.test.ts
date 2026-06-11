@@ -50,6 +50,13 @@ describe("getPrivacySections", () => {
     }
   });
 
+  it("discloses PostHog as an analytics sub-processor in both locales", () => {
+    for (const locale of ["pl", "en"] as const) {
+      const all = getPrivacySections(locale).map((s) => s.content).join("\n");
+      expect(all).toContain("PostHog");
+    }
+  });
+
   it("states the real retention periods", () => {
     const all = getPrivacySections("pl").map((s) => s.content).join("\n");
     expect(all).toMatch(/30 dni/);

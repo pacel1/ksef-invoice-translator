@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Languages, Pencil, Plus } from "lucide-react";
+import { captureClient } from "@/lib/analytics/client";
 import { TranslationEditor } from "./translation-editor";
 import { TranslationProgress } from "./translation-progress";
 import type { Copy } from "@/lib/workspace/copy";
@@ -66,6 +67,12 @@ function DeliverySingle(props: DeliveryStepProps) {
       blob,
       `ksef-translation-${item.invoiceNumber || item.invoiceId}.pdf`
     );
+    captureClient("pdf_downloaded", {
+      invoice_id: item.invoiceId,
+      language,
+      bilingual,
+      context: "single"
+    });
   }, [api, item, language, bilingual]);
 
   if (!item) {
@@ -243,6 +250,12 @@ function DeliveryBatch(props: DeliveryStepProps) {
         blob,
         `ksef-translation-${it.invoiceNumber || it.invoiceId}.pdf`
       );
+      captureClient("pdf_downloaded", {
+        invoice_id: it.invoiceId,
+        language,
+        bilingual,
+        context: "batch_row"
+      });
     },
     [api, jobItems, language, bilingual]
   );
@@ -265,6 +278,11 @@ function DeliveryBatch(props: DeliveryStepProps) {
     const blob = await api.downloadZip(ids, language, bilingual);
     const stamp = new Date().toISOString().slice(0, 16).replace(/[-T:]/g, "").slice(0, 12);
     triggerBlobDownload(blob, `tlumaczenia-${stamp}.zip`);
+    captureClient("zip_downloaded", {
+      invoice_count: ids.length,
+      language,
+      bilingual
+    });
   }, [api, jobItems, language, bilingual]);
 
   return (

@@ -7,6 +7,8 @@ import type {
   WizardApi
 } from "./use-translation-wizard";
 import type { LanguageCode } from "@/types/invoice";
+import { getAnalyticsSessionId } from "@/lib/analytics/client";
+import { POSTHOG_SESSION_HEADER } from "@/lib/analytics/events";
 
 /**
  * Production WizardApi wiring.
@@ -86,9 +88,13 @@ export function createDefaultWizardApi(): WizardApi {
       bilingual: boolean,
       signal?: AbortSignal
     ): Promise<TranslateResult> {
+      const sessionId = getAnalyticsSessionId();
       const res = await fetch("/api/translate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionId ? { [POSTHOG_SESSION_HEADER]: sessionId } : {})
+        },
         body: JSON.stringify({ invoiceId, language, bilingual }),
         signal
       });

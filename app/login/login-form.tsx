@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Loader2, MailCheck } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { GoogleIcon } from "@/components/auth/google-icon";
+import { captureClient, captureClientError } from "@/lib/analytics/client";
 
 export interface LoginFormCopy {
   emailLabel: string;
@@ -34,6 +35,7 @@ export function LoginForm({ copy }: LoginFormProps) {
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus>("idle");
 
   async function signInWithGoogle() {
+    captureClient("google_signin_clicked", {});
     setGoogleStatus("pending");
     try {
       const supabase = createSupabaseBrowserClient();
@@ -43,14 +45,17 @@ export function LoginForm({ copy }: LoginFormProps) {
       });
       if (error) {
         setGoogleStatus("error");
+        captureClientError(error);
       }
       // On success the browser is being redirected to Google; stay pending.
-    } catch {
+    } catch (err) {
       setGoogleStatus("error");
+      captureClientError(err);
     }
   }
 
   async function submit(currentEmail: string) {
+    captureClient("login_submitted", { method: "email_otp" });
     setStatus("submitting");
     try {
       const supabase = createSupabaseBrowserClient();
@@ -61,11 +66,14 @@ export function LoginForm({ copy }: LoginFormProps) {
       });
       if (error) {
         setStatus(error.status === 429 ? "rate-limited" : "error");
+        captureClientError(error);
         return;
       }
+      captureClient("login_email_sent", { method: "email_otp" });
       setStatus("sent");
-    } catch {
+    } catch (err) {
       setStatus("error");
+      captureClientError(err);
     }
   }
 

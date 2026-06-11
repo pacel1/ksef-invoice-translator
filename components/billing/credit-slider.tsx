@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PACKAGE_SIZES } from "@/lib/billing/pricing";
+import { captureClient, captureClientError } from "@/lib/analytics/client";
 
 interface PriceQuote {
   packageSize: number;
@@ -67,6 +68,10 @@ export function CreditSlider({
   const ticks = useMemo(() => PACKAGE_SIZES.filter((n) => n % 25 === 0 || n === 5), []);
 
   async function onContinue() {
+    captureClient("checkout_initiated", {
+      package_size: size,
+      total_net_pln: quote ? Number((quote.totalAmountCents / 100).toFixed(2)) : undefined
+    });
     setCreating(true);
     setError(null);
     try {
@@ -83,6 +88,7 @@ export function CreditSlider({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Checkout failed");
       setCreating(false);
+      captureClientError(e);
     }
   }
 

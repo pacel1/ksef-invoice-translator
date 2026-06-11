@@ -48,6 +48,8 @@
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
     "pdfmake": "^0.3.8",
+    "posthog-js": "^1.386.3",
+    "posthog-node": "^5.36.17",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
