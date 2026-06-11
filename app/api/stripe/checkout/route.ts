@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getStripeClient } from "@/lib/billing/stripe-client";
+import { buildCheckoutSessionParams } from "@/lib/billing/checkout-session-params";
 import {
   InvalidPackageSizeError,
   isValidPackageSize,
@@ -29,6 +30,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid packageSize" }, { status: 400 });
   }
   const packageSize = parsed.data.packageSize;
+
+  // Fail fast before persisting anything — without the static VAT rate the
+  // session would charge net only and disagree with the iFirma faktura.
+  const taxRateId = process.env.STRIPE_TAX_RATE_ID;
+  if (!taxRateId || taxRateId.trim() === "") {
+    console.error("[api/stripe/checkout] STRIPE_TAX_RATE_ID is not configured");
+    return NextResponse.json({ error: "Checkout failed" }, { status: 500 });
+  }
 
   const admin = getSupabaseAdminClient();
 
@@ -78,52 +87,16 @@ export async function POST(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   try {
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      currency: quote.currency,
-      line_items: [
-        {
-          quantity: packageSize,
-          price_data: {
-            currency: quote.currency,
-            unit_amount: quote.unitPriceCents,
-            tax_behavior: "exclusive",
-            product_data: {
-              name: `KSeF Translator — ${packageSize} kredytów`,
-              description: "Pakiet kredytów na tłumaczenie faktur KSeF"
-            }
-          }
-        }
-      ],
-      automatic_tax: { enabled: true },
-      // B2B-only flow: customer MUST supply a tax ID (NIP or EU VAT).
-      // Stripe's tax-ID UI captures the legal business name alongside the ID.
-      // NOTE: Stripe SDK 22.1.1 only types `"if_supported" | "never"` for
-      // tax_id_collection.required; the API spec also accepts "always" but
-      // the SDK lags. Using "if_supported" keeps types green and is
-      // functionally equivalent in PL where pl_nip is always supported.
-      tax_id_collection: {
-        enabled: true,
-        required: "if_supported"
-      },
-      billing_address_collection: "required",
-      // We need a Stripe Customer object so customer_details.tax_ids land in a
-      // persistent place we can re-query from the webhook.
-      customer_creation: "always",
-      // We no longer rely on Stripe-issued invoices — iFirma issues the legal
-      // KSeF document. Removing `invoice_creation` saves the per-invoice Stripe
-      // fee (0.4%) and avoids confusing the customer with two PDFs.
-      customer_email: userData.user.email,
-      client_reference_id: pending.data.id,
-      success_url: `${appUrl}/billing?status=paid&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/billing?status=cancelled`,
-      metadata: {
-        purchase_id: pending.data.id,
-        user_id: userData.user.id,
-        package_size: String(packageSize)
-      }
-    });
+    const session = await stripe.checkout.sessions.create(
+      buildCheckoutSessionParams({
+        quote,
+        purchaseId: pending.data.id,
+        userId: userData.user.id,
+        userEmail: userData.user.email,
+        appUrl,
+        taxRateId
+      })
+    );
 
     // Replace the placeholder session id we used to satisfy the unique constraint.
     await admin

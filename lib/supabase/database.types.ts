@@ -295,6 +295,7 @@ export type Database = {
           credits_granted: number
           currency: string
           id: string
+          needs_manual_review: boolean
           package_size: number
           paid_at: string | null
           status: string
@@ -318,6 +319,7 @@ export type Database = {
           credits_granted?: number
           currency?: string
           id?: string
+          needs_manual_review?: boolean
           package_size: number
           paid_at?: string | null
           status: string
@@ -341,6 +343,7 @@ export type Database = {
           credits_granted?: number
           currency?: string
           id?: string
+          needs_manual_review?: boolean
           package_size?: number
           paid_at?: string | null
           status?: string

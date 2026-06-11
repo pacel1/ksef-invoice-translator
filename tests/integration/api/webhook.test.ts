@@ -116,6 +116,89 @@ describe("POST /api/stripe/webhook", () => {
     expect(bal?.paid_credits).toBe(size);
   });
 
+  it("flags the purchase for manual review when buyer identity is missing", async () => {
+    const { userId, sessionId, size } = await setupPurchase();
+    // No customer_details at all — extraction cannot recover a NIP, so the
+    // row must be durably flagged for the operator (credits still granted).
+    const payload = JSON.stringify({
+      id: `evt_${Date.now()}`,
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: sessionId,
+          object: "checkout.session",
+          payment_status: "paid",
+          metadata: { package_size: String(size), user_id: userId }
+        }
+      }
+    });
+    const sig = signStripePayload(payload, process.env.STRIPE_WEBHOOK_SECRET!);
+
+    const res = await fetch(`${APP}/api/stripe/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "stripe-signature": sig },
+      body: payload
+    });
+    expect(res.status).toBe(200);
+
+    const { data: row } = await admin
+      .from("stripe_purchases")
+      .select("status, needs_manual_review")
+      .eq("stripe_checkout_session_id", sessionId)
+      .single();
+    expect(row?.status).toBe("paid");
+    expect(row?.needs_manual_review).toBe(true);
+  });
+
+  it("persists buyer identity and does not flag complete B2B sessions", async () => {
+    const { userId, sessionId, size } = await setupPurchase();
+    const payload = JSON.stringify({
+      id: `evt_${Date.now()}`,
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: sessionId,
+          object: "checkout.session",
+          payment_status: "paid",
+          amount_total: 15344,
+          currency: "pln",
+          metadata: { package_size: String(size), user_id: userId },
+          customer_details: {
+            email: "ksiegowosc@example.test",
+            name: "Jan Kowalski",
+            business_name: "Testowa Spółka z o.o.",
+            tax_ids: [{ type: "pl_nip", value: "5260250274" }],
+            address: {
+              line1: "ul. Testowa 1",
+              line2: null,
+              postal_code: "00-001",
+              city: "Warszawa",
+              country: "PL"
+            }
+          }
+        }
+      }
+    });
+    const sig = signStripePayload(payload, process.env.STRIPE_WEBHOOK_SECRET!);
+
+    const res = await fetch(`${APP}/api/stripe/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "stripe-signature": sig },
+      body: payload
+    });
+    expect(res.status).toBe(200);
+
+    const { data: row } = await admin
+      .from("stripe_purchases")
+      .select("status, needs_manual_review, buyer_nip, buyer_business_name")
+      .eq("stripe_checkout_session_id", sessionId)
+      .single();
+    expect(row?.status).toBe("paid");
+    expect(row?.needs_manual_review).toBe(false);
+    expect(row?.buyer_nip).toBe("5260250274");
+    expect(row?.buyer_business_name).toBe("Testowa Spółka z o.o.");
+  });
+
   it("is idempotent — replaying the same event does not double-grant", async () => {
     const { userId, sessionId, size } = await setupPurchase();
     const payload = JSON.stringify({
