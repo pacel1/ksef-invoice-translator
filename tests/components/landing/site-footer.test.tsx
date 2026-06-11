@@ -22,6 +22,24 @@ describe("<SiteFooter>", () => {
     expect(screen.getByText(/GDPR compliant/i)).toBeInTheDocument();
   });
 
+  it("links FAQ to the FAQ page, not the landing section (TLU-16/17)", () => {
+    render(<SiteFooter locale="pl" />);
+    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/faq");
+  });
+
+  it("uses /en/faq on the EN locale", () => {
+    render(<SiteFooter locale="en" />);
+    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/en/faq");
+  });
+
+  it("links Kontakt to the contact page on both locales (TLU-14)", () => {
+    const { unmount } = render(<SiteFooter locale="pl" />);
+    expect(screen.getByRole("link", { name: "Kontakt" })).toHaveAttribute("href", "/contact");
+    unmount();
+    render(<SiteFooter locale="en" />);
+    expect(screen.getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/en/contact");
+  });
+
   it("gives footer links a visible focus ring (keyboard a11y on the dark footer)", () => {
     render(<SiteFooter locale="pl" />);
     expect(screen.getByRole("link", { name: "Cennik" }).className).toMatch(/focus-visible:ring-2/);

@@ -7,7 +7,7 @@ export interface BlogPostRef {
 }
 
 /** Public marketing paths that exist in both locales ("" = homepage). */
-const MARKETING_PATHS = ["", "blog", "faq", "pricing", "privacy", "security", "terms"] as const;
+const MARKETING_PATHS = ["", "blog", "contact", "faq", "pricing", "privacy", "security", "terms"] as const;
 
 function localePair(path: string): MetadataRoute.Sitemap[number] {
   const pl = path === "" ? `${SITE_URL}/` : `${SITE_URL}/${path}`;

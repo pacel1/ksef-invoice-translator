@@ -79,6 +79,23 @@ describe("<RecentInvoicesSidebarView>", () => {
     expect(screen.getByText(/Kontakt/i)).toBeInTheDocument();
   });
 
+  it("points the Contact link at the contact page (TLU-14)", () => {
+    render(<RecentInvoicesSidebarView invoices={[]} labels={baseLabels} />);
+    expect(screen.getByRole("link", { name: /Kontakt/i })).toHaveAttribute("href", "/contact");
+  });
+
+  it("localizes the Help and Contact links for EN users", () => {
+    render(
+      <RecentInvoicesSidebarView
+        invoices={[]}
+        labels={{ ...baseLabels, helpLabel: "Help", contactLabel: "Contact" }}
+        uiLanguage="en"
+      />
+    );
+    expect(screen.getByRole("link", { name: /Help/i })).toHaveAttribute("href", "/en/security");
+    expect(screen.getByRole("link", { name: /Contact/i })).toHaveAttribute("href", "/en/contact");
+  });
+
   it("omits invoice rows when invoices array is empty", () => {
     render(<RecentInvoicesSidebarView invoices={[]} labels={baseLabels} />);
     expect(screen.queryByText(/F\/24\//)).not.toBeInTheDocument();

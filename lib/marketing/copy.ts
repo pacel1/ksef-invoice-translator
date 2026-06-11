@@ -10,7 +10,7 @@ export const marketingCopy = {
       pricing: "Cennik",
       security: "Bezpieczeństwo",
       blog: "Blog",
-      faq: "Pomoc",
+      faq: "FAQ",
       login: "Zaloguj się",
       menuOpen: "Otwórz menu",
       menuClose: "Zamknij menu"
@@ -22,9 +22,8 @@ export const marketingCopy = {
         cennik: "Cennik",
         security: "Bezpieczeństwo",
         blog: "Blog",
-        faq: "Pomoc / FAQ",
-        history: "Historia",
-        help: "Pomoc"
+        faq: "FAQ",
+        contact: "Kontakt"
       },
       trust: {
         heading: "Zaufanie i prawo",
@@ -34,6 +33,22 @@ export const marketingCopy = {
         terms: "Regulamin",
         privacy: "Polityka prywatności"
       }
+    },
+    contact: {
+      heading: "Kontakt",
+      sub: "Masz pytanie o tłumaczenie faktur KSeF? Napisz do nas. Czytamy każdą wiadomość i odpowiadamy najszybciej, jak się da.",
+      nameLabel: "Imię i nazwisko (opcjonalnie)",
+      namePlaceholder: "Jan Kowalski",
+      emailLabel: "Twój adres email",
+      emailPlaceholder: "jan@firma.pl",
+      messageLabel: "Wiadomość",
+      messagePlaceholder: "Napisz, w czym możemy pomóc",
+      submit: "Wyślij wiadomość",
+      sending: "Wysyłanie...",
+      success: "Dziękujemy za wiadomość. Odpowiemy na podany adres email.",
+      error: "Nie udało się wysłać wiadomości. Napisz do nas bezpośrednio:",
+      rateLimited: "Dzienny limit wiadomości został osiągnięty. Spróbuj jutro albo napisz bezpośrednio:",
+      directLabel: "Wolisz zwykły email? Napisz na"
     },
     trustStrip: {
       label: "Zaufane technologie",
@@ -226,7 +241,7 @@ export const marketingCopy = {
       pricing: "Pricing",
       security: "Security",
       blog: "Blog",
-      faq: "Help",
+      faq: "FAQ",
       login: "Sign in",
       menuOpen: "Open menu",
       menuClose: "Close menu"
@@ -238,9 +253,8 @@ export const marketingCopy = {
         cennik: "Pricing",
         security: "Security",
         blog: "Blog",
-        faq: "Help / FAQ",
-        history: "History",
-        help: "Help"
+        faq: "FAQ",
+        contact: "Contact"
       },
       trust: {
         heading: "Trust & legal",
@@ -250,6 +264,22 @@ export const marketingCopy = {
         terms: "Terms",
         privacy: "Privacy policy"
       }
+    },
+    contact: {
+      heading: "Contact",
+      sub: "Questions about translating KSeF invoices? Write to us. We read every message and reply as fast as we can.",
+      nameLabel: "Name (optional)",
+      namePlaceholder: "Jane Doe",
+      emailLabel: "Your email address",
+      emailPlaceholder: "jane@company.com",
+      messageLabel: "Message",
+      messagePlaceholder: "Tell us how we can help",
+      submit: "Send message",
+      sending: "Sending...",
+      success: "Thank you for your message. We will reply to the email address you provided.",
+      error: "We could not send your message. Email us directly:",
+      rateLimited: "Daily message limit reached. Try again tomorrow or email us directly:",
+      directLabel: "Prefer plain email? Write to"
     },
     trustStrip: {
       label: "Trusted tech",

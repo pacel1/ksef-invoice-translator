@@ -13,6 +13,8 @@ export interface LegalFooterProps {
 export function LegalFooter({ locale = "pl", flush = false }: LegalFooterProps) {
   const t = marketingCopy[locale];
   const legalLine = formatLegalLine(locale, LEGAL_ENTITY);
+  // Marketing pages exist per locale (/pricing vs /en/pricing).
+  const path = (p: string) => (locale === "en" ? `/en${p}` : p);
 
   return (
     <footer className={`${flush ? "" : "mt-16 "}border-t border-border bg-surface-muted`}>
@@ -24,12 +26,11 @@ export function LegalFooter({ locale = "pl", flush = false }: LegalFooterProps) 
         <div className="space-y-3">
           <h3 className="text-micro uppercase tracking-wide text-text-muted">{t.footer.sitemap.heading}</h3>
           <ul className="space-y-2 text-small">
-            <li><Link href="/pricing" className="text-text hover:text-text-strong">{t.footer.sitemap.cennik}</Link></li>
-            <li><Link href="/security" className="text-text hover:text-text-strong">{t.footer.sitemap.security}</Link></li>
-            <li><Link href="/blog" className="text-text hover:text-text-strong">{t.footer.sitemap.blog}</Link></li>
-            <li><Link href="/faq" className="text-text hover:text-text-strong">{t.footer.sitemap.faq}</Link></li>
-            <li><Link href="/app/history" className="text-text hover:text-text-strong">{t.footer.sitemap.history}</Link></li>
-            <li><Link href="/security#kontakt" className="text-text hover:text-text-strong">{t.footer.sitemap.help}</Link></li>
+            <li><Link href={path("/pricing")} className="text-text hover:text-text-strong">{t.footer.sitemap.cennik}</Link></li>
+            <li><Link href={path("/security")} className="text-text hover:text-text-strong">{t.footer.sitemap.security}</Link></li>
+            <li><Link href={path("/blog")} className="text-text hover:text-text-strong">{t.footer.sitemap.blog}</Link></li>
+            <li><Link href={path("/faq")} className="text-text hover:text-text-strong">{t.footer.sitemap.faq}</Link></li>
+            <li><Link href={path("/contact")} className="text-text hover:text-text-strong">{t.footer.sitemap.contact}</Link></li>
           </ul>
         </div>
         <div className="space-y-3">
@@ -38,8 +39,8 @@ export function LegalFooter({ locale = "pl", flush = false }: LegalFooterProps) 
             <li className="text-text">{t.footer.trust.hosting}</li>
             <li className="text-text">{t.footer.trust.stripe}</li>
             <li className="text-text">{t.footer.trust.rodo}</li>
-            <li><Link href="/terms" className="text-text hover:text-text-strong">{t.footer.trust.terms}</Link></li>
-            <li><Link href="/privacy" className="text-text hover:text-text-strong">{t.footer.trust.privacy}</Link></li>
+            <li><Link href={path("/terms")} className="text-text hover:text-text-strong">{t.footer.trust.terms}</Link></li>
+            <li><Link href={path("/privacy")} className="text-text hover:text-text-strong">{t.footer.trust.privacy}</Link></li>
           </ul>
         </div>
       </div>
