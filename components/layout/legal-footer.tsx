@@ -5,14 +5,17 @@ import { formatLegalLine, marketingCopy, type MarketingLocale } from "@/lib/mark
 
 export interface LegalFooterProps {
   locale?: MarketingLocale;
+  /** Drop the default top margin — used by the workspace layout where the
+   * full-height sidebar should touch the footer with no gap. */
+  flush?: boolean;
 }
 
-export function LegalFooter({ locale = "pl" }: LegalFooterProps) {
+export function LegalFooter({ locale = "pl", flush = false }: LegalFooterProps) {
   const t = marketingCopy[locale];
   const legalLine = formatLegalLine(locale, LEGAL_ENTITY);
 
   return (
-    <footer className="mt-16 border-t border-border bg-surface-muted">
+    <footer className={`${flush ? "" : "mt-16 "}border-t border-border bg-surface-muted`}>
       <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 md:grid-cols-3 md:px-8">
         <div className="space-y-3">
           <BrandLockup size="md" />

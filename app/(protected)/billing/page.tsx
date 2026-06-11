@@ -43,7 +43,7 @@ export default async function BillingPage({
         ];
 
   return (
-    <section className="mx-auto max-w-3xl space-y-8">
+    <section className="mx-auto w-full max-w-3xl space-y-8">
       <div>
         <h1 className="text-h1 text-text-strong">{String(t.billingTitle)}</h1>
         <p className="mt-2 max-w-2xl text-body text-text-muted">{String(t.billingSubtitle)}</p>
