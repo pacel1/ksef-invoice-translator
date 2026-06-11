@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { sygnetDataUri } from "@/lib/brand/sygnet";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
@@ -6,23 +7,8 @@ export const contentType = "image/png";
 export default function AppleIcon() {
   return new ImageResponse(
     (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#635bff",
-          color: "white",
-          fontSize: 120,
-          fontWeight: 600,
-          fontFamily: "system-ui",
-          borderRadius: 32
-        }}
-      >
-        T
-      </div>
+      // eslint-disable-next-line @next/next/no-img-element -- ImageResponse renders off-DOM
+      <img src={sygnetDataUri()} width={size.width} height={size.height} alt="" />
     ),
     { ...size }
   );

@@ -17,7 +17,8 @@ export function SiteFooter({ locale }: SiteFooterProps) {
         <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-4">
           <div className="md:col-span-2">
             <div className="flex items-center gap-2.5 font-heading text-[16px] font-bold text-white">
-              <span className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-gradient-to-br from-brand to-iris text-[15px] text-white">T</span>
+              {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset, no optimization needed */}
+              <img src="/brand/sygnet.svg" alt="" className="h-7 w-7" />
               TłumaczKSeF
             </div>
             <p className="mt-3 max-w-xs font-dm text-[14px]">{t.tagline}</p>

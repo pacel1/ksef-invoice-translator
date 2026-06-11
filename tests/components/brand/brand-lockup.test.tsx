@@ -3,10 +3,13 @@ import { render, screen } from "@testing-library/react";
 import { BrandLockup } from "@/components/brand/brand-lockup";
 
 describe("<BrandLockup>", () => {
-  it("renders the bug + wordmark by default", () => {
+  it("renders the sygnet bug + wordmark by default", () => {
     render(<BrandLockup />);
     expect(screen.getByText("Tłumacz Faktur KSeF")).toBeInTheDocument();
-    expect(screen.getByText("T", { selector: "[data-brand-bug] *" })).toBeInTheDocument();
+    const bug = document.querySelector("[data-brand-bug]");
+    expect(bug).toBeInTheDocument();
+    expect(bug?.tagName).toBe("IMG");
+    expect(bug).toHaveAttribute("src", "/brand/sygnet.svg");
   });
 
   it("wraps the lockup in a link when href is provided", () => {
@@ -18,7 +21,7 @@ describe("<BrandLockup>", () => {
   it("renders bug only when variant='bug-only'", () => {
     render(<BrandLockup variant="bug-only" />);
     expect(screen.queryByText("Tłumacz Faktur KSeF")).not.toBeInTheDocument();
-    expect(screen.getByText("T", { selector: "[data-brand-bug] *" })).toBeInTheDocument();
+    expect(document.querySelector("[data-brand-bug]")).toHaveAttribute("src", "/brand/sygnet.svg");
   });
 
   it("applies size classes for sm | md | lg", () => {
