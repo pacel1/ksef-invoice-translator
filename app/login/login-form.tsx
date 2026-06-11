@@ -52,17 +52,21 @@ export function LoginForm({ copy }: LoginFormProps) {
 
   async function submit(currentEmail: string) {
     setStatus("submitting");
-    const supabase = createSupabaseBrowserClient();
-    const redirectTo = `${window.location.origin}/auth/callback`;
-    const { error } = await supabase.auth.signInWithOtp({
-      email: currentEmail,
-      options: { emailRedirectTo: redirectTo }
-    });
-    if (error) {
-      setStatus(error.status === 429 ? "rate-limited" : "error");
-      return;
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.signInWithOtp({
+        email: currentEmail,
+        options: { emailRedirectTo: redirectTo }
+      });
+      if (error) {
+        setStatus(error.status === 429 ? "rate-limited" : "error");
+        return;
+      }
+      setStatus("sent");
+    } catch {
+      setStatus("error");
     }
-    setStatus("sent");
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -105,7 +109,9 @@ export function LoginForm({ copy }: LoginFormProps) {
         {copy.googleButton}
       </button>
       {googleStatus === "error" ? (
-        <p className="text-small text-danger">{copy.googleError}</p>
+        <p role="alert" className="text-small text-danger">
+          {copy.googleError}
+        </p>
       ) : null}
       <div className="flex items-center gap-3 text-small text-text-muted">
         <span aria-hidden="true" className="h-px flex-1 bg-border" />
@@ -139,10 +145,14 @@ export function LoginForm({ copy }: LoginFormProps) {
           )}
         </button>
         {status === "error" ? (
-          <p className="text-small text-danger">{copy.errorGeneric}</p>
+          <p role="alert" className="text-small text-danger">
+            {copy.errorGeneric}
+          </p>
         ) : null}
         {status === "rate-limited" ? (
-          <p className="text-small text-danger">{copy.errorRateLimited}</p>
+          <p role="alert" className="text-small text-danger">
+            {copy.errorRateLimited}
+          </p>
         ) : null}
       </form>
     </div>

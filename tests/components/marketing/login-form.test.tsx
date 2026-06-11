@@ -74,7 +74,7 @@ describe("<LoginForm>", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Wyślij link logowania/i }));
     await waitFor(() => {
-      expect(screen.getByText(/Nie udało się wysłać linku/i)).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(/Nie udało się wysłać linku/i);
     });
   });
 
@@ -86,7 +86,7 @@ describe("<LoginForm>", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Wyślij link logowania/i }));
     await waitFor(() => {
-      expect(screen.getByText(/Za dużo prób/i)).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(/Za dużo prób/i);
     });
   });
 
@@ -119,7 +119,7 @@ describe("<LoginForm>", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Kontynuuj przez Google/i }));
     await waitFor(() => {
-      expect(screen.getByText(/Nie udało się połączyć z Google/i)).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(/Nie udało się połączyć z Google/i);
     });
 
     fireEvent.change(screen.getByLabelText(/Adres e-mail/i), {
@@ -138,7 +138,22 @@ describe("<LoginForm>", () => {
     const button = screen.getByRole("button", { name: /Kontynuuj przez Google/i });
     fireEvent.click(button);
     await waitFor(() => {
-      expect(screen.getByText(/Nie udało się połączyć z Google/i)).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(/Nie udało się połączyć z Google/i);
+    });
+    expect(button).not.toBeDisabled();
+  });
+
+  it("recovers to the error state when the OTP call rejects", async () => {
+    signInWithOtpMock.mockRejectedValue(new Error("network down"));
+    render(<LoginForm copy={baseCopy} />);
+
+    fireEvent.change(screen.getByLabelText(/Adres e-mail/i), {
+      target: { value: "test@firma.pl" }
+    });
+    const button = screen.getByRole("button", { name: /Wyślij link logowania/i });
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/Nie udało się wysłać linku/i);
     });
     expect(button).not.toBeDisabled();
   });
