@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk, DM_Sans } from "next/font/google";
+import { SITE_URL } from "@/lib/seo/site-url";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-inter" });
@@ -7,7 +8,7 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin", "latin-ext"], weight: ["
 const dmSans = DM_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600", "700"], display: "swap", variable: "--font-dm-sans" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ksef-invoice-translator.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "KSeF Invoice Translator | Tłumacz faktur KSeF FA(3) XML i PDF",
     template: "%s | KSeF Invoice Translator"
@@ -32,9 +33,6 @@ export const metadata: Metadata = {
   authors: [{ name: "KSeF Invoice Translator" }],
   creator: "KSeF Invoice Translator",
   publisher: "KSeF Invoice Translator",
-  alternates: {
-    canonical: "/"
-  },
   openGraph: {
     title: "KSeF Invoice Translator | Tłumacz faktur KSeF FA(3) XML i PDF",
     description:

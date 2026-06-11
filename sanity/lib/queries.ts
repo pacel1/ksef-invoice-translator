@@ -21,6 +21,11 @@ export const POST_BY_SLUG_QUERY = `*[_type == "post" && slug.current == $slug][0
 
 export const ALL_SLUGS_QUERY = `*[_type == "post"] { "slug": slug.current }`;
 
+export const SITEMAP_POSTS_QUERY = `*[_type == "post" && defined(slug.current)] {
+  "slug": slug.current,
+  publishedAt
+}`;
+
 export const ALL_FAQ_ITEMS_QUERY = `*[_type == "faqItem"] | order(order asc) {
   _id,
   question,
