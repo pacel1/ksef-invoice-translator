@@ -40,8 +40,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           signOut: String(t.signOut)
         }}
       />
-      <div className="mx-auto w-full max-w-7xl flex-1 px-5 py-8 md:px-8">{children}</div>
-      <LegalFooter locale={uiLanguage} />
+      {/* flex-col so full-height pages (the /translate sidebar shell) can
+          stretch to the footer via flex-1; other pages keep height: auto. */}
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-5 py-8 md:px-8">{children}</div>
+      <LegalFooter locale={uiLanguage} flush />
       <CreditPurchaseDrawer
         sliderLabels={{
           pickPackageLabel: String(t.pickPackage),

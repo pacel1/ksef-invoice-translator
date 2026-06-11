@@ -75,7 +75,7 @@ export function CollapsibleSidebar({
   }
 
   return (
-    <div className="relative hidden md:block">
+    <div className="relative hidden md:flex">
       {collapsed ? (
         <CollapsedRail labels={labels} />
       ) : (

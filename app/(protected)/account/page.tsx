@@ -20,7 +20,7 @@ export default async function AccountPage() {
   const t = copy[uiLanguage];
 
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
+    <section className="mx-auto w-full max-w-3xl space-y-6">
       <h1 className="text-h1 text-text-strong">{String(t.accountTitle)}</h1>
 
       <ProfileSection
