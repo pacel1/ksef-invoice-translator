@@ -454,7 +454,8 @@ secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 # https://<project-ref>.supabase.co/auth/v1/callback automatically.
 redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
 # If local Google sign-in fails with a nonce mismatch, set to true locally
-# only. Never push skip_nonce_check = true to the hosted project.
+# only. Never push skip_nonce_check = true to the hosted project; the
+# nonce check prevents ID token replay.
 skip_nonce_check = false
 ```
 
