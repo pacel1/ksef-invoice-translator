@@ -107,7 +107,7 @@ Niepodanie tych danych uniemożliwia odpowiednio: założenie Konta, dokonanie z
 2. analityczne: anonimowe statystyki korzystania z Serwisu; uruchamiane wyłącznie po wyrażeniu zgody,
 3. marketingowe: cookies usługi Google Ads (Google Ireland Limited), służące do pomiaru skuteczności reklam; uruchamiane wyłącznie po wyrażeniu zgody.
 Zgodę można wyrazić lub odmówić jej wyrażenia w banerze cookies wyświetlanym przy pierwszej wizycie. Wybór można zmienić w każdej chwili przez link "Ustawienia cookies" w stopce Serwisu. Wycofanie zgody jest równie łatwe jak jej wyrażenie i nie wpływa na zgodność z prawem przetwarzania dokonanego przed wycofaniem.
-Podstawą prawną przetwarzania danych w związku z cookies analitycznymi i marketingowymi jest zgoda (art. 6 ust. 1 lit. a RODO). Dopóki zgoda nie zostanie wyrażona, skrypty analityczne i marketingowe nie są ładowane.
+Podstawą prawną przetwarzania danych w związku z cookies analitycznymi i marketingowymi jest zgoda (art. 6 ust. 1 lit. a RODO). Dopóki zgoda nie zostanie wyrażona, tag Google działa w trybie zgody (Google Consent Mode) z wszystkimi sygnałami ustawionymi na odmowę: nie zapisuje żadnych cookies, a dane o kliknięciach reklam są redagowane.
 Pliki cookies można też usuwać i blokować w ustawieniach przeglądarki, przy czym zablokowanie cookies niezbędnych uniemożliwi zalogowanie do Serwisu.`
   },
   {
