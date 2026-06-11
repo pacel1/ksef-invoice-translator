@@ -58,9 +58,18 @@ export function TranslatorWizard({
   // Reviewer-name hard block: if MF-required first/last name is missing
   // when the user clicks Translate, open the modal and stash the action
   // so we can resume it the moment the name lands in the database.
-  const [reviewerSatisfied, setReviewerSatisfied] = useState(
-    Boolean(reviewer?.firstName?.trim() && reviewer?.lastName?.trim())
+  //
+  // Derived from the prop on every render (not snapshotted into state at
+  // mount): when a brand-new user saves their name through the layout's
+  // soft onboarding modal, updateProfile → revalidatePath("/translate")
+  // refreshes this prop on the already-mounted wizard, and the first
+  // Translate click must not re-prompt. `reviewerSavedHere` covers the
+  // wizard's own modal, whose save lands before the prop refresh.
+  const reviewerOnFile = Boolean(
+    reviewer?.firstName?.trim() && reviewer?.lastName?.trim()
   );
+  const [reviewerSavedHere, setReviewerSavedHere] = useState(false);
+  const reviewerSatisfied = reviewerOnFile || reviewerSavedHere;
   const [nameModalOpen, setNameModalOpen] = useState(false);
   const retryAfterSaveRef = useRef<null | (() => void)>(null);
 
@@ -76,7 +85,7 @@ export function TranslatorWizard({
   }, [reviewerSatisfied, wizard]);
 
   function handleNameSaved() {
-    setReviewerSatisfied(true);
+    setReviewerSavedHere(true);
     const retry = retryAfterSaveRef.current;
     retryAfterSaveRef.current = null;
     if (retry) retry();
