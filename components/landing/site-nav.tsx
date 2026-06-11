@@ -12,7 +12,8 @@ export function SiteNav({ locale }: SiteNavProps) {
     <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3.5 md:px-8">
         <Link href={locale === "en" ? "/en" : "/"} className="flex items-center gap-2.5 rounded-[9px] font-heading text-[17px] font-bold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-gradient-to-br from-brand to-iris text-[15px] font-bold text-white">T</span>
+          {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset, no optimization needed */}
+          <img src="/brand/sygnet.svg" alt="" className="h-7 w-7" />
           TłumaczKSeF
         </Link>
 

@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { sygnetDataUri } from "@/lib/brand/sygnet";
 
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
@@ -6,23 +7,8 @@ export const contentType = "image/png";
 export default function Icon() {
   return new ImageResponse(
     (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#635bff",
-          color: "white",
-          fontSize: 22,
-          fontWeight: 600,
-          fontFamily: "system-ui",
-          borderRadius: 6
-        }}
-      >
-        T
-      </div>
+      // eslint-disable-next-line @next/next/no-img-element -- ImageResponse renders off-DOM
+      <img src={sygnetDataUri()} width={size.width} height={size.height} alt="" />
     ),
     { ...size }
   );

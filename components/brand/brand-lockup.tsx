@@ -12,9 +12,9 @@ export interface BrandLockupProps {
 }
 
 const BUG_SIZE: Record<BrandLockupSize, string> = {
-  sm: "h-6 w-6 text-[14px]",
-  md: "h-8 w-8 text-[18px]",
-  lg: "h-10 w-10 text-[22px]"
+  sm: "h-6 w-6",
+  md: "h-8 w-8",
+  lg: "h-10 w-10"
 };
 
 const WORDMARK_SIZE: Record<BrandLockupSize, string> = {
@@ -37,13 +37,13 @@ export function BrandLockup({
 }: BrandLockupProps) {
   const inner = (
     <span className={`inline-flex items-center ${GAP[size]} ${className}`}>
-      <span
+      {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset, no optimization needed */}
+      <img
         data-brand-bug
-        className={`inline-flex items-center justify-center rounded-md bg-accent font-semibold text-white ${BUG_SIZE[size]}`}
-        aria-hidden={variant === "full"}
-      >
-        <span>T</span>
-      </span>
+        src="/brand/sygnet.svg"
+        alt=""
+        className={BUG_SIZE[size]}
+      />
       {variant === "full" ? (
         <span className={`font-semibold tracking-tight text-text-strong ${WORDMARK_SIZE[size]}`}>
           Tłumacz Faktur KSeF
