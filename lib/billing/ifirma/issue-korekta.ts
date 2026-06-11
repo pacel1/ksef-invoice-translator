@@ -34,6 +34,11 @@ export async function issueKorekta(
     PowodKorekty: params.reason,
     Zaplacono: params.zaplacono,
     SposobZaplaty: params.sposobZaplaty,
+    // Automated e-invoice: nobody signs (BPO = bez podpisu odbiorcy).
+    RodzajPodpisuOdbiorcy: "BPO",
+    // The korekta is issued only after the refund completed, so the
+    // statutory correction conditions are met by construction.
+    SpelnionoWarunki: true,
     Pozycje: params.positions
   };
   const res = await ifirmaPost<IfirmaResponseEnvelope>(

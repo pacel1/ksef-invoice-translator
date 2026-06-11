@@ -57,12 +57,20 @@ export function buildIfirmaFaktura(row: PurchaseRow): IfirmaInvoiceRequest {
 
   return {
     Zaplacono: zaplacono,
+    // Card checkout is fully paid up front, so the amount shown on the
+    // document equals the gross paid.
+    ZaplaconoNaDokumencie: zaplacono,
     LiczOd: "NET",
     DataWystawienia: issueDate,
     DataSprzedazy: issueDate,
     FormatDatySprzedazy: "DZN",
     SposobZaplaty: "PRZ",
     NazwaSeriiNumeracji: "default",
+    // Automated e-invoice: nobody signs (BPO = bez podpisu odbiorcy).
+    RodzajPodpisuOdbiorcy: "BPO",
+    WidocznyNumerGios: false,
+    // null = iFirma auto-assigns the next number in the series.
+    Numer: null,
     Pozycje: [
       {
         StawkaVat: PL_VAT_RATE,

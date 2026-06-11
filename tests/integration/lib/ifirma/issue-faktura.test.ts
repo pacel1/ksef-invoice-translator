@@ -17,12 +17,16 @@ afterEach(() => {
 
 const sampleBody = {
   Zaplacono: 95.94,
+  ZaplaconoNaDokumencie: 95.94,
   LiczOd: "NET" as const,
   DataWystawienia: "2026-05-28",
   DataSprzedazy: "2026-05-28",
   FormatDatySprzedazy: "DZN" as const,
   SposobZaplaty: "PRZ",
   NazwaSeriiNumeracji: "default",
+  RodzajPodpisuOdbiorcy: "BPO" as const,
+  WidocznyNumerGios: false,
+  Numer: null,
   Pozycje: [
     {
       StawkaVat: 0.23,
