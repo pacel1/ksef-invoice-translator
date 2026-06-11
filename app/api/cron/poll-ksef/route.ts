@@ -20,12 +20,43 @@ const MAX_ATTEMPTS = 5;
 // transitions; 30s clears the same-invocation race yet stays far under the
 // 5-minute cron cadence.
 const JUST_ISSUED_GRACE_MS = 30_000;
+// A row a worker flipped to 'processing' as its issuance claim but that still has
+// no provider_invoice_id has not minted anything yet. If it stays that way past
+// this window the claiming worker crashed mid-issue, so it is safe to recover it
+// back to 'failed' for re-issue. The window must comfortably exceed one issue
+// round-trip so we never recover a row another worker is actively minting.
+const STRANDED_CLAIM_RECOVERY_MS = 5 * 60_000;
 
 interface ProcessedItem {
   ksef_invoice_id: string;
   action: "issued" | "polled" | "korekta_issued" | "skipped" | "failed";
   gov_status?: string;
   error?: string;
+}
+
+/**
+ * Atomically claim a row for issuance. Flips pending/failed -> processing only
+ * while provider_invoice_id is still null, returning whether THIS worker won.
+ * Two overlapping cron runs both select the same pending row, but Postgres
+ * serialises these guarded updates: the first transitions the row out of
+ * pending/failed and the second's WHERE no longer matches, so exactly one
+ * worker proceeds to mint the legal document. The attempt is counted here so a
+ * poison row that crashes before minting still exhausts its retry budget.
+ */
+async function claimRowForIssue(
+  admin: ReturnType<typeof getSupabaseAdminClient>,
+  rowId: string,
+  nextAttempt: number
+): Promise<boolean> {
+  const claim = await admin
+    .from("ksef_invoices")
+    .update({ gov_status: "processing", attempt_count: nextAttempt })
+    .eq("id", rowId)
+    .in("gov_status", ["pending", "failed"])
+    .is("provider_invoice_id", null)
+    .select("id")
+    .maybeSingle();
+  return Boolean(claim.data);
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -48,6 +79,20 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const admin = getSupabaseAdminClient();
   const processed: ProcessedItem[] = [];
+
+  // 0. Recover stranded claims. A previous run may have claimed a row
+  //    (pending/failed -> processing) and then crashed before it ever minted a
+  //    document, leaving it 'processing' with a null provider_invoice_id. Flip
+  //    those back to 'failed' so the pending pass re-claims them. The stale
+  //    window guarantees we never disturb a row another worker is mid-issue on.
+  const recoverBefore = new Date(Date.now() - STRANDED_CLAIM_RECOVERY_MS).toISOString();
+  await admin
+    .from("ksef_invoices")
+    .update({ gov_status: "failed", last_error: "recovered: issuance claim did not complete" })
+    .eq("gov_status", "processing")
+    .is("provider_invoice_id", null)
+    .lt("attempt_count", MAX_ATTEMPTS)
+    .lt("updated_at", recoverBefore);
 
   // 1. PENDING rows — try to issue them.
   const pending = await admin
@@ -80,15 +125,23 @@ export async function POST(request: Request): Promise<NextResponse> {
         // between create and send-to-KSeF, we resume here without duplicating
         // the create call.
         if (!providerInvoiceId) {
+          // Atomically claim before minting so two overlapping cron runs can't
+          // both issue this faktura (a duplicate legal document at KSeF).
+          const won = await claimRowForIssue(admin, row.id, row.attempt_count + 1);
+          if (!won) {
+            processed.push({
+              ksef_invoice_id: row.id,
+              action: "skipped",
+              error: "claimed by another worker"
+            });
+            continue;
+          }
           const body = buildIfirmaFaktura(purchase);
           const created = await issueFaktura(body);
           providerInvoiceId = created.providerInvoiceId;
           await admin
             .from("ksef_invoices")
-            .update({
-              provider_invoice_id: providerInvoiceId,
-              attempt_count: row.attempt_count + 1
-            })
+            .update({ provider_invoice_id: providerInvoiceId })
             .eq("id", row.id);
         }
 
@@ -98,8 +151,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           .from("ksef_invoices")
           .update({
             gov_status: "processing",
-            last_error: null,
-            attempt_count: row.attempt_count + 1
+            last_error: null
           })
           .eq("id", row.id);
 
@@ -146,26 +198,40 @@ export async function POST(request: Request): Promise<NextResponse> {
         continue;
       }
 
-      const built = buildIfirmaFaktura(purchase);
-      const korekta = await issueKorekta({
-        originalProviderInvoiceId: parent.data.provider_invoice_id,
-        reason: "ZWR_SPRZ_TOW",
-        issueDate: new Date().toISOString().slice(0, 10),
-        sposobZaplaty: "KOM",
-        zaplacono: 0,
-        // Full refund: corrected quantity 0 (everything returned). iFirma
-        // computes the delta from the original. Verify partial-refund
-        // semantics with live creds.
-        positions: built.Pozycje.map((p) => ({ ...p, Ilosc: 0 }))
-      });
-      await admin
-        .from("ksef_invoices")
-        .update({
-          provider_invoice_id: korekta.providerInvoiceId,
-          attempt_count: row.attempt_count + 1
-        })
-        .eq("id", row.id);
-      await sendToKsef(korekta.providerInvoiceId, { korekta: true });
+      // Mint the korekta only if we haven't already (resume after a crash
+      // between create and send-to-KSeF), and claim it atomically first so two
+      // overlapping runs can't both issue it (a duplicate correction at KSeF).
+      let korektaProviderId = row.provider_invoice_id as string | null;
+      if (!korektaProviderId) {
+        const wonKorekta = await claimRowForIssue(admin, row.id, row.attempt_count + 1);
+        if (!wonKorekta) {
+          processed.push({
+            ksef_invoice_id: row.id,
+            action: "skipped",
+            error: "claimed by another worker"
+          });
+          continue;
+        }
+
+        const built = buildIfirmaFaktura(purchase);
+        const korekta = await issueKorekta({
+          originalProviderInvoiceId: parent.data.provider_invoice_id,
+          reason: "ZWR_SPRZ_TOW",
+          issueDate: new Date().toISOString().slice(0, 10),
+          sposobZaplaty: "KOM",
+          zaplacono: 0,
+          // Full refund: corrected quantity 0 (everything returned). iFirma
+          // computes the delta from the original. Verify partial-refund
+          // semantics with live creds.
+          positions: built.Pozycje.map((p) => ({ ...p, Ilosc: 0 }))
+        });
+        korektaProviderId = korekta.providerInvoiceId;
+        await admin
+          .from("ksef_invoices")
+          .update({ provider_invoice_id: korektaProviderId })
+          .eq("id", row.id);
+      }
+      await sendToKsef(korektaProviderId, { korekta: true });
       await admin
         .from("ksef_invoices")
         .update({ gov_status: "processing", last_error: null })
