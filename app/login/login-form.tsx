@@ -26,9 +26,25 @@ export interface LoginFormProps {
 
 type Status = "idle" | "submitting" | "sent" | "error" | "rate-limited";
 
+type GoogleStatus = "idle" | "pending" | "error";
+
 export function LoginForm({ copy }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
+  const [googleStatus, setGoogleStatus] = useState<GoogleStatus>("idle");
+
+  async function signInWithGoogle() {
+    setGoogleStatus("pending");
+    const supabase = createSupabaseBrowserClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` }
+    });
+    if (error) {
+      setGoogleStatus("error");
+    }
+    // On success the browser is being redirected to Google; stay pending.
+  }
 
   async function submit(currentEmail: string) {
     setStatus("submitting");
@@ -73,9 +89,15 @@ export function LoginForm({ copy }: LoginFormProps) {
     <div className="flex flex-col gap-4">
       <button
         type="button"
+        onClick={signInWithGoogle}
+        disabled={googleStatus === "pending"}
         className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-small font-semibold text-text-strong shadow-sm transition-colors duration-hover ease-out hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <GoogleIcon className="h-4 w-4" />
+        {googleStatus === "pending" ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <GoogleIcon className="h-4 w-4" />
+        )}
         {copy.googleButton}
       </button>
       <div className="flex items-center gap-3 text-small text-text-muted">

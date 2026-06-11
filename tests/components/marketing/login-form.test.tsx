@@ -89,4 +89,26 @@ describe("<LoginForm>", () => {
       expect(screen.getByText(/Za dużo prób/i)).toBeInTheDocument();
     });
   });
+
+  it("starts Google OAuth with the google provider and callback redirect", async () => {
+    signInWithOAuthMock.mockResolvedValue({ error: null });
+    render(<LoginForm copy={baseCopy} />);
+    fireEvent.click(screen.getByRole("button", { name: /Kontynuuj przez Google/i }));
+    await waitFor(() => {
+      expect(signInWithOAuthMock).toHaveBeenCalledTimes(1);
+    });
+    const args = signInWithOAuthMock.mock.calls[0][0];
+    expect(args.provider).toBe("google");
+    expect(args.options.redirectTo).toBe(`${window.location.origin}/auth/callback`);
+  });
+
+  it("disables the Google button while the OAuth call is pending", async () => {
+    signInWithOAuthMock.mockReturnValue(new Promise(() => {}));
+    render(<LoginForm copy={baseCopy} />);
+    const button = screen.getByRole("button", { name: /Kontynuuj przez Google/i });
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(button).toBeDisabled();
+    });
+  });
 });
