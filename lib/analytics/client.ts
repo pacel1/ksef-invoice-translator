@@ -24,6 +24,11 @@ export function captureClientError(error: unknown): void {
  * get cookie persistence under legitimate interest, disclosed in the
  * privacy policy. Safe to call on every render of the protected layout;
  * re-identification is skipped when the distinct id already matches.
+ *
+ * The skip-guard assumes instrumentation-client.ts derives the initial
+ * persistence from the stored consent choice: the distinct id can only
+ * already equal userId when persistence survived from a cookie, which is
+ * exactly when re-running set_config would be redundant.
  */
 export function identifyAuthenticatedUser(
   userId: string,
@@ -47,5 +52,6 @@ export function resetAnalyticsIdentity(): void {
 /** Session id for stitching client sessions onto server-side captures. */
 export function getAnalyticsSessionId(): string | undefined {
   if (typeof window === "undefined") return undefined;
-  return posthog.get_session_id();
+  const id = posthog.get_session_id();
+  return id || undefined;
 }

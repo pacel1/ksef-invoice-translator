@@ -89,4 +89,9 @@ describe("getAnalyticsSessionId", () => {
   it("returns the posthog session id", () => {
     expect(getAnalyticsSessionId()).toBe("sess-1");
   });
+
+  it("normalizes an empty session id to undefined", () => {
+    posthogMock.get_session_id.mockReturnValueOnce("");
+    expect(getAnalyticsSessionId()).toBeUndefined();
+  });
 });
