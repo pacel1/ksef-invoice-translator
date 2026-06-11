@@ -46,6 +46,24 @@ export type Database = {
           },
         ]
       }
+      contact_usage: {
+        Row: {
+          day: string
+          ip_hash: string
+          message_count: number
+        }
+        Insert: {
+          day: string
+          ip_hash: string
+          message_count?: number
+        }
+        Update: {
+          day?: string
+          ip_hash?: string
+          message_count?: number
+        }
+        Relationships: []
+      }
       credit_ledger: {
         Row: {
           balance_free_after: number
@@ -417,6 +435,13 @@ export type Database = {
       grant_paid_credits: {
         Args: { p_amount: number; p_purchase: string; p_user: string }
         Returns: undefined
+      }
+      increment_contact_message: {
+        Args: { p_ip_hash: string }
+        Returns: {
+          global_count: number
+          ip_count: number
+        }[]
       }
       increment_demo_pdf: { Args: { p_ip_hash: string }; Returns: number }
       increment_demo_translate: {

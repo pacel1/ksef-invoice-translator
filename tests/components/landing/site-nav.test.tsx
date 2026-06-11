@@ -28,6 +28,22 @@ describe("<SiteNav>", () => {
     expect(screen.getAllByRole("link", { name: "Start free" })[0]).toHaveAttribute("href", "/login");
   });
 
+  it("links FAQ to the FAQ page, not the landing section (TLU-16)", () => {
+    render(<SiteNav locale="pl" />);
+    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/faq");
+  });
+
+  it("offers the same page destinations as the subpage header (TLU-17)", () => {
+    render(<SiteNav locale="pl" />);
+    expect(screen.getByRole("link", { name: "Blog" })).toHaveAttribute("href", "/blog");
+  });
+
+  it("uses /en-prefixed page links on the EN locale", () => {
+    render(<SiteNav locale="en" />);
+    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/en/faq");
+    expect(screen.getByRole("link", { name: "Blog" })).toHaveAttribute("href", "/en/blog");
+  });
+
   it("gives the desktop nav links and CTA a visible focus ring (keyboard a11y)", () => {
     render(<SiteNav locale="pl" />);
     expect(screen.getByRole("link", { name: "Cennik" }).className).toMatch(/focus-visible:ring-2/);

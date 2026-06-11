@@ -132,7 +132,8 @@ export const landingCopy = {
         { href: "#jak-to-dziala", label: "Jak to działa" },
         { href: "/pricing", label: "Cennik" },
         { href: "/security", label: "Bezpieczeństwo" },
-        { href: "#faq", label: "FAQ" }
+        { href: "/blog", label: "Blog" },
+        { href: "/faq", label: "FAQ" }
       ] as NavLink[],
       cta: "Zacznij za darmo",
       menuOpen: "Otwórz menu",
@@ -150,8 +151,9 @@ export const landingCopy = {
       productLinks: [
         { href: "/pricing", label: "Cennik" },
         { href: "/security", label: "Bezpieczeństwo" },
-        { href: "#faq", label: "FAQ" },
-        { href: "/blog", label: "Blog" }
+        { href: "/blog", label: "Blog" },
+        { href: "/faq", label: "FAQ" },
+        { href: "/contact", label: "Kontakt" }
       ] as NavLink[],
       companyLinks: [
         { href: "/terms", label: "Regulamin" },
@@ -282,7 +284,8 @@ export const landingCopy = {
         { href: "#jak-to-dziala", label: "How it works" },
         { href: "/en/pricing", label: "Pricing" },
         { href: "/en/security", label: "Security" },
-        { href: "#faq", label: "FAQ" }
+        { href: "/en/blog", label: "Blog" },
+        { href: "/en/faq", label: "FAQ" }
       ] as NavLink[],
       cta: "Start free",
       menuOpen: "Open menu",
@@ -300,8 +303,9 @@ export const landingCopy = {
       productLinks: [
         { href: "/en/pricing", label: "Pricing" },
         { href: "/en/security", label: "Security" },
-        { href: "#faq", label: "FAQ" },
-        { href: "/en/blog", label: "Blog" }
+        { href: "/en/blog", label: "Blog" },
+        { href: "/en/faq", label: "FAQ" },
+        { href: "/en/contact", label: "Contact" }
       ] as NavLink[],
       companyLinks: [
         { href: "/en/terms", label: "Terms" },

@@ -35,7 +35,7 @@ const config: Config = {
         ring: "hsl(var(--accent))",
         foreground: "hsl(var(--text-strong))",
         background: "hsl(var(--surface))",
-        primary: { DEFAULT: "hsl(var(--accent))", foreground: "0 0% 100%" },
+        primary: { DEFAULT: "hsl(var(--accent))", foreground: "hsl(0 0% 100%)" },
         muted: { DEFAULT: "hsl(var(--surface-muted))", foreground: "hsl(var(--text-muted))" },
         // ---- Landing rebuild (bold modern SaaS), specs/2026-06-09. Collision-safe names. ----
         brand: { DEFAULT: "#4F46E5", hover: "#4338CA", soft: "#EEF0FF" },

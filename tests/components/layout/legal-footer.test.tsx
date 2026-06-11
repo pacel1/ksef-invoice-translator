@@ -34,6 +34,29 @@ describe("<LegalFooter>", () => {
     expect(screen.getByText(/GDPR-compliant/i)).toBeInTheDocument();
   });
 
+  it("aligns the sitemap with the landing footer: FAQ page link, no app-internal links (TLU-17)", () => {
+    render(<LegalFooter />);
+    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/faq");
+    expect(screen.queryByRole("link", { name: "Historia" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Pomoc" })).not.toBeInTheDocument();
+  });
+
+  it("links Kontakt to the contact page (TLU-14)", () => {
+    render(<LegalFooter />);
+    expect(screen.getByRole("link", { name: "Kontakt" })).toHaveAttribute("href", "/contact");
+  });
+
+  it("uses /en-prefixed hrefs on the EN locale (TLU-17)", () => {
+    render(<LegalFooter locale="en" />);
+    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute("href", "/en/pricing");
+    expect(screen.getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/en/contact");
+    expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/en/security");
+    expect(screen.getByRole("link", { name: "Blog" })).toHaveAttribute("href", "/en/blog");
+    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/en/faq");
+    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/en/terms");
+    expect(screen.getByRole("link", { name: "Privacy policy" })).toHaveAttribute("href", "/en/privacy");
+  });
+
   it("includes the Frankfurt hosting badge", () => {
     render(<LegalFooter />);
     expect(screen.getByText(/Frankfurt/i)).toBeInTheDocument();

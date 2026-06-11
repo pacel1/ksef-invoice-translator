@@ -11,7 +11,7 @@ describe("landingCopy", () => {
       expect(loc.nav.cta).toBeTruthy();
       expect(loc.nav.menuOpen).toBeTruthy();
       expect(loc.nav.menuClose).toBeTruthy();
-      expect(loc.nav.links).toHaveLength(4);
+      expect(loc.nav.links).toHaveLength(5);
       expect(loc.finalCta.heading).toBeTruthy();
       expect(loc.finalCta.cta).toBeTruthy();
       expect(loc.footer.legalNote).toBeTruthy();

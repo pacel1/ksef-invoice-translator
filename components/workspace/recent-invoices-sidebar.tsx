@@ -23,6 +23,7 @@ export interface RecentInvoicesSidebarLabels {
 export interface RecentInvoicesSidebarViewProps {
   invoices: InvoiceSummary[];
   labels: RecentInvoicesSidebarLabels;
+  uiLanguage?: "pl" | "en";
 }
 
 // Exported so tests pin this value. Three is enough for "just used" — the
@@ -78,7 +79,7 @@ export async function RecentInvoicesSidebar({
         expandLabel
       }}
     >
-      <RecentInvoicesSidebarView invoices={invoices} labels={labels} />
+      <RecentInvoicesSidebarView invoices={invoices} labels={labels} uiLanguage={uiLanguage} />
     </CollapsibleSidebar>
   );
 }
@@ -86,7 +87,13 @@ export async function RecentInvoicesSidebar({
 /**
  * Pure presentational sidebar. Exported separately for unit testing without a DB.
  */
-export function RecentInvoicesSidebarView({ invoices, labels }: RecentInvoicesSidebarViewProps) {
+export function RecentInvoicesSidebarView({
+  invoices,
+  labels,
+  uiLanguage = "pl"
+}: RecentInvoicesSidebarViewProps) {
+  // Marketing pages exist per locale (/security vs /en/security).
+  const path = (p: string) => (uiLanguage === "en" ? `/en${p}` : p);
   // Visibility (hidden md:flex) and width (w-60) live on this aside even
   // though the CollapsibleSidebar wraps it. When expanded, the wrapper
   // renders this aside directly; when collapsed, it renders an icon rail
@@ -144,11 +151,11 @@ export function RecentInvoicesSidebarView({ invoices, labels }: RecentInvoicesSi
       </div>
 
       <div className="mt-6 border-t border-border px-4 pt-4 space-y-2 text-small text-text-muted">
-        <Link href="/security" className="flex items-center gap-2 hover:text-text-strong">
+        <Link href={path("/security")} className="flex items-center gap-2 hover:text-text-strong">
           <HelpCircle className="h-4 w-4" aria-hidden="true" />
           {labels.helpLabel}
         </Link>
-        <Link href="/security#kontakt" className="flex items-center gap-2 hover:text-text-strong">
+        <Link href={path("/contact")} className="flex items-center gap-2 hover:text-text-strong">
           <Mail className="h-4 w-4" aria-hidden="true" />
           {labels.contactLabel}
         </Link>

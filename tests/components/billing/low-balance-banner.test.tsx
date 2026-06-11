@@ -44,6 +44,12 @@ describe("<LowBalanceBanner>", () => {
     window.dispatchEvent = original;
   });
 
+  it("keeps the buy-credits label on a single line (TLU-12)", () => {
+    render(<LowBalanceBanner {...baseProps} />);
+    const button = screen.getByRole("button", { name: /Buy credits/i });
+    expect(button.className).toContain("whitespace-nowrap");
+  });
+
   it("dismisses on close click and remembers via sessionStorage", () => {
     const { container, rerender } = render(<LowBalanceBanner {...baseProps} />);
     fireEvent.click(screen.getByRole("button", { name: /Close/i }));

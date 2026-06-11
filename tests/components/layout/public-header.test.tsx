@@ -27,4 +27,18 @@ describe("<PublicHeader>", () => {
     expect(screen.getByRole("link", { name: "Security" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
   });
+
+  it("labels the FAQ page link 'FAQ' to match the landing menu (TLU-17)", () => {
+    render(<PublicHeader />);
+    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/faq");
+  });
+
+  it("uses /en-prefixed hrefs on the EN locale (TLU-17)", () => {
+    render(<PublicHeader locale="en" />);
+    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute("href", "/en/pricing");
+    expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/en/security");
+    expect(screen.getByRole("link", { name: "Blog" })).toHaveAttribute("href", "/en/blog");
+    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/en/faq");
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
+  });
 });
