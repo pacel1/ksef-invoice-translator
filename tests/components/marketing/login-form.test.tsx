@@ -11,26 +11,38 @@ const baseCopy = {
   sentBodyPrefix: "Link logowania wysłany na",
   sentResend: "Wyślij ponownie",
   errorGeneric: "Nie udało się wysłać linku. Spróbuj ponownie.",
-  errorRateLimited: "Za dużo prób."
+  errorRateLimited: "Za dużo prób.",
+  googleButton: "Kontynuuj przez Google",
+  divider: "albo",
+  googleError: "Nie udało się połączyć z Google. Spróbuj ponownie albo użyj linku e-mail."
 };
 
 const signInWithOtpMock = vi.fn();
+const signInWithOAuthMock = vi.fn();
 
 vi.mock("@/lib/supabase/browser", () => ({
   createSupabaseBrowserClient: () => ({
-    auth: { signInWithOtp: signInWithOtpMock }
+    auth: { signInWithOtp: signInWithOtpMock, signInWithOAuth: signInWithOAuthMock }
   })
 }));
 
 beforeEach(() => {
   signInWithOtpMock.mockReset();
+  signInWithOAuthMock.mockReset();
 });
 
 afterEach(() => {
   signInWithOtpMock.mockReset();
+  signInWithOAuthMock.mockReset();
 });
 
 describe("<LoginForm>", () => {
+  it("renders the Google button and divider above the email form", () => {
+    render(<LoginForm copy={baseCopy} />);
+    expect(screen.getByRole("button", { name: /Kontynuuj przez Google/i })).toBeInTheDocument();
+    expect(screen.getByText("albo")).toBeInTheDocument();
+  });
+
   it("renders email input + submit button (idle state)", () => {
     render(<LoginForm copy={baseCopy} />);
     expect(screen.getByLabelText(/Adres e-mail/i)).toBeInTheDocument();
@@ -62,7 +74,7 @@ describe("<LoginForm>", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Wyślij link logowania/i }));
     await waitFor(() => {
-      expect(screen.getByText(/Nie udało się wysłać linku/i)).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(/Nie udało się wysłać linku/i);
     });
   });
 
@@ -74,7 +86,75 @@ describe("<LoginForm>", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Wyślij link logowania/i }));
     await waitFor(() => {
-      expect(screen.getByText(/Za dużo prób/i)).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(/Za dużo prób/i);
     });
+  });
+
+  it("starts Google OAuth with the google provider and callback redirect", async () => {
+    signInWithOAuthMock.mockResolvedValue({ error: null });
+    render(<LoginForm copy={baseCopy} />);
+    fireEvent.click(screen.getByRole("button", { name: /Kontynuuj przez Google/i }));
+    await waitFor(() => {
+      expect(signInWithOAuthMock).toHaveBeenCalledTimes(1);
+    });
+    const args = signInWithOAuthMock.mock.calls[0][0];
+    expect(args.provider).toBe("google");
+    expect(args.options.redirectTo).toBe(`${window.location.origin}/auth/callback`);
+  });
+
+  it("disables the Google button while the OAuth call is pending", async () => {
+    signInWithOAuthMock.mockReturnValue(new Promise(() => {}));
+    render(<LoginForm copy={baseCopy} />);
+    const button = screen.getByRole("button", { name: /Kontynuuj przez Google/i });
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(button).toBeDisabled();
+    });
+  });
+
+  it("shows the Google error and keeps the email form usable", async () => {
+    signInWithOAuthMock.mockResolvedValue({ error: { message: "boom", status: 500 } });
+    signInWithOtpMock.mockResolvedValue({ error: null });
+    render(<LoginForm copy={baseCopy} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Kontynuuj przez Google/i }));
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/Nie udało się połączyć z Google/i);
+    });
+
+    fireEvent.change(screen.getByLabelText(/Adres e-mail/i), {
+      target: { value: "test@firma.pl" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Wyślij link logowania/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Sprawdź skrzynkę/i)).toBeInTheDocument();
+    });
+  });
+
+  it("recovers to the error state when the OAuth call rejects", async () => {
+    signInWithOAuthMock.mockRejectedValue(new Error("network down"));
+    render(<LoginForm copy={baseCopy} />);
+
+    const button = screen.getByRole("button", { name: /Kontynuuj przez Google/i });
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/Nie udało się połączyć z Google/i);
+    });
+    expect(button).not.toBeDisabled();
+  });
+
+  it("recovers to the error state when the OTP call rejects", async () => {
+    signInWithOtpMock.mockRejectedValue(new Error("network down"));
+    render(<LoginForm copy={baseCopy} />);
+
+    fireEvent.change(screen.getByLabelText(/Adres e-mail/i), {
+      target: { value: "test@firma.pl" }
+    });
+    const button = screen.getByRole("button", { name: /Wyślij link logowania/i });
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/Nie udało się wysłać linku/i);
+    });
+    expect(button).not.toBeDisabled();
   });
 });

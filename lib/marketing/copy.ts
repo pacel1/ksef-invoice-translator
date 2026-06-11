@@ -182,7 +182,10 @@ export const marketingCopy = {
       },
       backToHome: "Wracam na stronę główną",
       errorGeneric: "Nie udało się wysłać linku. Spróbuj ponownie.",
-      errorRateLimited: "Za dużo prób. Odczekaj chwilę i spróbuj jeszcze raz."
+      errorRateLimited: "Za dużo prób. Odczekaj chwilę i spróbuj jeszcze raz.",
+      googleButton: "Kontynuuj przez Google",
+      divider: "albo",
+      googleError: "Nie udało się połączyć z Google. Spróbuj ponownie albo użyj linku e-mail."
     },
     blog: {
       heading: "Blog",
@@ -395,7 +398,10 @@ export const marketingCopy = {
       },
       backToHome: "Back to homepage",
       errorGeneric: "Failed to send the link. Please try again.",
-      errorRateLimited: "Too many attempts. Please wait a moment and try again."
+      errorRateLimited: "Too many attempts. Please wait a moment and try again.",
+      googleButton: "Continue with Google",
+      divider: "or",
+      googleError: "Could not connect to Google. Try again or use the email link."
     },
     blog: {
       heading: "Blog",

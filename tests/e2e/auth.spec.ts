@@ -50,3 +50,18 @@ base("logged-out visit to /app redirects to /login", async ({ page }) => {
   await page.goto("/app");
   await expect(page).toHaveURL(/\/login$/);
 });
+
+base("Google button redirects to the Supabase authorize endpoint", async ({ page }) => {
+  // Keep the test hermetic: never leave for Google, just capture the redirect.
+  await page.route(/\/auth\/v1\/authorize/, (route) =>
+    route.fulfill({ status: 200, contentType: "text/html", body: "ok" })
+  );
+
+  await page.goto("/login");
+  const authorizeRequest = page.waitForRequest(/\/auth\/v1\/authorize/);
+  await page.getByRole("button", { name: /Kontynuuj przez Google/i }).click();
+
+  const url = new URL((await authorizeRequest).url());
+  expect(url.searchParams.get("provider")).toBe("google");
+  expect(url.searchParams.get("redirect_to")).toMatch(/\/auth\/callback$/);
+});
