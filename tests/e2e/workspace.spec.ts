@@ -8,7 +8,7 @@ test("authenticated user can upload, translate, and download an invoice", async 
 
   // Trigger the upload and wait for the network response — deterministic, no text-match races.
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByText(/Wgraj KSeF FA\(3\) XML lub PDF/i).click();
+  await page.getByText(/Wgraj KSeF FA\(3\) XML/i).click();
   const chooser = await fileChooserPromise;
   const [uploadResponse] = await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/upload") && r.request().method() === "POST", { timeout: 30_000 }),

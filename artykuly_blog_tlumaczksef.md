@@ -272,7 +272,7 @@ Przy fakturach z KSeF lepiej zrobić to prościej. Wgrywasz dokument, wybierasz 
 
 Najpierw upewnij się, że faktura została wystawiona w KSeF i jest gotowa do przekazania kontrahentowi. Nie tłumacz wersji roboczej, jeśli dane mogą się jeszcze zmienić. Każda zmiana w fakturze źródłowej powinna znaleźć odzwierciedlenie w wersji wysyłanej odbiorcy.
 
-Możesz skorzystać z pliku XML albo z wizualizacji PDF, w zależności od tego, jaki format obsługuje narzędzie.
+Do tłumaczenia potrzebujesz pliku XML faktury, czyli ustrukturyzowanej wersji dokumentu pobranej z KSeF.
 
 ## Krok 2: Wgraj dokument do TłumaczKSeF.pl
 
