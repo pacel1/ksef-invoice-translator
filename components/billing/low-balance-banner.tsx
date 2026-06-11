@@ -84,7 +84,7 @@ export function LowBalanceBanner({
               window.dispatchEvent(new CustomEvent("open-credit-drawer"));
             }
           }}
-          className="inline-flex h-9 items-center rounded-md bg-amber-900 px-4 text-sm font-semibold text-white hover:bg-amber-950"
+          className="inline-flex h-9 items-center whitespace-nowrap rounded-md bg-amber-900 px-4 text-sm font-semibold text-white hover:bg-amber-950"
         >
           {buyLabel}
         </button>
