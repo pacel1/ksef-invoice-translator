@@ -71,6 +71,15 @@ describe("<InvoiceShowcase>", () => {
     expect(scan!.className).toContain("opacity-0");
   });
 
+  it("renders a real QR code in place of the decorative placeholder", () => {
+    mockMatchMedia(false);
+    const { container } = render(<InvoiceShowcase />);
+    const qrPath = container.querySelector("[data-showcase-qr] path");
+    expect(qrPath).not.toBeNull();
+    expect(qrPath!.getAttribute("d")).toMatch(/^M/);
+    expect(container.innerHTML).not.toContain("repeating-linear-gradient");
+  });
+
   it("pins the status to a stable layout so the strip height never depends on the language", () => {
     mockMatchMedia(false);
     render(<InvoiceShowcase />);
