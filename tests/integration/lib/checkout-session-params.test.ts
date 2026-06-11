@@ -50,7 +50,13 @@ describe("buildCheckoutSessionParams", () => {
     expect(params.billing_address_collection).toBe("required");
     expect(params.customer_creation).toBe("always");
     expect(params.mode).toBe("payment");
-    expect(params.payment_method_types).toEqual(["card"]);
+  });
+
+  it("leaves payment methods to the Stripe dashboard (no hardcoded list)", () => {
+    // Hardcoding payment_method_types makes Stripe ignore the dashboard's
+    // payment-method settings — BLIK/P24 enabled there would never show.
+    const params = buildCheckoutSessionParams(makeInput());
+    expect(params.payment_method_types).toBeUndefined();
   });
 
   it("wires purchase metadata, client reference and redirect URLs", () => {
