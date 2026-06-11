@@ -35,15 +35,19 @@ export function LoginForm({ copy }: LoginFormProps) {
 
   async function signInWithGoogle() {
     setGoogleStatus("pending");
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` }
-    });
-    if (error) {
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` }
+      });
+      if (error) {
+        setGoogleStatus("error");
+      }
+      // On success the browser is being redirected to Google; stay pending.
+    } catch {
       setGoogleStatus("error");
     }
-    // On success the browser is being redirected to Google; stay pending.
   }
 
   async function submit(currentEmail: string) {
@@ -100,6 +104,9 @@ export function LoginForm({ copy }: LoginFormProps) {
         )}
         {copy.googleButton}
       </button>
+      {googleStatus === "error" ? (
+        <p className="text-small text-danger">{copy.googleError}</p>
+      ) : null}
       <div className="flex items-center gap-3 text-small text-text-muted">
         <span aria-hidden="true" className="h-px flex-1 bg-border" />
         {copy.divider}
