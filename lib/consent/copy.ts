@@ -11,7 +11,9 @@ export interface ConsentCopy {
     acceptAll: string;
     rejectAll: string;
     settings: string;
+    privacyPrefix: string;
     privacyLinkLabel: string;
+    privacySuffix: string;
   };
   modal: {
     title: string;
@@ -33,11 +35,13 @@ export interface ConsentCopy {
 export const consentCopy: Record<ConsentLocale, ConsentCopy> = {
   pl: {
     banner: {
-      body: "Używamy plików cookies, aby serwis działał poprawnie, a za Twoją zgodą także do anonimowych statystyk i pomiaru skuteczności reklam. Szczegóły znajdziesz w polityce prywatności.",
+      body: "Używamy plików cookies, aby serwis działał poprawnie, a za Twoją zgodą także do anonimowych statystyk i pomiaru skuteczności reklam.",
       acceptAll: "Akceptuję wszystkie",
       rejectAll: "Odrzucam wszystkie",
       settings: "Ustawienia",
-      privacyLinkLabel: "polityce prywatności"
+      privacyPrefix: "Szczegóły znajdziesz w ",
+      privacyLinkLabel: "polityce prywatności",
+      privacySuffix: "."
     },
     modal: {
       title: "Ustawienia plików cookies",
@@ -66,11 +70,13 @@ export const consentCopy: Record<ConsentLocale, ConsentCopy> = {
   },
   en: {
     banner: {
-      body: "We use cookies to keep the service running and, with your consent, for anonymous usage statistics and ad performance measurement. See our privacy policy for details.",
+      body: "We use cookies to keep the service running and, with your consent, for anonymous usage statistics and ad performance measurement.",
       acceptAll: "Accept all",
       rejectAll: "Reject all",
       settings: "Settings",
-      privacyLinkLabel: "privacy policy"
+      privacyPrefix: "See our ",
+      privacyLinkLabel: "privacy policy",
+      privacySuffix: " for details."
     },
     modal: {
       title: "Cookie settings",
