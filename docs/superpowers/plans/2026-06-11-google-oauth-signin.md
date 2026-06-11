@@ -477,7 +477,7 @@ SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=
 - [ ] **Step 3: Verify the local stack still boots**
 
 Run: `npm run db:start` (or `supabase stop && supabase start` if already running)
-Expected: stack starts; at most a warning about the unset Google env vars. No errors.
+Expected: stack starts cleanly. With the provider disabled the CLI never evaluates the Google `env(...)` references, so unset vars produce no warning or error.
 
 - [ ] **Step 4: Commit**
 
