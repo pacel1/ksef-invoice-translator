@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { CookieBanner } from "./cookie-banner";
 import { ConsentSettingsModal } from "./consent-settings-modal";
 import { GoogleAdsTag } from "./google-ads-tag";
+import { PostHogConsentSync } from "@/components/analytics/posthog-consent-sync";
 import { localeFromPathname } from "@/lib/consent/locale";
 import { pushConsentUpdate } from "@/lib/consent/gtag";
 import { buildConsentCookie, createConsentState, readStoredConsent } from "@/lib/consent/storage";
@@ -99,6 +100,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
         />
       )}
       <GoogleAdsTag consent={consent} />
+      <PostHogConsentSync consent={consent} />
     </ConsentContext.Provider>
   );
 }

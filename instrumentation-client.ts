@@ -1,12 +1,13 @@
-// instrumentation-client.ts
 import posthog from "posthog-js";
-import { persistenceFor, readConsentChoice } from "@/lib/analytics/consent";
+import { analyticsPersistenceFromCookie } from "@/lib/analytics/consent";
 
-// Cookieless by default (spec §2): memory persistence until the visitor
-// accepts the consent prompt or logs in. Autocapture stays off because
-// invoice content renders in the DOM (spec §3).
-const consentChoice =
-  typeof window === "undefined" ? null : readConsentChoice(window.localStorage);
+// Cookieless by default: memory persistence unless the visitor accepted the
+// analytics category in the cookie banner (lib/consent). Autocapture stays
+// off because invoice content renders in the DOM.
+const persistence =
+  typeof document === "undefined"
+    ? "memory"
+    : analyticsPersistenceFromCookie(document.cookie);
 
 posthog.init(process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN!, {
   api_host: "/ingest",
@@ -14,6 +15,6 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN!, {
   defaults: "2026-01-30",
   capture_exceptions: true,
   autocapture: false,
-  persistence: persistenceFor(consentChoice),
+  persistence,
   debug: process.env.NODE_ENV === "development"
 });

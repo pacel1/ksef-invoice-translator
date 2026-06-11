@@ -21,11 +21,23 @@ import {
   identifyAuthenticatedUser,
   resetAnalyticsIdentity
 } from "@/lib/analytics/client";
-import { CONSENT_STORAGE_KEY } from "@/lib/analytics/consent";
+import { buildConsentCookie, createConsentState } from "@/lib/consent/storage";
+import { CONSENT_COOKIE_NAME } from "@/lib/consent/types";
+
+/** Writes the `name=value` segment a browser would expose via document.cookie. */
+function setConsentCookie(analytics: boolean, marketing: boolean) {
+  const state = createConsentState({ analytics, marketing }, new Date("2026-06-01T00:00:00.000Z"));
+  document.cookie = buildConsentCookie(state, false).split(";")[0];
+}
+
+function clearConsentCookie() {
+  document.cookie = `${CONSENT_COOKIE_NAME}=; Path=/; Max-Age=0`;
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
   window.localStorage.clear();
+  clearConsentCookie();
   posthogMock.get_distinct_id.mockReturnValue("anon-123");
 });
 
@@ -47,15 +59,13 @@ describe("captureClientError", () => {
 });
 
 describe("identifyAuthenticatedUser", () => {
-  it("upgrades persistence and identifies by user id", () => {
+  it("identifies by user id without touching persistence", () => {
     identifyAuthenticatedUser("user-1", { email: "a@b.pl", locale: "pl" });
-    expect(posthogMock.set_config).toHaveBeenCalledWith({
-      persistence: "localStorage+cookie"
-    });
     expect(posthogMock.identify).toHaveBeenCalledWith("user-1", {
       email: "a@b.pl",
       locale: "pl"
     });
+    expect(posthogMock.set_config).not.toHaveBeenCalled();
   });
 
   it("does nothing when the user is already identified", () => {
@@ -67,17 +77,14 @@ describe("identifyAuthenticatedUser", () => {
 });
 
 describe("resetAnalyticsIdentity", () => {
-  it("resets and returns to memory persistence without accepted consent", () => {
+  it("resets and returns to memory persistence without analytics consent", () => {
     resetAnalyticsIdentity();
     expect(posthogMock.reset).toHaveBeenCalled();
     expect(posthogMock.set_config).toHaveBeenCalledWith({ persistence: "memory" });
   });
 
-  it("keeps cookie persistence when consent was accepted", () => {
-    window.localStorage.setItem(
-      CONSENT_STORAGE_KEY,
-      JSON.stringify({ value: "accepted", at: "2026-06-01T00:00:00.000Z" })
-    );
+  it("keeps cookie persistence when the consent cookie granted analytics", () => {
+    setConsentCookie(true, false);
     resetAnalyticsIdentity();
     expect(posthogMock.set_config).toHaveBeenCalledWith({
       persistence: "localStorage+cookie"
