@@ -220,6 +220,60 @@ describe("<TranslatorWizard>", () => {
     ).toBeNull();
   });
 
+  it("does NOT open the hard-block modal when the reviewer name arrives via a prop refresh after mount", () => {
+    // Regression: a brand-new user mounts the wizard while first/last name
+    // are still NULL (the layout's soft onboarding modal is open on top).
+    // Saving the name there runs updateProfile → revalidatePath("/translate"),
+    // which re-renders the page and delivers a fresh `reviewer` prop to the
+    // already-mounted wizard. The first Translate click must honour that
+    // refreshed prop instead of the mount-time snapshot — otherwise the
+    // user gets prompted for their name a second time.
+    const initialState = {
+      step: "language" as const,
+      files: [
+        {
+          localId: "slot-1",
+          file: new File([], "f.xml", { type: "application/xml" }),
+          status: "ready" as const,
+          invoiceId: "inv-1",
+          invoiceNumber: "FA-1"
+        }
+      ],
+      language: "en" as const,
+      bilingual: false,
+      jobItems: []
+    };
+    const api = makeStubApi();
+    const { rerender } = render(
+      <TranslatorWizard
+        uiLanguage="pl"
+        initialBalance={5}
+        api={api}
+        reviewer={{ firstName: null, lastName: null }}
+        initialState={initialState}
+      />
+    );
+
+    // The soft onboarding modal saved the name; the RSC refresh hands the
+    // wizard an updated reviewer prop without remounting it.
+    rerender(
+      <TranslatorWizard
+        uiLanguage="pl"
+        initialBalance={5}
+        api={api}
+        reviewer={{ firstName: "Jan", lastName: "Kowalski" }}
+        initialState={initialState}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Tłumacz/i }));
+    expect(
+      screen.queryByRole("dialog", {
+        name: /Imię i nazwisko zatwierdzającego tłumaczenie/i
+      })
+    ).toBeNull();
+  });
+
   it("invokes onAfterReset when the user starts a new translation from delivery", () => {
     // Allows the client wrapper to clean a deep-link URL (?invoiceId=…) so
     // a subsequent re-mount cannot re-hydrate the wizard into the old

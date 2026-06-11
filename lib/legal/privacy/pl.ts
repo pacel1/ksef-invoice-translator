@@ -34,6 +34,7 @@ Niniejsza polityka realizuje obowiązki informacyjne wynikające z art. 13 i 14 
 2. Rozliczenia i księgowość: wystawianie faktur VAT, przesyłanie ich do Krajowego Systemu e-Faktur, przechowywanie dokumentacji księgowej. Podstawa: art. 6 ust. 1 lit. c RODO (obowiązek prawny wynikający z przepisów podatkowych i ustawy o rachunkowości).
 3. Bezpieczeństwo: prowadzenie logów, zapobieganie nadużyciom, ochrona przed botami, wykrywanie i obsługa incydentów. Podstawa: art. 6 ust. 1 lit. f RODO (prawnie uzasadniony interes Administratora polegający na zapewnieniu bezpieczeństwa usług).
 4. Obsługa zapytań, reklamacji oraz ustalenie, dochodzenie i obrona roszczeń. Podstawa: art. 6 ust. 1 lit. b oraz lit. f RODO.
+5. Pomiar skuteczności reklam i anonimowe statystyki odwiedzin: wyłącznie po wyrażeniu zgody przez baner cookies. Podstawa: art. 6 ust. 1 lit. a RODO (zgoda); zgodę można wycofać w każdej chwili.
 Nie wysyłamy komunikacji marketingowej bez odrębnej zgody. Wiadomości e-mail wysyłane przez Serwis mają charakter transakcyjny (link logowania, potwierdzenie zakupu, faktura, informacje o zmianach regulaminu).`
   },
   {
@@ -53,12 +54,13 @@ Dane z faktur przetwarzamy wyłącznie w celu wykonania tłumaczenia i wygenerow
 5. Resend: wysyłka wiadomości transakcyjnych (linki logowania, potwierdzenia); siedziba w USA, zawarta umowa powierzenia przetwarzania.
 6. iFirma: wystawianie faktur VAT za zakupy w Serwisie i przesyłanie ich do Krajowego Systemu e-Faktur; siedziba w Polsce.
 7. Cloudflare: weryfikacja antybotowa (Turnstile) chroniąca formularze Serwisu.
+8. Google (Google Ireland Limited): pomiar skuteczności reklam Google Ads, wyłącznie po wyrażeniu zgody na cookies marketingowe.
 Ponadto dane mogą być udostępniane organom publicznym, gdy obowiązek taki wynika z przepisów prawa, oraz Krajowemu Systemowi e-Faktur w zakresie faktur VAT dokumentujących zakupy w Serwisie. Nie sprzedajemy danych osobowych.`
   },
   {
     id: "transfery-poza-eog",
     title: "6. Przekazywanie danych poza EOG",
-    content: `Część naszych dostawców (OpenAI, Resend, Cloudflare) ma siedzibę w Stanach Zjednoczonych, co może wiązać się z przekazaniem danych poza Europejski Obszar Gospodarczy (EOG).
+    content: `Część naszych dostawców (OpenAI, Resend, Cloudflare, a w razie zgody na cookies marketingowe także Google) ma siedzibę w Stanach Zjednoczonych lub korzysta z infrastruktury w USA, co może wiązać się z przekazaniem danych poza Europejski Obszar Gospodarczy (EOG).
 Przekazania odbywają się na podstawie decyzji wykonawczej Komisji Europejskiej dotyczącej ram ochrony danych UE-USA (EU-US Data Privacy Framework) w odniesieniu do podmiotów certyfikowanych, a w pozostałym zakresie na podstawie standardowych klauzul umownych zatwierdzonych przez Komisję Europejską, wraz z dodatkowymi środkami ochrony.
 Kopię stosowanych zabezpieczeń można uzyskać, kontaktując się z nami pod adresem wskazanym w sekcji 1. Pliki faktur i tłumaczenia są przechowywane wyłącznie na serwerach w Unii Europejskiej; do OpenAI przekazywana jest treść faktury na czas wykonania tłumaczenia.`
   },
@@ -100,11 +102,13 @@ Niepodanie tych danych uniemożliwia odpowiednio: założenie Konta, dokonanie z
   {
     id: "cookies",
     title: "10. Pliki cookies",
-    content: `Serwis używa wyłącznie plików cookies niezbędnych do działania:
-1. cookies sesji logowania (Supabase Auth), utrzymujące zalogowanie użytkownika,
-2. cookies weryfikacji antybotowej (Cloudflare Turnstile), chroniące formularze przed nadużyciami.
-Nie używamy cookies analitycznych, reklamowych ani śledzących. Z tego powodu Serwis nie wyświetla banera zgody na cookies; cookies niezbędne do świadczenia usługi nie wymagają zgody zgodnie z przepisami ustawy Prawo komunikacji elektronicznej.
-Pliki cookies można usuwać i blokować w ustawieniach przeglądarki, przy czym zablokowanie cookies niezbędnych uniemożliwi zalogowanie do Serwisu.`
+    content: `Serwis używa plików cookies w trzech kategoriach:
+1. niezbędne: cookies sesji logowania (Supabase Auth), cookies weryfikacji antybotowej (Cloudflare Turnstile) oraz cookie zapamiętujące Twoją decyzję dotyczącą zgód; są zawsze aktywne, ponieważ bez nich Serwis nie może działać, i nie wymagają zgody zgodnie z przepisami ustawy Prawo komunikacji elektronicznej,
+2. analityczne: anonimowe statystyki korzystania z Serwisu; uruchamiane wyłącznie po wyrażeniu zgody,
+3. marketingowe: cookies usługi Google Ads (Google Ireland Limited), służące do pomiaru skuteczności reklam; uruchamiane wyłącznie po wyrażeniu zgody.
+Zgodę można wyrazić lub odmówić jej wyrażenia w banerze cookies wyświetlanym przy pierwszej wizycie. Wybór można zmienić w każdej chwili przez link "Ustawienia cookies" w stopce Serwisu. Wycofanie zgody jest równie łatwe jak jej wyrażenie i nie wpływa na zgodność z prawem przetwarzania dokonanego przed wycofaniem.
+Podstawą prawną przetwarzania danych w związku z cookies analitycznymi i marketingowymi jest zgoda (art. 6 ust. 1 lit. a RODO). Dopóki zgoda nie zostanie wyrażona, skrypty analityczne i marketingowe nie są ładowane.
+Pliki cookies można też usuwać i blokować w ustawieniach przeglądarki, przy czym zablokowanie cookies niezbędnych uniemożliwi zalogowanie do Serwisu.`
   },
   {
     id: "bezpieczenstwo",

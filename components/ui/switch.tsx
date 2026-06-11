@@ -5,19 +5,25 @@ import { cn } from "@/lib/utils";
 export function Switch({
   checked,
   onCheckedChange,
-  label
+  label,
+  disabled = false
 }: {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   label: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
-      className="inline-flex items-center gap-3 text-sm font-medium"
+      className={cn(
+        "inline-flex items-center gap-3 text-sm font-medium",
+        disabled && "cursor-not-allowed opacity-70"
+      )}
     >
       <span
         className={cn(

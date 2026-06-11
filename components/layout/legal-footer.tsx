@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandLockup } from "@/components/brand/brand-lockup";
+import { CookieSettingsButton } from "@/components/consent/cookie-settings-button";
 import { LEGAL_ENTITY } from "@/lib/brand/legal";
 import { formatLegalLine, marketingCopy, type MarketingLocale } from "@/lib/marketing/copy";
 
@@ -41,6 +42,7 @@ export function LegalFooter({ locale = "pl", flush = false }: LegalFooterProps) 
             <li className="text-text">{t.footer.trust.rodo}</li>
             <li><Link href={path("/terms")} className="text-text hover:text-text-strong">{t.footer.trust.terms}</Link></li>
             <li><Link href={path("/privacy")} className="text-text hover:text-text-strong">{t.footer.trust.privacy}</Link></li>
+            <li><CookieSettingsButton locale={locale} className="text-text hover:text-text-strong" /></li>
           </ul>
         </div>
       </div>

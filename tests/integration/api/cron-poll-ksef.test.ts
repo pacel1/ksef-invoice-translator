@@ -335,3 +335,64 @@ describe("/api/cron/poll-ksef retry-budget protection", () => {
     expect(actions).toContain("polled");
   });
 });
+
+describe("/api/cron/poll-ksef double-issue protection", () => {
+  // A row another worker has already claimed (flipped pending -> processing as
+  // its issuance claim) but not yet minted (provider_invoice_id null) must NOT
+  // be issued by this run: it is out of the pending pool, and the stranded-claim
+  // recovery leaves it alone while it is still fresh. This is the property that
+  // stops two overlapping cron runs from minting duplicate legal documents.
+  it("does not re-issue a row another worker just claimed", async () => {
+    const nowIso = new Date().toISOString();
+    h.seed("ksef_invoices", [
+      {
+        id: "row-claimed",
+        kind: "vat",
+        parent_id: null,
+        attempt_count: 1,
+        gov_status: "processing",
+        provider_invoice_id: null,
+        created_at: nowIso,
+        updated_at: nowIso,
+        stripe_purchase_id: "sp-claimed",
+        stripe_purchases: { id: "sp-claimed" }
+      }
+    ]);
+
+    const res = await POST(makeRequest("Bearer test-cron-secret"));
+    expect(res.status).toBe(200);
+
+    expect(h.issueFaktura).not.toHaveBeenCalled();
+    // Still 'processing' (untouched), not reverted or re-minted.
+    expect(h.store.tables["ksef_invoices"][0].gov_status).toBe("processing");
+    expect(h.store.tables["ksef_invoices"][0].provider_invoice_id).toBeNull();
+  });
+
+  // The flip side: a claim that crashed before minting (processing + null
+  // provider) and is now older than the recovery window is reclaimed and issued.
+  it("recovers and issues a stranded claim older than the recovery window", async () => {
+    const oldIso = new Date(Date.now() - 10 * 60_000).toISOString();
+    h.seed("ksef_invoices", [
+      {
+        id: "row-stranded",
+        kind: "vat",
+        parent_id: null,
+        attempt_count: 1,
+        gov_status: "processing",
+        provider_invoice_id: null,
+        created_at: oldIso,
+        updated_at: oldIso,
+        stripe_purchase_id: "sp-stranded",
+        stripe_purchases: { id: "sp-stranded" }
+      }
+    ]);
+
+    const res = await POST(makeRequest("Bearer test-cron-secret"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const actions = body.processed.map((p: { action: string }) => p.action);
+
+    expect(h.issueFaktura).toHaveBeenCalledTimes(1);
+    expect(actions).toContain("issued");
+  });
+});

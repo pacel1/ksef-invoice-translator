@@ -138,6 +138,17 @@ async function pdfFromInline(params: z.infer<typeof inlineRequestSchema>) {
   if (!language.ok) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
   }
+
+  // Require a session: rendering an arbitrary inline invoice (and the KSeF
+  // verification fetch it triggers) must not be drivable anonymously. The
+  // wizard renders via the authenticated { invoiceId } path; the demo lane
+  // has its own rate-limited /api/demo/pdf endpoint.
+  const supabase = await createSupabaseServerClient();
+  const { data: userData, error: authError } = await supabase.auth.getUser();
+  if (authError || !userData.user) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const invoice = invoiceSchema.parse(params.invoice);
   const translated = params.translated ?? language.translated;
   const bilingual = translated && params.bilingual !== false;

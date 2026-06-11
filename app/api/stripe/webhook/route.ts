@@ -32,6 +32,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  // Mode separation: once STRIPE_LIVE is flipped on for the production cutover,
+  // refuse test-mode events. They are forgeable with a Stripe test card, so a
+  // test webhook endpoint ever pointed at prod (or a secret mix-up) must not be
+  // able to grant real credits. Ack with 200 so Stripe does not retry.
+  if (process.env.STRIPE_LIVE === "true" && event.livemode !== true) {
+    console.error(`[webhook] ignoring non-livemode event ${event.id} while STRIPE_LIVE=true`);
+    return NextResponse.json({ received: true, ignored: "test-mode event in live mode" });
+  }
+
   const admin = getSupabaseAdminClient();
 
   try {
@@ -176,6 +185,35 @@ async function handleCheckoutCompleted(
 
   if (purchase.data.status === "paid") {
     return; // Idempotent — already processed.
+  }
+
+  // Verify the customer actually paid what we quoted before granting. Credits
+  // are driven by the server-stored package_size, so this is the defense layer
+  // that catches an underpayment introduced by a future coupon/partial-capture
+  // flow or a price-tier regression. Stripe always sends amount_subtotal (the
+  // pre-tax line total, which equals our net total_amount_cents — VAT is added
+  // on top via the static tax rate) and currency on a completed session; when
+  // present they must match, with no discount applied. On mismatch we flag the
+  // row for an operator and do NOT grant.
+  if (session.amount_subtotal != null) {
+    const discount = session.total_details?.amount_discount ?? 0;
+    const currencyOk =
+      (session.currency ?? "").toLowerCase() === (purchase.data.currency ?? "pln").toLowerCase();
+    const amountOk =
+      session.amount_subtotal === purchase.data.total_amount_cents && discount === 0 && currencyOk;
+    if (!amountOk) {
+      console.error(
+        `[webhook] amount mismatch on session ${session.id}: subtotal=${session.amount_subtotal} ` +
+          `expected=${purchase.data.total_amount_cents} discount=${discount} currency=${session.currency} ` +
+          `— flagging for review, not granting`
+      );
+      await admin
+        .from("stripe_purchases")
+        .update({ needs_manual_review: true })
+        .eq("id", purchase.data.id)
+        .eq("status", "pending");
+      return;
+    }
   }
 
   // Extract buyer identity BEFORE granting credits. If extraction fails we
@@ -469,6 +507,25 @@ async function handleChargeRefunded(
 
   if (purchase.data.status === "refunded") {
     return; // Idempotent.
+  }
+
+  // Only auto-revoke the full package on a FULL refund. A partial refund (e.g.
+  // a goodwill gesture) must not silently claw back every credit, nor can we
+  // infer the correct proportion safely — flag it for an operator instead.
+  const fullyRefunded =
+    charge.refunded === true &&
+    typeof charge.amount === "number" &&
+    charge.amount_refunded === charge.amount;
+  if (!fullyRefunded) {
+    console.warn(
+      `[webhook] partial refund on charge ${charge.id} ` +
+        `(${charge.amount_refunded}/${charge.amount}) — flagging for review, not auto-revoking`
+    );
+    await admin
+      .from("stripe_purchases")
+      .update({ needs_manual_review: true })
+      .eq("id", purchase.data.id);
+    return;
   }
 
   const update = await admin

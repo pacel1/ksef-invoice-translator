@@ -32,6 +32,7 @@ This policy fulfils the information obligations under art. 13 and 14 of Regulati
 2. Billing and accounting: issuing VAT invoices, submitting them to the National e-Invoicing System (KSeF), retaining accounting records. Basis: art. 6(1)(c) GDPR (legal obligation under Polish tax and accounting law).
 3. Security: keeping logs, preventing abuse, bot protection, detecting and handling incidents. Basis: art. 6(1)(f) GDPR (the Controller's legitimate interest in keeping the services secure).
 4. Handling enquiries and complaints, and establishing, pursuing, and defending claims. Basis: art. 6(1)(b) and (f) GDPR.
+5. Measuring ad performance and anonymous visit statistics: only after you give consent via the cookie banner. Basis: art. 6(1)(a) GDPR (consent); consent can be withdrawn at any time.
 We do not send marketing communications without separate consent. Emails sent by the Service are transactional (sign-in link, purchase confirmation, invoice, notices of changes to the terms).`
   },
   {
@@ -51,12 +52,13 @@ We process invoice data solely to perform the translation and generate the PDF d
 5. Resend: transactional email delivery (sign-in links, confirmations); based in the USA, data processing agreement in place.
 6. iFirma: issuing VAT invoices for purchases in the Service and submitting them to the National e-Invoicing System; based in Poland.
 7. Cloudflare: anti-bot verification (Turnstile) protecting the Service's forms.
+8. Google (Google Ireland Limited): measuring the performance of Google Ads campaigns, only after you consent to marketing cookies.
 Data may also be disclosed to public authorities where required by law, and to the National e-Invoicing System (KSeF) for VAT invoices documenting purchases in the Service. We do not sell personal data.`
   },
   {
     id: "transfery-poza-eog",
     title: "6. Transfers outside the EEA",
-    content: `Some of our providers (OpenAI, Resend, Cloudflare) are based in the United States, which may involve transferring data outside the European Economic Area (EEA).
+    content: `Some of our providers (OpenAI, Resend, Cloudflare, and, if you consent to marketing cookies, Google) are based in the United States or use infrastructure there, which may involve transferring data outside the European Economic Area (EEA).
 Transfers take place on the basis of the European Commission's adequacy decision concerning the EU-US Data Privacy Framework for certified entities, and otherwise on the basis of standard contractual clauses approved by the European Commission, together with supplementary safeguards.
 A copy of the safeguards can be obtained by contacting us at the address indicated in section 1. Invoice files and translations are stored exclusively on servers in the European Union; invoice content is passed to OpenAI only for the time needed to perform the translation.`
   },
@@ -98,10 +100,12 @@ Without this data it is not possible, respectively, to create an Account, make a
   {
     id: "cookies",
     title: "10. Cookies",
-    content: `The Service uses only cookies necessary for its operation:
-1. sign-in session cookies (Supabase Auth), which keep the user signed in,
-2. anti-bot verification cookies (Cloudflare Turnstile), which protect forms against abuse.
-We do not use analytics, advertising, or tracking cookies. For this reason the Service does not display a cookie consent banner; cookies necessary to provide the service do not require consent under the Polish Electronic Communications Law.
+    content: `The Service uses cookies in three categories:
+1. necessary: sign-in session cookies (Supabase Auth), anti-bot verification cookies (Cloudflare Turnstile), and a cookie that remembers your consent decision; they are always active because the Service cannot work without them, and they do not require consent under the Polish Electronic Communications Law,
+2. analytics: anonymous statistics about how the Service is used; activated only after you give consent,
+3. marketing: Google Ads cookies (Google Ireland Limited), used to measure ad performance; activated only after you give consent.
+You can give or refuse consent in the cookie banner shown on your first visit. You can change your choice at any time using the "Cookie settings" link in the Service footer. Withdrawing consent is as easy as giving it and does not affect the lawfulness of processing carried out before the withdrawal.
+The legal basis for processing related to analytics and marketing cookies is consent (art. 6(1)(a) GDPR). Until consent is given, analytics and marketing scripts are not loaded.
 You can delete and block cookies in your browser settings, but blocking the necessary cookies will prevent signing in to the Service.`
   },
   {
