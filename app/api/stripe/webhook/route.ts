@@ -4,6 +4,8 @@ import { getStripeClient } from "@/lib/billing/stripe-client";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { buildIfirmaFaktura } from "@/lib/billing/build-ifirma-faktura";
 import { issueFaktura, sendToKsef } from "@/lib/billing/ifirma";
+import { sendPaymentConfirmationEmail } from "@/lib/billing/payment-confirmation-email";
+import { createResendSendFn } from "@/lib/email/resend-sender";
 
 export const runtime = "nodejs";
 
@@ -201,6 +203,16 @@ async function handleCheckoutCompleted(
     throw new Error("grant_paid_credits failed");
   }
 
+  await trySendPaymentConfirmationEmail(admin, session, {
+    userId: purchase.data.user_id,
+    packageSize: purchase.data.package_size,
+    buyerEmail:
+      buyerIdentity?.buyer_email ??
+      session.customer_details?.email ??
+      session.customer_email ??
+      null
+  });
+
   // Only create the ksef_invoices row if we have the buyer identity. Without
   // it the cron would just fail to build params and retry forever.
   if (buyerIdentity) {
@@ -229,6 +241,55 @@ async function handleCheckoutCompleted(
     if (process.env.KSEF_LIVE === "true") {
       await tryIssueFakturaInline(admin, fakturaRow.data.id, purchase.data.id);
     }
+  }
+}
+
+/**
+ * Best-effort payment confirmation email. The buyer already paid and got
+ * their credits, so an email failure must never fail the webhook — Stripe
+ * would retry and we would risk duplicate processing. The email tells the
+ * buyer the VAT invoice arrives via KSeF, not by email.
+ */
+async function trySendPaymentConfirmationEmail(
+  admin: ReturnType<typeof getSupabaseAdminClient>,
+  session: Stripe.Checkout.Session,
+  info: { userId: string; packageSize: number; buyerEmail: string | null }
+): Promise<void> {
+  try {
+    if (!info.buyerEmail) {
+      console.warn(
+        `[webhook] no buyer email on session ${session.id} — skipping confirmation email`
+      );
+      return;
+    }
+    if (session.amount_total === null || !session.currency) {
+      console.warn(
+        `[webhook] session ${session.id} missing amount_total/currency — skipping confirmation email`
+      );
+      return;
+    }
+    const sendEmail = createResendSendFn(process.env.RESEND_API_KEY);
+    if (!sendEmail) {
+      console.warn("[webhook] RESEND_API_KEY missing — skipping confirmation email");
+      return;
+    }
+
+    await sendPaymentConfirmationEmail({
+      supabase: admin,
+      sendEmail,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      fromAddress: process.env.RESEND_BILLING_FROM_ADDRESS,
+      userId: info.userId,
+      recipientEmail: info.buyerEmail,
+      packageSize: info.packageSize,
+      amountPaidCents: session.amount_total,
+      currency: session.currency
+    });
+  } catch (error) {
+    console.error(
+      `[webhook] payment confirmation email failed for session ${session.id}:`,
+      error
+    );
   }
 }
 
