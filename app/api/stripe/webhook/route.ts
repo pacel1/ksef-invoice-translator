@@ -68,13 +68,24 @@ class MissingBuyerIdentityError extends Error {
   }
 }
 
+interface ExtractedBuyer {
+  identity: BuyerIdentity;
+  /**
+   * Where the business name came from. "cardholder_name" means Stripe
+   * surfaced no business_name and we fell back to the cardholder's
+   * personal name — usable, but it must not silently become the legal
+   * company name on the faktura, so the purchase gets flagged for review.
+   */
+  businessNameSource: "business_name" | "cardholder_name";
+}
+
 /**
  * Extract buyer identity from a checkout.session.completed event. Throws
  * if the required B2B fields are missing — the checkout config makes them
  * mandatory, so a missing field signals a misconfiguration on the Stripe
  * side and we should fail loudly rather than silently issue a wrong faktura.
  */
-function extractBuyerIdentity(session: Stripe.Checkout.Session): BuyerIdentity {
+function extractBuyerIdentity(session: Stripe.Checkout.Session): ExtractedBuyer {
   const details = session.customer_details;
   if (!details) {
     throw new MissingBuyerIdentityError("customer_details missing on session");
@@ -120,15 +131,18 @@ function extractBuyerIdentity(session: Stripe.Checkout.Session): BuyerIdentity {
   const address = details.address ?? null;
 
   return {
-    buyer_nip,
-    buyer_eu_vat,
-    buyer_business_name: businessName,
-    buyer_email: details.email,
-    buyer_address_line1: address?.line1 ?? null,
-    buyer_address_line2: address?.line2 ?? null,
-    buyer_postal_code: address?.postal_code ?? null,
-    buyer_city: address?.city ?? null,
-    buyer_country: address?.country ?? null
+    identity: {
+      buyer_nip,
+      buyer_eu_vat,
+      buyer_business_name: businessName,
+      buyer_email: details.email,
+      buyer_address_line1: address?.line1 ?? null,
+      buyer_address_line2: address?.line2 ?? null,
+      buyer_postal_code: address?.postal_code ?? null,
+      buyer_city: address?.city ?? null,
+      buyer_country: address?.country ?? null
+    },
+    businessNameSource: details.business_name ? "business_name" : "cardholder_name"
   };
 }
 
@@ -157,9 +171,9 @@ async function handleCheckoutCompleted(
   // flag the row for manual review; the operator can backfill from Stripe
   // later. We still grant credits because the customer paid; the
   // missing-data state is a tax-compliance problem, not a fulfillment one.
-  let buyerIdentity: BuyerIdentity | null = null;
+  let extracted: ExtractedBuyer | null = null;
   try {
-    buyerIdentity = extractBuyerIdentity(session);
+    extracted = extractBuyerIdentity(session);
   } catch (error) {
     if (error instanceof MissingBuyerIdentityError) {
       console.error(
@@ -170,18 +184,27 @@ async function handleCheckoutCompleted(
       throw error;
     }
   }
+  const buyerIdentity = extracted?.identity ?? null;
+
+  if (extracted?.businessNameSource === "cardholder_name") {
+    console.warn(
+      `[webhook] business name fell back to cardholder name on session ${session.id} — flagging for review`
+    );
+  }
 
   // Atomic status flip + identity persistence in one update. A purchase
-  // without buyer identity is durably flagged so it shows up in queries,
-  // not just in webhook logs — no faktura can be issued until an operator
-  // backfills the buyer data.
+  // without buyer identity — or with a business name that fell back to
+  // the cardholder's personal name — is durably flagged so it shows up
+  // in queries, not just in webhook logs: the faktura needs an operator
+  // to backfill or verify the legal company name.
   const update = await admin
     .from("stripe_purchases")
     .update({
       status: "paid",
       paid_at: new Date().toISOString(),
       credits_granted: purchase.data.package_size,
-      needs_manual_review: buyerIdentity === null,
+      needs_manual_review:
+        extracted === null || extracted.businessNameSource === "cardholder_name",
       stripe_payment_intent_id:
         typeof session.payment_intent === "string"
           ? session.payment_intent
