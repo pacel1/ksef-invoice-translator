@@ -154,9 +154,9 @@ async function handleCheckoutCompleted(
   }
 
   // Extract buyer identity BEFORE granting credits. If extraction fails we
-  // log + skip the row; the operator can backfill from Stripe later. We
-  // still grant credits because the customer paid; the missing-data state
-  // is a tax-compliance problem, not a fulfillment one.
+  // flag the row for manual review; the operator can backfill from Stripe
+  // later. We still grant credits because the customer paid; the
+  // missing-data state is a tax-compliance problem, not a fulfillment one.
   let buyerIdentity: BuyerIdentity | null = null;
   try {
     buyerIdentity = extractBuyerIdentity(session);
@@ -171,13 +171,17 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // Atomic status flip + identity persistence in one update.
+  // Atomic status flip + identity persistence in one update. A purchase
+  // without buyer identity is durably flagged so it shows up in queries,
+  // not just in webhook logs — no faktura can be issued until an operator
+  // backfills the buyer data.
   const update = await admin
     .from("stripe_purchases")
     .update({
       status: "paid",
       paid_at: new Date().toISOString(),
       credits_granted: purchase.data.package_size,
+      needs_manual_review: buyerIdentity === null,
       stripe_payment_intent_id:
         typeof session.payment_intent === "string"
           ? session.payment_intent

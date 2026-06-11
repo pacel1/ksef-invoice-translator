@@ -1,0 +1,79 @@
+import { describe, it, expect } from "vitest";
+import {
+  buildCheckoutSessionParams,
+  MissingTaxRateError,
+  type CheckoutSessionInput
+} from "@/lib/billing/checkout-session-params";
+import { priceForPackage } from "@/lib/billing/pricing";
+
+function makeInput(overrides: Partial<CheckoutSessionInput> = {}): CheckoutSessionInput {
+  return {
+    quote: priceForPackage(25),
+    purchaseId: "11111111-2222-3333-4444-555555555555",
+    userId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    userEmail: "buyer@example.test",
+    appUrl: "https://app.example.test",
+    taxRateId: "txr_static_pl_vat",
+    ...overrides
+  };
+}
+
+describe("buildCheckoutSessionParams", () => {
+  it("applies the static PL VAT tax rate to the line item", () => {
+    const params = buildCheckoutSessionParams(makeInput());
+    expect(params.line_items).toHaveLength(1);
+    expect(params.line_items?.[0]?.tax_rates).toEqual(["txr_static_pl_vat"]);
+  });
+
+  it("does not enable Stripe automatic tax", () => {
+    const params = buildCheckoutSessionParams(makeInput());
+    expect(params.automatic_tax).toBeUndefined();
+  });
+
+  it("does not set tax_behavior on price_data (net price + manual rate instead)", () => {
+    const params = buildCheckoutSessionParams(makeInput());
+    expect(params.line_items?.[0]?.price_data?.tax_behavior).toBeUndefined();
+  });
+
+  it("charges the net unit price and package quantity from the quote", () => {
+    const quote = priceForPackage(50);
+    const params = buildCheckoutSessionParams(makeInput({ quote }));
+    const item = params.line_items?.[0];
+    expect(item?.quantity).toBe(50);
+    expect(item?.price_data?.unit_amount).toBe(quote.unitPriceCents);
+    expect(item?.price_data?.currency).toBe("pln");
+  });
+
+  it("keeps the B2B collection config (tax id, billing address, customer creation)", () => {
+    const params = buildCheckoutSessionParams(makeInput());
+    expect(params.tax_id_collection).toEqual({ enabled: true, required: "if_supported" });
+    expect(params.billing_address_collection).toBe("required");
+    expect(params.customer_creation).toBe("always");
+    expect(params.mode).toBe("payment");
+    expect(params.payment_method_types).toEqual(["card"]);
+  });
+
+  it("wires purchase metadata, client reference and redirect URLs", () => {
+    const params = buildCheckoutSessionParams(makeInput());
+    expect(params.client_reference_id).toBe("11111111-2222-3333-4444-555555555555");
+    expect(params.metadata).toEqual({
+      purchase_id: "11111111-2222-3333-4444-555555555555",
+      user_id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      package_size: "25"
+    });
+    expect(params.customer_email).toBe("buyer@example.test");
+    expect(params.success_url).toBe(
+      "https://app.example.test/billing?status=paid&session_id={CHECKOUT_SESSION_ID}"
+    );
+    expect(params.cancel_url).toBe("https://app.example.test/billing?status=cancelled");
+  });
+
+  it("throws MissingTaxRateError when the tax rate id is blank", () => {
+    expect(() => buildCheckoutSessionParams(makeInput({ taxRateId: "" }))).toThrow(
+      MissingTaxRateError
+    );
+    expect(() => buildCheckoutSessionParams(makeInput({ taxRateId: "   " }))).toThrow(
+      MissingTaxRateError
+    );
+  });
+});
