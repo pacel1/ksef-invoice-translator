@@ -415,4 +415,96 @@ describe("POST /api/stripe/webhook", () => {
       .single();
     expect(bal?.paid_credits).toBe(size);
   });
+
+  it("does NOT grant when the paid amount does not match the quoted price", async () => {
+    const { userId, sessionId, size } = await setupPurchase();
+    // amount_subtotal is the pre-tax line total; it must equal the stored net
+    // total_amount_cents. Here it is deliberately wrong (underpayment).
+    const payload = JSON.stringify({
+      id: `evt_${Date.now()}`,
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: sessionId,
+          object: "checkout.session",
+          payment_status: "paid",
+          amount_subtotal: 100,
+          amount_total: 123,
+          currency: "pln",
+          metadata: { package_size: String(size), user_id: userId },
+          customer_details: {
+            email: "ksiegowosc@example.test",
+            business_name: "Testowa Spółka z o.o.",
+            tax_ids: [{ type: "pl_nip", value: "5260250274" }],
+            address: { line1: "ul. Testowa 1", postal_code: "00-001", city: "Warszawa", country: "PL" }
+          }
+        }
+      }
+    });
+    const sig = signStripePayload(payload, process.env.STRIPE_WEBHOOK_SECRET!);
+
+    const res = await fetch(`${APP}/api/stripe/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "stripe-signature": sig },
+      body: payload
+    });
+    expect(res.status).toBe(200);
+
+    const { data: row } = await admin
+      .from("stripe_purchases")
+      .select("status, credits_granted, needs_manual_review")
+      .eq("stripe_checkout_session_id", sessionId)
+      .single();
+    expect(row?.status).toBe("pending");
+    expect(row?.credits_granted).toBe(0);
+    expect(row?.needs_manual_review).toBe(true);
+
+    const { data: bal } = await admin
+      .from("credit_balances")
+      .select("paid_credits")
+      .eq("user_id", userId)
+      .maybeSingle();
+    expect(bal?.paid_credits ?? 0).toBe(0);
+  });
+
+  it("grants when amount_subtotal matches the quoted net price", async () => {
+    const { userId, sessionId, size } = await setupPurchase();
+    const quote = priceForPackage(size);
+    const payload = JSON.stringify({
+      id: `evt_${Date.now()}`,
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: sessionId,
+          object: "checkout.session",
+          payment_status: "paid",
+          amount_subtotal: quote.totalAmountCents,
+          amount_total: Math.round(quote.totalAmountCents * 1.23),
+          currency: "pln",
+          metadata: { package_size: String(size), user_id: userId },
+          customer_details: {
+            email: "ksiegowosc@example.test",
+            business_name: "Testowa Spółka z o.o.",
+            tax_ids: [{ type: "pl_nip", value: "5260250274" }],
+            address: { line1: "ul. Testowa 1", postal_code: "00-001", city: "Warszawa", country: "PL" }
+          }
+        }
+      }
+    });
+    const sig = signStripePayload(payload, process.env.STRIPE_WEBHOOK_SECRET!);
+
+    const res = await fetch(`${APP}/api/stripe/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "stripe-signature": sig },
+      body: payload
+    });
+    expect(res.status).toBe(200);
+
+    const { data: bal } = await admin
+      .from("credit_balances")
+      .select("paid_credits")
+      .eq("user_id", userId)
+      .single();
+    expect(bal?.paid_credits).toBe(size);
+  });
 });
