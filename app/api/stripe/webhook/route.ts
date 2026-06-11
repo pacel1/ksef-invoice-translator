@@ -34,9 +34,19 @@ export async function POST(request: NextRequest) {
   const admin = getSupabaseAdminClient();
 
   try {
-    if (event.type === "checkout.session.completed") {
+    if (
+      event.type === "checkout.session.completed" ||
+      // Delayed-confirmation methods (BLIK, P24): the session completes
+      // with payment_status "unpaid" and this event delivers the actual
+      // confirmation later. Same handler — it only acts on "paid" and the
+      // pending→paid flip keeps it idempotent across both events.
+      event.type === "checkout.session.async_payment_succeeded"
+    ) {
       const session = event.data.object as Stripe.Checkout.Session;
       await handleCheckoutCompleted(admin, session);
+    } else if (event.type === "checkout.session.async_payment_failed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      await handleAsyncPaymentFailed(admin, session);
     } else if (event.type === "charge.refunded") {
       const charge = event.data.object as Stripe.Charge;
       await handleChargeRefunded(admin, charge);
@@ -382,6 +392,32 @@ async function tryIssueFakturaInline(
         attempt_count: 1
       })
       .eq("id", ksefInvoiceRowId);
+  }
+}
+
+/**
+ * A delayed-confirmation payment (BLIK, P24) definitively failed after the
+ * session completed. Flip the pending purchase to failed so it doesn't sit
+ * in "pending" forever; nothing was granted, so nothing needs reverting.
+ * The pending-only guard keeps a late/duplicate failure event from
+ * clobbering a purchase that already succeeded.
+ */
+async function handleAsyncPaymentFailed(
+  admin: ReturnType<typeof getSupabaseAdminClient>,
+  session: Stripe.Checkout.Session
+): Promise<void> {
+  const purchase = await admin
+    .from("stripe_purchases")
+    .update({ status: "failed" })
+    .eq("stripe_checkout_session_id", session.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (purchase.data) {
+    console.warn(
+      `[webhook] delayed payment failed for session ${session.id} — purchase ${purchase.data.id} marked failed`
+    );
   }
 }
 

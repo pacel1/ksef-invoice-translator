@@ -252,6 +252,134 @@ describe("POST /api/stripe/webhook", () => {
     expect(row?.buyer_business_name).toBe("Jan Kowalski");
   });
 
+  it("leaves the purchase pending when checkout completes with payment still processing", async () => {
+    const { userId, sessionId, size } = await setupPurchase();
+    // BLIK/P24 flow: the session completes before the payment confirms —
+    // payment_status is "unpaid" and credits must NOT be granted yet.
+    const payload = JSON.stringify({
+      id: `evt_${Date.now()}`,
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: sessionId,
+          object: "checkout.session",
+          payment_status: "unpaid",
+          metadata: { package_size: String(size), user_id: userId }
+        }
+      }
+    });
+    const sig = signStripePayload(payload, process.env.STRIPE_WEBHOOK_SECRET!);
+
+    const res = await fetch(`${APP}/api/stripe/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "stripe-signature": sig },
+      body: payload
+    });
+    expect(res.status).toBe(200);
+
+    const { data: row } = await admin
+      .from("stripe_purchases")
+      .select("status, credits_granted")
+      .eq("stripe_checkout_session_id", sessionId)
+      .single();
+    expect(row?.status).toBe("pending");
+    expect(row?.credits_granted).toBe(0);
+  });
+
+  it("grants credits when a delayed payment confirms via async_payment_succeeded", async () => {
+    const { userId, sessionId, size } = await setupPurchase();
+    const payload = JSON.stringify({
+      id: `evt_${Date.now()}`,
+      type: "checkout.session.async_payment_succeeded",
+      data: {
+        object: {
+          id: sessionId,
+          object: "checkout.session",
+          payment_status: "paid",
+          amount_total: 15344,
+          currency: "pln",
+          metadata: { package_size: String(size), user_id: userId },
+          customer_details: {
+            email: "ksiegowosc@example.test",
+            name: "Jan Kowalski",
+            business_name: "Testowa Spółka z o.o.",
+            tax_ids: [{ type: "pl_nip", value: "5260250274" }],
+            address: {
+              line1: "ul. Testowa 1",
+              line2: null,
+              postal_code: "00-001",
+              city: "Warszawa",
+              country: "PL"
+            }
+          }
+        }
+      }
+    });
+    const sig = signStripePayload(payload, process.env.STRIPE_WEBHOOK_SECRET!);
+
+    const res = await fetch(`${APP}/api/stripe/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "stripe-signature": sig },
+      body: payload
+    });
+    expect(res.status).toBe(200);
+
+    const { data: row } = await admin
+      .from("stripe_purchases")
+      .select("status, credits_granted, needs_manual_review")
+      .eq("stripe_checkout_session_id", sessionId)
+      .single();
+    expect(row?.status).toBe("paid");
+    expect(row?.credits_granted).toBe(size);
+    expect(row?.needs_manual_review).toBe(false);
+
+    const { data: bal } = await admin
+      .from("credit_balances")
+      .select("paid_credits")
+      .eq("user_id", userId)
+      .single();
+    expect(bal?.paid_credits).toBe(size);
+  });
+
+  it("marks the purchase failed when a delayed payment fails via async_payment_failed", async () => {
+    const { userId, sessionId, size } = await setupPurchase();
+    const payload = JSON.stringify({
+      id: `evt_${Date.now()}`,
+      type: "checkout.session.async_payment_failed",
+      data: {
+        object: {
+          id: sessionId,
+          object: "checkout.session",
+          payment_status: "unpaid",
+          metadata: { package_size: String(size), user_id: userId }
+        }
+      }
+    });
+    const sig = signStripePayload(payload, process.env.STRIPE_WEBHOOK_SECRET!);
+
+    const res = await fetch(`${APP}/api/stripe/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "stripe-signature": sig },
+      body: payload
+    });
+    expect(res.status).toBe(200);
+
+    const { data: row } = await admin
+      .from("stripe_purchases")
+      .select("status, credits_granted")
+      .eq("stripe_checkout_session_id", sessionId)
+      .single();
+    expect(row?.status).toBe("failed");
+    expect(row?.credits_granted).toBe(0);
+
+    const { data: bal } = await admin
+      .from("credit_balances")
+      .select("paid_credits")
+      .eq("user_id", userId)
+      .maybeSingle();
+    expect(bal?.paid_credits ?? 0).toBe(0);
+  });
+
   it("is idempotent — replaying the same event does not double-grant", async () => {
     const { userId, sessionId, size } = await setupPurchase();
     const payload = JSON.stringify({

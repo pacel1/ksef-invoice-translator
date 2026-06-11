@@ -34,9 +34,12 @@ export function buildCheckoutSessionParams(
 
   const { quote, purchaseId, userId, userEmail, appUrl } = input;
 
+  // payment_method_types is deliberately omitted: Stripe then uses the
+  // dashboard's payment-method settings, so enabling/disabling BLIK, P24
+  // or cards is an ops action, not a deploy. Delayed-confirmation methods
+  // are handled via checkout.session.async_payment_* webhooks.
   return {
     mode: "payment",
-    payment_method_types: ["card"],
     currency: quote.currency,
     line_items: [
       {
