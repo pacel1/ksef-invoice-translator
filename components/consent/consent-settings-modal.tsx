@@ -42,6 +42,26 @@ export function ConsentSettingsModal({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
+  const trapFocus = (event: React.KeyboardEvent) => {
+    if (event.key !== "Tab") return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || active === dialog)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-4 sm:items-center">
       <div
@@ -50,6 +70,7 @@ export function ConsentSettingsModal({
         aria-modal="true"
         aria-labelledby="consent-settings-title"
         tabIndex={-1}
+        onKeyDown={trapFocus}
         className="w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-lg focus:outline-none"
       >
         <div className="flex items-start justify-between gap-4">

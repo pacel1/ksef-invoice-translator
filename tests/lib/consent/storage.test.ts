@@ -56,6 +56,14 @@ describe("parseConsentValue", () => {
     expect(parseConsentValue(encodeURIComponent(JSON.stringify({ analytics: "yes" })))).toBeNull();
   });
 
+  it("returns null when decidedAt is not an ISO datetime", () => {
+    const tampered = {
+      ...createConsentState({ analytics: true, marketing: true }, decidedAt),
+      decidedAt: "yesterday"
+    };
+    expect(parseConsentValue(serializeConsentValue(tampered))).toBeNull();
+  });
+
   it("returns null on version mismatch so the banner re-prompts", () => {
     const stale: ConsentState = {
       necessary: true,

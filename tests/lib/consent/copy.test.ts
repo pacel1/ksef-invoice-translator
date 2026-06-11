@@ -5,6 +5,7 @@ describe("consentCopy", () => {
   it("provides complete copy for both locales", () => {
     for (const locale of ["pl", "en"] as const) {
       const t = consentCopy[locale];
+      expect(t.banner.ariaLabel).not.toBe("");
       expect(t.banner.body.length).toBeGreaterThan(40);
       expect(t.banner.acceptAll).not.toBe("");
       expect(t.banner.rejectAll).not.toBe("");

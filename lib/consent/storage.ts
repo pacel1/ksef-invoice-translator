@@ -12,7 +12,7 @@ const consentStateSchema = z.object({
   analytics: z.boolean(),
   marketing: z.boolean(),
   version: z.number().int(),
-  decidedAt: z.string()
+  decidedAt: z.string().datetime()
 });
 
 export function createConsentState(preferences: ConsentPreferences, decidedAt: Date): ConsentState {

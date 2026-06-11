@@ -19,7 +19,7 @@ export function CookieBanner({ locale, onAcceptAll, onRejectAll, onOpenSettings 
   return (
     <div
       role="region"
-      aria-label={consentCopy[locale].modal.title}
+      aria-label={t.ariaLabel}
       className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface shadow-lg"
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:gap-8 md:px-8">

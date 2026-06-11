@@ -7,6 +7,7 @@ interface CategoryCopy {
 
 export interface ConsentCopy {
   banner: {
+    ariaLabel: string;
     body: string;
     acceptAll: string;
     rejectAll: string;
@@ -35,6 +36,7 @@ export interface ConsentCopy {
 export const consentCopy: Record<ConsentLocale, ConsentCopy> = {
   pl: {
     banner: {
+      ariaLabel: "Zgoda na pliki cookies",
       body: "Używamy plików cookies, aby serwis działał poprawnie, a za Twoją zgodą także do anonimowych statystyk i pomiaru skuteczności reklam.",
       acceptAll: "Akceptuję wszystkie",
       rejectAll: "Odrzucam wszystkie",
@@ -70,6 +72,7 @@ export const consentCopy: Record<ConsentLocale, ConsentCopy> = {
   },
   en: {
     banner: {
+      ariaLabel: "Cookie consent",
       body: "We use cookies to keep the service running and, with your consent, for anonymous usage statistics and ad performance measurement.",
       acceptAll: "Accept all",
       rejectAll: "Reject all",
