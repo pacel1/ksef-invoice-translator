@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getTermsSections, TERMS_LAST_UPDATED } from "@/lib/legal/terms";
 import { LEGAL_ENTITY } from "@/lib/brand/legal";
-import { FOUNDER } from "@/lib/brand/founder";
 
 describe("getTermsSections", () => {
   it("returns a substantive document for both locales", () => {
@@ -23,12 +22,12 @@ describe("getTermsSections", () => {
     expect(enIds).toEqual(plIds);
   });
 
-  it("identifies the operator from LEGAL_ENTITY and the contact email from FOUNDER", () => {
+  it("identifies the operator and contact email from LEGAL_ENTITY", () => {
     const all = getTermsSections("pl").map((s) => s.content).join("\n");
     expect(all).toContain(LEGAL_ENTITY.name);
     expect(all).toContain(LEGAL_ENTITY.nip);
     expect(all).toContain(LEGAL_ENTITY.address);
-    expect(all).toContain(FOUNDER.contactEmail);
+    expect(all).toContain(LEGAL_ENTITY.contactEmail);
   });
 
   it("covers the mandatory elements of art. 8 ustawy o świadczeniu usług drogą elektroniczną (PL)", () => {

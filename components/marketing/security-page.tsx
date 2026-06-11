@@ -1,11 +1,10 @@
 import { PublicHeader } from "@/components/layout/public-header";
 import { LegalFooter } from "@/components/layout/legal-footer";
 import { SecurityCard } from "@/components/trust/security-card";
-import { FounderCard } from "@/components/trust/founder-card";
 import { DataFlowDiagram, type FlowStep } from "@/components/marketing/data-flow-diagram";
 import { SubProcessorsTable } from "@/components/marketing/sub-processors-table";
 import { marketingCopy, type MarketingLocale } from "@/lib/marketing/copy";
-import { FOUNDER } from "@/lib/brand/founder";
+import { LEGAL_ENTITY } from "@/lib/brand/legal";
 
 export interface SecurityPageProps {
   locale: MarketingLocale;
@@ -135,10 +134,10 @@ export function SecurityPage({ locale }: SecurityPageProps) {
           <p className="mt-4 text-body text-text">
             {t.rodoContact}{" "}
             <a
-              href={`mailto:${FOUNDER.contactEmail}`}
+              href={`mailto:${LEGAL_ENTITY.contactEmail}`}
               className="font-medium text-accent hover:text-accent-hover"
             >
-              {FOUNDER.contactEmail}
+              {LEGAL_ENTITY.contactEmail}
             </a>
           </p>
         </section>
@@ -158,21 +157,7 @@ export function SecurityPage({ locale }: SecurityPageProps) {
           </p>
         </section>
 
-        <section className="bg-surface-muted py-16">
-          <div className="mx-auto max-w-3xl px-5 md:px-8">
-            <h2 className="text-center text-h2 text-text-strong">{t.founderHeading}</h2>
-            <div className="mt-8">
-              <FounderCard
-                name={FOUNDER.name}
-                photoUrl={FOUNDER.photoUrl}
-                statement={FOUNDER.statement}
-                contactEmail={FOUNDER.contactEmail}
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-auto w-full max-w-4xl px-5 pb-20 pt-16 md:px-8">
+        <section className="mx-auto w-full max-w-4xl px-5 pb-20 md:px-8">
           <h2 className="text-h2 text-text-strong">{t.incidentsHeading}</h2>
           <p className="mt-3 text-body text-text">{t.incidentsBody}</p>
         </section>

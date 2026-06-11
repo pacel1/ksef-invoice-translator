@@ -1,6 +1,5 @@
 import type { LegalSection } from "@/components/marketing/legal-doc-layout";
 import { LEGAL_ENTITY } from "@/lib/brand/legal";
-import { FOUNDER } from "@/lib/brand/founder";
 
 /**
  * Terms of Service (EN). Convenience translation of the Polish Regulamin;
@@ -13,7 +12,7 @@ export const TERMS_SECTIONS_EN: ReadonlyArray<LegalSection> = [
     title: "§ 1. General provisions",
     content: `1. These Terms of Service set out the rules for providing services by electronic means through the tlumaczksef.pl website (the Service), in accordance with art. 8 of the Polish Act of 18 July 2002 on Providing Services by Electronic Means.
 2. The Service is operated by ${LEGAL_ENTITY.name}, NIP (tax id): ${LEGAL_ENTITY.nip}, REGON: ${LEGAL_ENTITY.regon}, address: ${LEGAL_ENTITY.address} (the Operator).
-3. You can contact the Operator at: ${FOUNDER.contactEmail}.
+3. You can contact the Operator at: ${LEGAL_ENTITY.contactEmail}.
 4. The Terms are available free of charge on the Service before any agreement is concluded, in a form that allows downloading, storing, and printing.
 5. This English text is a convenience translation. The Polish language version of the Terms (Regulamin) is the binding version.
 6. Personal data processing is described in the Privacy Policy available on the Service.`
@@ -102,7 +101,7 @@ c) an active email address.
   {
     id: "reklamacje",
     title: "§ 10. Complaints",
-    content: `1. Complaints about the Service, including Translation quality and billing, can be submitted to: ${FOUNDER.contactEmail}.
+    content: `1. Complaints about the Service, including Translation quality and billing, can be submitted to: ${LEGAL_ENTITY.contactEmail}.
 2. A complaint should include: the email address assigned to the Account, a description of the problem, and where possible the date of the event and the identifier of the Translation concerned.
 3. The Operator handles complaints within 14 days of receipt and replies to the email address from which the complaint was sent.
 4. For Consumers and sole traders with consumer rights, liability for the conformity of the digital service with the contract is governed by chapter 5b of the Polish Consumer Rights Act of 30 May 2014. In the event of non-conformity, the User may demand that conformity be restored and subsequently submit a statement on price reduction or withdrawal from the contract.`

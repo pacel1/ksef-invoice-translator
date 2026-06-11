@@ -34,9 +34,17 @@ describe("<SecurityPage>", () => {
     expect(screen.getByText("OpenAI")).toBeInTheDocument();
   });
 
-  it("renders the founder card", () => {
+  it("does not render a founder section", () => {
     render(<SecurityPage locale="pl" />);
-    expect(screen.getByRole("heading", { name: /Stoi za tym konkretny człowiek/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Stoi za tym konkretny człowiek/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the RODO contact email", () => {
+    render(<SecurityPage locale="pl" />);
+    expect(screen.getByRole("link", { name: /kontakt@tlumaczksef\.pl/i })).toHaveAttribute(
+      "href",
+      "mailto:kontakt@tlumaczksef.pl"
+    );
   });
 
   it("renders the EN mirror", () => {
