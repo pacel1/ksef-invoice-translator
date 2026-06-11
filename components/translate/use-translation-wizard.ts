@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useReducer, useRef } from "react";
 import type { Invoice, LanguageCode } from "@/types/invoice";
+import posthog from "posthog-js";
 
 // ─── Public types ─────────────────────────────────────────────────────────
 
@@ -328,12 +329,15 @@ export function useTranslationWizard({
             patch: { status: "error", errorMessage: reason }
           });
         }
+        posthog.captureException(error);
         return;
       }
 
       // Match each result back to its slot by file name (order is preserved
       // by the server, but matching by name is more robust to mid-stream
       // reorders or partial responses).
+      let successCount = 0;
+      let failureCount = 0;
       for (let i = 0; i < slots.length; i += 1) {
         const slot = slots[i];
         const result = response.results.find(
@@ -345,6 +349,7 @@ export function useTranslationWizard({
             localId: slot.localId,
             patch: { status: "error", errorMessage: "Missing upload result" }
           });
+          failureCount += 1;
           continue;
         }
         if (result.ok) {
@@ -364,14 +369,22 @@ export function useTranslationWizard({
               otherWithSameNumber: numberCount
             }
           });
+          successCount += 1;
         } else {
           dispatch({
             type: "patchFileSlot",
             localId: slot.localId,
             patch: { status: "error", errorMessage: result.error }
           });
+          failureCount += 1;
         }
       }
+
+      posthog.capture("files_uploaded", {
+        file_count: unique.length,
+        success_count: successCount,
+        failure_count: failureCount
+      });
     },
     [api]
   );
@@ -548,6 +561,12 @@ export function useTranslationWizard({
       }));
     if (items.length === 0) return;
 
+    posthog.capture("translation_started", {
+      file_count: items.length,
+      language: current.language,
+      bilingual: current.bilingual
+    });
+
     setJobItems(items);
     dispatch({ type: "goStep", step: "delivery" });
 
@@ -573,6 +592,10 @@ export function useTranslationWizard({
           }
     );
     setJobItems(updated);
+    posthog.capture("translation_batch_cancelled", {
+      total: jobItemsRef.current.length,
+      done: jobItemsRef.current.filter((j) => j.status === "done").length
+    });
   }, []);
 
   const resumeBatch = useCallback(async () => {

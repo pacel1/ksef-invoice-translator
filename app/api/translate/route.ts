@@ -13,6 +13,7 @@ import {
   refundTranslationCredit
 } from "@/lib/billing/credit-enforcement";
 import type { Invoice, LanguageCode } from "@/types/invoice";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 /**
  * Tłumacz redesign behavior (spec §6.2), made permanent in PR #E:
@@ -167,6 +168,19 @@ async function translateCached(params: z.infer<typeof cachedRequestSchema>) {
     totalMs: elapsedMs(routeStarted)
   });
   console.info("[api/translate] timings", timings);
+
+  getPostHogClient().capture({
+    distinctId: userData.user.id,
+    event: "invoice_translated",
+    properties: {
+      invoice_id: params.invoiceId,
+      language: params.language,
+      bilingual: params.bilingual !== false,
+      cache_hit: result.cached,
+      used_ai: result.usedAi,
+      duration_ms: timings.totalMs
+    }
+  });
 
   return NextResponse.json({
     invoice: result.invoice,

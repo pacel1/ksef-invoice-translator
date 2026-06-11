@@ -6,6 +6,7 @@ import { buildIfirmaFaktura } from "@/lib/billing/build-ifirma-faktura";
 import { issueFaktura, sendToKsef } from "@/lib/billing/ifirma";
 import { sendPaymentConfirmationEmail } from "@/lib/billing/payment-confirmation-email";
 import { createResendSendFn } from "@/lib/email/resend-sender";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 export const runtime = "nodejs";
 
@@ -164,7 +165,7 @@ async function handleCheckoutCompleted(
 
   const purchase = await admin
     .from("stripe_purchases")
-    .select("id, user_id, package_size, status")
+    .select("id, user_id, package_size, status, total_amount_cents, currency")
     .eq("stripe_checkout_session_id", session.id)
     .maybeSingle();
 
@@ -239,6 +240,17 @@ async function handleCheckoutCompleted(
     console.error("[webhook] grant_paid_credits failed:", grant.error);
     throw new Error("grant_paid_credits failed");
   }
+
+  getPostHogClient().capture({
+    distinctId: purchase.data.user_id,
+    event: "payment_completed",
+    properties: {
+      package_size: purchase.data.package_size,
+      total_amount_cents: purchase.data.total_amount_cents,
+      currency: purchase.data.currency,
+      stripe_session_id: session.id
+    }
+  });
 
   await trySendPaymentConfirmationEmail(admin, session, {
     userId: purchase.data.user_id,
@@ -411,13 +423,21 @@ async function handleAsyncPaymentFailed(
     .update({ status: "failed" })
     .eq("stripe_checkout_session_id", session.id)
     .eq("status", "pending")
-    .select("id")
+    .select("id, user_id")
     .maybeSingle();
 
   if (purchase.data) {
     console.warn(
       `[webhook] delayed payment failed for session ${session.id} — purchase ${purchase.data.id} marked failed`
     );
+    getPostHogClient().capture({
+      distinctId: purchase.data.user_id,
+      event: "payment_failed",
+      properties: {
+        stripe_session_id: session.id,
+        purchase_id: purchase.data.id
+      }
+    });
   }
 }
 
@@ -465,6 +485,15 @@ async function handleChargeRefunded(
     console.error("[webhook] refund_paid_credits failed:", refund.error);
     throw new Error("refund_paid_credits failed");
   }
+
+  getPostHogClient().capture({
+    distinctId: purchase.data.user_id,
+    event: "payment_refunded",
+    properties: {
+      package_size: purchase.data.package_size,
+      stripe_charge_id: charge.id
+    }
+  });
 
   // Look up the original vat faktura to link the korekta.
   const original = await admin
