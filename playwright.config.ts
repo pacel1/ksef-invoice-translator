@@ -6,9 +6,14 @@ config({ path: path.resolve(__dirname, ".env.test"), override: true });
 
 // E2E_PORT runs the suite against a dedicated dev server on another port,
 // so a dev server already running on 3000 (e.g. from another checkout)
-// is neither reused nor disturbed.
-const e2ePort = Number(process.env.E2E_PORT ?? 3000);
-const e2eBaseUrl = process.env.E2E_PORT
+// is neither reused nor disturbed. App-side absolute URLs still read
+// NEXT_PUBLIC_APP_URL; set it too if a test needs them to match the port.
+const rawE2ePort = process.env.E2E_PORT;
+const e2ePort = rawE2ePort ? Number(rawE2ePort) : 3000;
+if (rawE2ePort && !Number.isInteger(e2ePort)) {
+  throw new Error(`E2E_PORT must be an integer, got "${rawE2ePort}"`);
+}
+const e2eBaseUrl = rawE2ePort
   ? `http://localhost:${e2ePort}`
   : process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
