@@ -62,11 +62,23 @@ Add a Google block (mirrors the disabled Apple block at lines 211–217):
 
 ```toml
 [auth.external.google]
-enabled = true
+# Disabled by default so the local stack boots without Google credentials:
+# the CLI hard-errors on unset env() vars when a provider is enabled.
+# To test Google sign-in locally, set both env vars and flip this to true.
+# Enabling the hosted project happens at rollout by committing this flip
+# and running `supabase config push` (see the design spec, section 5).
+enabled = false
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+# Local Supabase auth callback. The hosted project uses
+# https://<project-ref>.supabase.co/auth/v1/callback automatically.
 redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
+# If local Google sign-in fails with a nonce mismatch, set to true locally
+# only. Never push skip_nonce_check = true to the hosted project.
+skip_nonce_check = false
 ```
+
+With the provider disabled the CLI never evaluates the `env(...)` references, so the local stack boots without Google credentials. Enabling the provider with unset env vars is a hard error on the pinned CLI (v1.226.4), which is why disabled is the committed default.
 
 ### 3.4 Environment variables
 
@@ -106,6 +118,8 @@ The local Supabase stack reads these on `supabase start` / `supabase db reset` v
 ## 5. Hosted Supabase configuration (no dashboard)
 
 Per the project tooling rule, the hosted project is configured via CLI or Management API only:
+
+Enablement is an explicit, committed change: set both env vars, flip `enabled = true` in `config.toml`, then push the config.
 
 - **Preferred:** `supabase config push` from the repo root pushes the `[auth.external.google]` block from `config.toml` to the linked project, resolving the `env(...)` references from the local environment. Requires a CLI version that supports `config push`; upgrade the dev dependency if the pinned version does not.
 - **Fallback:** Management API:
@@ -161,6 +175,6 @@ TDD throughout; tests written before implementation.
 
 ## 8. Rollout order
 
-1. Land code changes (button, copy, config.toml, env example) behind nothing; the button simply errors gracefully until the provider is configured.
+1. Land code changes (button, copy, config.toml with the provider disabled, env example); the button simply errors gracefully until the provider is enabled and configured.
 2. Create Google credentials (§4), set env vars locally, verify the full flow against the local stack.
 3. Push provider config to the hosted project (§5) and run the manual checklist.

@@ -442,7 +442,12 @@ Insert between the `[auth.external.apple]` block and the `[auth.third_party.fire
 
 ```toml
 [auth.external.google]
-enabled = true
+# Disabled by default so the local stack boots without Google credentials:
+# the CLI hard-errors on unset env() vars when a provider is enabled.
+# To test Google sign-in locally, set both env vars and flip this to true.
+# Enabling the hosted project happens at rollout by committing this flip
+# and running `supabase config push` (see the design spec, section 5).
+enabled = false
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 # Local Supabase auth callback. The hosted project uses
@@ -453,7 +458,7 @@ redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
 skip_nonce_check = false
 ```
 
-If the env vars are unset, the CLI substitutes empty strings with a warning; the rest of the local stack keeps working and only Google sign-in fails. This matches the spec's rollout order (code first, credentials later).
+Correction discovered during execution: on CLI v1.226.4 an enabled provider with unset `env(...)` vars hard-errors and blocks `supabase start`. The committed default is therefore `enabled = false`; flipping it to true (with env vars set) is part of the manual rollout.
 
 - [ ] **Step 2: Document env vars in `.env.example`**
 
