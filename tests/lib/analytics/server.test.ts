@@ -1,14 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // vi.hoisted so the hoisted vi.mock factories can reference these safely.
-const { captureMock, flushMock, afterCallbacks } = vi.hoisted(() => ({
-  captureMock: vi.fn(),
-  flushMock: vi.fn().mockResolvedValue(undefined),
-  afterCallbacks: [] as Array<() => Promise<void> | void>
-}));
+const { captureMock, flushMock, afterCallbacks, afterBehavior } = vi.hoisted(
+  () => ({
+    captureMock: vi.fn(),
+    flushMock: vi.fn().mockResolvedValue(undefined),
+    afterCallbacks: [] as Array<() => Promise<void> | void>,
+    afterBehavior: { throwOutsideRequestScope: false }
+  })
+);
 
 vi.mock("next/server", () => ({
   after: (cb: () => Promise<void> | void) => {
+    if (afterBehavior.throwOutsideRequestScope) {
+      throw new Error("`after` was called outside a request scope.");
+    }
     afterCallbacks.push(cb);
   }
 }));
@@ -29,6 +35,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.clearAllMocks();
   afterCallbacks.length = 0;
+  afterBehavior.throwOutsideRequestScope = false;
 });
 
 describe("captureServer", () => {
@@ -97,6 +104,24 @@ describe("captureServer", () => {
       })
     ).not.toThrow();
     expect(afterCallbacks).toHaveLength(0);
+    expect(errorSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it("logs and swallows when after() is unavailable (outside request scope)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN", "phc_test");
+    vi.stubEnv("NEXT_PUBLIC_POSTHOG_HOST", "https://eu.i.posthog.com");
+    afterBehavior.throwOutsideRequestScope = true;
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { captureServer } = await importFreshModule();
+
+    expect(() =>
+      captureServer({
+        distinctId: "user-1",
+        event: "payment_failed",
+        properties: { stripe_session_id: "cs_1", purchase_id: "p_1" }
+      })
+    ).not.toThrow();
     expect(errorSpy).toHaveBeenCalled();
     errorSpy.mockRestore();
   });

@@ -5,6 +5,9 @@
  * flushed inside the callback so events are not lost when the serverless
  * function freezes (the wizard baseline fired-and-forgot). Analytics must
  * never break a request: failures are logged and swallowed.
+ *
+ * Must be called within a request scope (route handler or server action);
+ * out-of-scope calls are logged and dropped.
  */
 import { after } from "next/server";
 import { PostHog } from "posthog-node";
@@ -21,6 +24,7 @@ function getPostHogServerClient(): PostHog {
         "PostHog server capture requires NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN and NEXT_PUBLIC_POSTHOG_HOST"
       );
     }
+    // flushInterval: 0 disables the background timer; we flush explicitly in after()
     client = new PostHog(key, { host, flushAt: 1, flushInterval: 0 });
   }
   return client;
@@ -49,16 +53,23 @@ export function captureServer<E extends AnalyticsEventName>(
     ? { ...args.properties, $session_id: args.sessionId }
     : { ...args.properties };
 
-  after(async () => {
-    try {
-      posthog.capture({
-        distinctId: args.distinctId,
-        event: args.event,
-        properties
-      });
-      await posthog.flush();
-    } catch (error) {
-      console.error(`[analytics] failed to flush ${args.event}:`, error);
-    }
-  });
+  try {
+    after(async () => {
+      try {
+        posthog.capture({
+          distinctId: args.distinctId,
+          event: args.event,
+          properties
+        });
+        await posthog.flush();
+      } catch (error) {
+        console.error(`[analytics] failed to flush ${args.event}:`, error);
+      }
+    });
+  } catch (error) {
+    console.error(
+      `[analytics] could not schedule capture for ${args.event} (must be called within a request scope):`,
+      error
+    );
+  }
 }
