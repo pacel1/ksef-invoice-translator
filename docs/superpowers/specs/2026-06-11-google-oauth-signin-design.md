@@ -120,10 +120,9 @@ The local Supabase stack reads these on `supabase start` / `supabase db reset` v
 
 Per the project tooling rule, the hosted project is configured via CLI or Management API only:
 
-Enablement is an explicit, committed change: set both env vars, flip `enabled = true` in `config.toml`, then push the config.
+Enablement is an explicit, committed change: set both env vars, flip `enabled = true` in `config.toml`, then apply the change remotely with the Management API.
 
-- **Preferred:** `supabase config push` from the repo root pushes the `[auth.external.google]` block from `config.toml` to the linked project, resolving the `env(...)` references from the local environment. Requires a CLI version that supports `config push`; upgrade the dev dependency if the pinned version does not.
-- **Fallback:** Management API:
+- **Use the Management API** (targeted, only touches the Google fields):
 
   ```
   PATCH https://api.supabase.com/v1/projects/<project-ref>/config/auth
@@ -131,6 +130,8 @@ Enablement is an explicit, committed change: set both env vars, flip `enabled = 
     "external_google_client_id": "...",
     "external_google_secret": "..." }
   ```
+
+- **Do NOT use `supabase config push` on this project.** Discovered during rollout (2026-06-11): config push replaces the WHOLE remote auth config with the local `config.toml`, and the repo's config.toml has drifted from production (it would revert `site_url` to localhost, disable the send-email hook, wipe the Resend SMTP settings, and flip email confirmations). The attempted push was rejected with HTTP 402 because the org's plan cannot configure the password/MFA verification hooks present in the local file, which is the only reason production was not clobbered. Until `supabase/config.toml` is reconciled with the hosted project, the targeted PATCH is the only safe path. The committed `enabled = true` flip remains the documentation of record.
 
 The hosted project's redirect allow-list already contains the production `/auth/callback` URL (magic links use it today), so no change is expected there. Verify during rollout.
 
