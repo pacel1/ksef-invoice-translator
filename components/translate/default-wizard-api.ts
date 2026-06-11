@@ -8,6 +8,7 @@ import type {
 } from "./use-translation-wizard";
 import type { LanguageCode } from "@/types/invoice";
 import { getAnalyticsSessionId } from "@/lib/analytics/client";
+import { POSTHOG_SESSION_HEADER } from "@/lib/analytics/events";
 
 /**
  * Production WizardApi wiring.
@@ -92,7 +93,7 @@ export function createDefaultWizardApi(): WizardApi {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(sessionId ? { "X-POSTHOG-SESSION-ID": sessionId } : {})
+          ...(sessionId ? { [POSTHOG_SESSION_HEADER]: sessionId } : {})
         },
         body: JSON.stringify({ invoiceId, language, bilingual }),
         signal

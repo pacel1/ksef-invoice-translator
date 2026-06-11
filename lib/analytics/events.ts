@@ -66,6 +66,9 @@ export interface AnalyticsEventMap {
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
 
+/** Header that stitches a client PostHog session onto server-side captures. */
+export const POSTHOG_SESSION_HEADER = "x-posthog-session-id";
+
 /**
  * Witness object: Record<keyof Payload, true> forces every payload key
  * (including optional ones) to be listed, and rejects unknown keys, so the

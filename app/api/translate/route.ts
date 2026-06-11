@@ -14,6 +14,7 @@ import {
 } from "@/lib/billing/credit-enforcement";
 import type { Invoice, LanguageCode } from "@/types/invoice";
 import { captureServer } from "@/lib/analytics/server";
+import { POSTHOG_SESSION_HEADER } from "@/lib/analytics/events";
 
 /**
  * Tłumacz redesign behavior (spec §6.2), made permanent in PR #E:
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   const cached = cachedRequestSchema.safeParse(body);
   if (cached.success) {
     const posthogSessionId =
-      request.headers.get("x-posthog-session-id") ?? undefined;
+      request.headers.get(POSTHOG_SESSION_HEADER) ?? undefined;
     return translateCached(cached.data, posthogSessionId);
   }
 

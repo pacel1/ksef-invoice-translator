@@ -241,6 +241,11 @@ async function handleCheckoutCompleted(
     throw new Error("grant_paid_credits failed");
   }
 
+  // Revenue-truth event. Placed after the irreversible credit grant: if a
+  // later step throws and the route 500s, after() still flushes this event
+  // (it fires on response close, not on 2xx), and Stripe's retry is skipped
+  // by the status === "paid" idempotency guard above — so the event is
+  // exactly-once across delivery attempts. Keep it after the grant.
   captureServer({
     distinctId: purchase.data.user_id,
     event: "payment_completed",
