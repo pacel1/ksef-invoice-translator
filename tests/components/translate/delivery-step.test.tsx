@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { DeliveryStep } from "@/components/translate/delivery-step";
 import { copy } from "@/lib/workspace/copy";
@@ -7,7 +7,28 @@ import type {
   WizardApi
 } from "@/components/translate/use-translation-wizard";
 
+const captureClientMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/analytics/client", () => ({
+  captureClient: captureClientMock,
+  captureClientError: vi.fn()
+}));
+
 const t = copy.pl;
+
+beforeEach(() => {
+  if (!("createObjectURL" in URL)) {
+    Object.defineProperty(URL, "createObjectURL", {
+      value: vi.fn(() => "blob:mock"),
+      configurable: true
+    });
+  }
+  if (!("revokeObjectURL" in URL)) {
+    Object.defineProperty(URL, "revokeObjectURL", {
+      value: vi.fn(),
+      configurable: true
+    });
+  }
+});
 
 function makeApi(): WizardApi {
   return {
@@ -158,6 +179,31 @@ describe("<DeliveryStep>", () => {
     );
     const zipBtn = screen.getByRole("button", { name: /Pobierz wszystkie/i });
     expect(zipBtn).toBeDisabled();
+  });
+
+  it("captures pdf_downloaded with context 'single' on the single-file download", async () => {
+    captureClientMock.mockClear();
+    render(
+      <DeliveryStep
+        copy={t}
+        api={makeApi()}
+        jobItems={makeItems(1)}
+        language="en"
+        bilingual={false}
+        onCancelBatch={vi.fn()}
+        onResumeBatch={vi.fn(async () => undefined)}
+        onRetryItem={vi.fn(async () => undefined)}
+        onChangeLanguage={vi.fn()}
+        onNewTranslation={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Pobierz PDF/i }));
+    await vi.waitFor(() =>
+      expect(captureClientMock).toHaveBeenCalledWith(
+        "pdf_downloaded",
+        expect.objectContaining({ context: "single" })
+      )
+    );
   });
 
   it("invokes onNewTranslation when the user clicks 'Nowe tłumaczenie'", () => {

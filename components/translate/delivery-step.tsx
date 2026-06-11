@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Languages, Pencil, Plus } from "lucide-react";
-import posthog from "posthog-js";
+import { captureClient } from "@/lib/analytics/client";
 import { TranslationEditor } from "./translation-editor";
 import { TranslationProgress } from "./translation-progress";
 import type { Copy } from "@/lib/workspace/copy";
@@ -67,10 +67,11 @@ function DeliverySingle(props: DeliveryStepProps) {
       blob,
       `ksef-translation-${item.invoiceNumber || item.invoiceId}.pdf`
     );
-    posthog.capture("pdf_downloaded", {
+    captureClient("pdf_downloaded", {
       invoice_id: item.invoiceId,
       language,
-      bilingual
+      bilingual,
+      context: "single"
     });
   }, [api, item, language, bilingual]);
 
@@ -249,10 +250,11 @@ function DeliveryBatch(props: DeliveryStepProps) {
         blob,
         `ksef-translation-${it.invoiceNumber || it.invoiceId}.pdf`
       );
-      posthog.capture("pdf_downloaded", {
+      captureClient("pdf_downloaded", {
         invoice_id: it.invoiceId,
         language,
-        bilingual
+        bilingual,
+        context: "batch_row"
       });
     },
     [api, jobItems, language, bilingual]
@@ -276,7 +278,7 @@ function DeliveryBatch(props: DeliveryStepProps) {
     const blob = await api.downloadZip(ids, language, bilingual);
     const stamp = new Date().toISOString().slice(0, 16).replace(/[-T:]/g, "").slice(0, 12);
     triggerBlobDownload(blob, `tlumaczenia-${stamp}.zip`);
-    posthog.capture("zip_downloaded", {
+    captureClient("zip_downloaded", {
       invoice_count: ids.length,
       language,
       bilingual

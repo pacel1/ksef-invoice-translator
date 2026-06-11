@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Loader2, MailCheck } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { GoogleIcon } from "@/components/auth/google-icon";
-import posthog from "posthog-js";
+import { captureClient, captureClientError } from "@/lib/analytics/client";
 
 export interface LoginFormCopy {
   emailLabel: string;
@@ -35,7 +35,7 @@ export function LoginForm({ copy }: LoginFormProps) {
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus>("idle");
 
   async function signInWithGoogle() {
-    posthog.capture("google_signin_clicked");
+    captureClient("google_signin_clicked", {});
     setGoogleStatus("pending");
     try {
       const supabase = createSupabaseBrowserClient();
@@ -45,17 +45,17 @@ export function LoginForm({ copy }: LoginFormProps) {
       });
       if (error) {
         setGoogleStatus("error");
-        posthog.captureException(error);
+        captureClientError(error);
       }
       // On success the browser is being redirected to Google; stay pending.
     } catch (err) {
       setGoogleStatus("error");
-      posthog.captureException(err);
+      captureClientError(err);
     }
   }
 
   async function submit(currentEmail: string) {
-    posthog.capture("login_submitted", { method: "email_otp" });
+    captureClient("login_submitted", { method: "email_otp" });
     setStatus("submitting");
     try {
       const supabase = createSupabaseBrowserClient();
@@ -66,15 +66,14 @@ export function LoginForm({ copy }: LoginFormProps) {
       });
       if (error) {
         setStatus(error.status === 429 ? "rate-limited" : "error");
-        posthog.captureException(error);
+        captureClientError(error);
         return;
       }
-      posthog.capture("login_email_sent", { method: "email_otp" });
-      posthog.identify(currentEmail, { email: currentEmail });
+      captureClient("login_email_sent", { method: "email_otp" });
       setStatus("sent");
     } catch (err) {
       setStatus("error");
-      posthog.captureException(err);
+      captureClientError(err);
     }
   }
 

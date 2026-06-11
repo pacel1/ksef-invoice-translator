@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useReducer, useRef } from "react";
 import type { Invoice, LanguageCode } from "@/types/invoice";
-import posthog from "posthog-js";
+import { captureClient, captureClientError } from "@/lib/analytics/client";
 
 // ─── Public types ─────────────────────────────────────────────────────────
 
@@ -329,7 +329,7 @@ export function useTranslationWizard({
             patch: { status: "error", errorMessage: reason }
           });
         }
-        posthog.captureException(error);
+        captureClientError(error);
         return;
       }
 
@@ -380,7 +380,7 @@ export function useTranslationWizard({
         }
       }
 
-      posthog.capture("files_uploaded", {
+      captureClient("files_uploaded", {
         file_count: unique.length,
         success_count: successCount,
         failure_count: failureCount
@@ -561,7 +561,7 @@ export function useTranslationWizard({
       }));
     if (items.length === 0) return;
 
-    posthog.capture("translation_started", {
+    captureClient("translation_started", {
       file_count: items.length,
       language: current.language,
       bilingual: current.bilingual
@@ -592,7 +592,7 @@ export function useTranslationWizard({
           }
     );
     setJobItems(updated);
-    posthog.capture("translation_batch_cancelled", {
+    captureClient("translation_batch_cancelled", {
       total: jobItemsRef.current.length,
       done: jobItemsRef.current.filter((j) => j.status === "done").length
     });
