@@ -106,7 +106,7 @@ Without this data it is not possible, respectively, to create an Account, make a
 2. analytics: statistics about how the Service is used, via PostHog (PostHog EU); activated only after you give consent,
 3. marketing: Google Ads cookies (Google Ireland Limited), used to measure ad performance; activated only after you give consent.
 You can give or refuse consent in the cookie banner shown on your first visit. You can change your choice at any time using the "Cookie settings" link in the Service footer. Withdrawing consent is as easy as giving it and does not affect the lawfulness of processing carried out before the withdrawal.
-The legal basis for processing related to analytics and marketing cookies is consent (art. 6(1)(a) GDPR). Until consent is given, analytics and marketing scripts are not loaded.
+The legal basis for processing related to analytics and marketing cookies is consent (art. 6(1)(a) GDPR). Until consent is given, the Google tag runs in Google Consent Mode with every signal set to denied: it stores no cookies and ad click data is redacted.
 You can delete and block cookies in your browser settings, but blocking the necessary cookies will prevent signing in to the Service.`
   },
   {

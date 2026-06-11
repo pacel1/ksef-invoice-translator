@@ -169,10 +169,24 @@ describe("<ConsentProvider> Google Ads tag gating", () => {
     expect(container.querySelector("script[src*='googletagmanager']")).toBeNull();
   });
 
-  it("renders no Google scripts before marketing consent", () => {
+  it("loads gtag.js before any consent decision with every signal denied (advanced consent mode)", () => {
     vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_ID", "AW-18231110784");
     const { container } = renderProvider();
-    expect(container.querySelector("script[src*='googletagmanager']")).toBeNull();
+    expect(container.querySelector("script[src*='googletagmanager']")).not.toBeNull();
+    const commands = runBootstrap(container);
+    expect(commands).toContainEqual([
+      "consent",
+      "default",
+      {
+        ad_storage: "denied",
+        ad_user_data: "denied",
+        ad_personalization: "denied",
+        analytics_storage: "denied"
+      }
+    ]);
+    expect(commands.filter((c) => c[0] === "consent" && c[1] === "update")).toEqual([]);
+    expect(commands).toContainEqual(["set", "ads_data_redaction", true]);
+    expect(commands).toContainEqual(["config", "AW-18231110784"]);
   });
 
   it("loads gtag.js once marketing is granted; bootstrap defaults to denied then grants from the cookie", () => {

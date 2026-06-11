@@ -56,6 +56,18 @@ Rewrite privacy §10 (`lib/legal/privacy/pl.ts` + `en.ts`, section id `cookies`)
 - Update `tests/lib/legal/privacy-content.test.ts` (old copy asserted "no analytics cookies / no banner").
 - E2E (`tests/e2e/cookie-consent.spec.ts`): first visit shows banner; accept ⇒ cookie set, banner gone after reload; reject ⇒ optional categories false; footer settings link reopens modal; no Google script in test env (env var unset).
 
+## Addendum (2026-06-11, post PR #63): switch to advanced consent mode
+
+User-requested follow-up after Google Ads could not detect the tag (its
+verification bot never accepts the banner, so under basic mode the script was
+invisible to it). The tag now loads for every visitor when
+`NEXT_PUBLIC_GOOGLE_ADS_ID` is set, with all Consent Mode v2 signals defaulted
+to denied and `ads_data_redaction` enabled, then granted from the live consent
+cookie or later `consent update` pushes. No cookies are written pre-consent;
+Google receives cookieless pings. The banner, storage, and withdrawal flow are
+unchanged. Privacy policy §10 wording updated to match (the "scripts are not
+loaded" sentence replaced with a Consent Mode description).
+
 ## Out of scope
 
 - Google Ads conversion events (configured later in Google Ads UI / follow-up).

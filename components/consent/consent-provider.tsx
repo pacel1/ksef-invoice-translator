@@ -99,7 +99,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
           onClose={closeSettings}
         />
       )}
-      <GoogleAdsTag consent={consent} />
+      <GoogleAdsTag />
       <PostHogConsentSync consent={consent} />
     </ConsentContext.Provider>
   );
