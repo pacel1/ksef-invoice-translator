@@ -5,6 +5,7 @@ import { sha256Hex } from "@/lib/invoice/source-hash";
 import { buildSyntheticFa3Xml } from "@/lib/mf-fa3/invoice-to-fa3-xml";
 import { buildKsefXmlVerificationLink } from "@/lib/xml/verification";
 import { parseKsefXml } from "@/lib/xml/parser";
+import { maxUploadBytes } from "@/lib/invoice/upload-limits";
 
 export interface UploadResult {
   invoice: Invoice;
@@ -35,9 +36,16 @@ export class UploadError extends Error {
 }
 
 export async function uploadInvoiceForUser({ userId, file, supabase }: UploadOptions): Promise<UploadResult> {
+  // Detect type and enforce the byte cap BEFORE buffering the file into memory,
+  // so an oversized upload is rejected without ever being read.
+  const sourceType = detectSourceType(file);
+  const limit = maxUploadBytes(sourceType);
+  if (file.size > limit) {
+    throw new UploadError(`File too large (max ${Math.floor(limit / (1024 * 1024))} MB)`, 413);
+  }
+
   const bytes = Buffer.from(await file.arrayBuffer());
   const hash = await sha256Hex(bytes);
-  const sourceType = detectSourceType(file);
 
   if (sourceType === "xml") {
     return uploadXml({ userId, supabase, bytes, hash });
