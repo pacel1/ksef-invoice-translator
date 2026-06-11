@@ -53,6 +53,7 @@ We process invoice data solely to perform the translation and generate the PDF d
 6. iFirma: issuing VAT invoices for purchases in the Service and submitting them to the National e-Invoicing System; based in Poland.
 7. Cloudflare: anti-bot verification (Turnstile) protecting the Service's forms.
 8. Google (Google Ireland Limited): measuring the performance of Google Ads campaigns, only after you consent to marketing cookies.
+9. PostHog (PostHog EU): product analytics and usage statistics; data stored in the European Union (Frankfurt region). For visitors who have not accepted analytics cookies, analytics runs without cookies and without persistent browser identifiers. Analytics cookies are set only after the "analytics" category is accepted in the cookie banner. Events of signed-in users are linked to their account under our legitimate interest in understanding how the product is used.
 Data may also be disclosed to public authorities where required by law, and to the National e-Invoicing System (KSeF) for VAT invoices documenting purchases in the Service. We do not sell personal data.`
   },
   {
@@ -102,7 +103,7 @@ Without this data it is not possible, respectively, to create an Account, make a
     title: "10. Cookies",
     content: `The Service uses cookies in three categories:
 1. necessary: sign-in session cookies (Supabase Auth), anti-bot verification cookies (Cloudflare Turnstile), and a cookie that remembers your consent decision; they are always active because the Service cannot work without them, and they do not require consent under the Polish Electronic Communications Law,
-2. analytics: anonymous statistics about how the Service is used; activated only after you give consent,
+2. analytics: statistics about how the Service is used, via PostHog (PostHog EU); activated only after you give consent,
 3. marketing: Google Ads cookies (Google Ireland Limited), used to measure ad performance; activated only after you give consent.
 You can give or refuse consent in the cookie banner shown on your first visit. You can change your choice at any time using the "Cookie settings" link in the Service footer. Withdrawing consent is as easy as giving it and does not affect the lawfulness of processing carried out before the withdrawal.
 The legal basis for processing related to analytics and marketing cookies is consent (art. 6(1)(a) GDPR). Until consent is given, analytics and marketing scripts are not loaded.

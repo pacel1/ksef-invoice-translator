@@ -55,6 +55,7 @@ Dane z faktur przetwarzamy wyłącznie w celu wykonania tłumaczenia i wygenerow
 6. iFirma: wystawianie faktur VAT za zakupy w Serwisie i przesyłanie ich do Krajowego Systemu e-Faktur; siedziba w Polsce.
 7. Cloudflare: weryfikacja antybotowa (Turnstile) chroniąca formularze Serwisu.
 8. Google (Google Ireland Limited): pomiar skuteczności reklam Google Ads, wyłącznie po wyrażeniu zgody na cookies marketingowe.
+9. PostHog (PostHog EU): analityka produktowa i statystyki użycia aplikacji; dane przechowywane w Unii Europejskiej (region Frankfurt). U osób bez zgody na cookies analityczne analityka działa bez plików cookie i bez trwałych identyfikatorów w przeglądarce. Pliki cookie analityki zapisujemy wyłącznie po zaakceptowaniu kategorii "analityczne" w banerze cookies. Zdarzenia zalogowanych użytkowników łączymy z kontem w ramach prawnie uzasadnionego interesu, aby rozumieć korzystanie z produktu.
 Ponadto dane mogą być udostępniane organom publicznym, gdy obowiązek taki wynika z przepisów prawa, oraz Krajowemu Systemowi e-Faktur w zakresie faktur VAT dokumentujących zakupy w Serwisie. Nie sprzedajemy danych osobowych.`
   },
   {
@@ -104,7 +105,7 @@ Niepodanie tych danych uniemożliwia odpowiednio: założenie Konta, dokonanie z
     title: "10. Pliki cookies",
     content: `Serwis używa plików cookies w trzech kategoriach:
 1. niezbędne: cookies sesji logowania (Supabase Auth), cookies weryfikacji antybotowej (Cloudflare Turnstile) oraz cookie zapamiętujące Twoją decyzję dotyczącą zgód; są zawsze aktywne, ponieważ bez nich Serwis nie może działać, i nie wymagają zgody zgodnie z przepisami ustawy Prawo komunikacji elektronicznej,
-2. analityczne: anonimowe statystyki korzystania z Serwisu; uruchamiane wyłącznie po wyrażeniu zgody,
+2. analityczne: statystyki korzystania z Serwisu w narzędziu PostHog (PostHog EU); uruchamiane wyłącznie po wyrażeniu zgody,
 3. marketingowe: cookies usługi Google Ads (Google Ireland Limited), służące do pomiaru skuteczności reklam; uruchamiane wyłącznie po wyrażeniu zgody.
 Zgodę można wyrazić lub odmówić jej wyrażenia w banerze cookies wyświetlanym przy pierwszej wizycie. Wybór można zmienić w każdej chwili przez link "Ustawienia cookies" w stopce Serwisu. Wycofanie zgody jest równie łatwe jak jej wyrażenie i nie wpływa na zgodność z prawem przetwarzania dokonanego przed wycofaniem.
 Podstawą prawną przetwarzania danych w związku z cookies analitycznymi i marketingowymi jest zgoda (art. 6 ust. 1 lit. a RODO). Dopóki zgoda nie zostanie wyrażona, skrypty analityczne i marketingowe nie są ładowane.
