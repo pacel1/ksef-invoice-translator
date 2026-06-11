@@ -60,6 +60,7 @@ export function shouldShowConsentPrompt(
   const decidedAt = new Date(choice.at).getTime();
   if (Number.isNaN(decidedAt)) return true;
   const ageDays = (now.getTime() - decidedAt) / 86_400_000;
+  if (ageDays < 0) return true;
   return ageDays > CONSENT_REPROMPT_DAYS;
 }
 

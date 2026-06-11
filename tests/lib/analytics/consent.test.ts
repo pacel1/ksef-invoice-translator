@@ -61,6 +61,18 @@ describe("shouldShowConsentPrompt", () => {
     ).toISOString();
     expect(shouldShowConsentPrompt({ value: "declined", at: old }, NOW)).toBe(true);
   });
+
+  it("re-asks when the stored timestamp is in the future (untrustworthy)", () => {
+    const future = new Date(NOW.getTime() + 86_400_000).toISOString();
+    expect(shouldShowConsentPrompt({ value: "declined", at: future }, NOW)).toBe(true);
+  });
+
+  it("stays hidden at exactly the re-prompt boundary", () => {
+    const exactly = new Date(
+      NOW.getTime() - CONSENT_REPROMPT_DAYS * 86_400_000
+    ).toISOString();
+    expect(shouldShowConsentPrompt({ value: "declined", at: exactly }, NOW)).toBe(false);
+  });
 });
 
 describe("persistenceFor", () => {
