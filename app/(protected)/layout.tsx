@@ -7,6 +7,7 @@ import { CreditPurchaseDrawer } from "@/components/billing/credit-purchase-drawe
 import { OnboardingNameModal } from "@/components/account/onboarding-name-modal";
 import { AuthenticatedHeader } from "@/components/layout/authenticated-header";
 import { LegalFooter } from "@/components/layout/legal-footer";
+import { IdentifyUser } from "@/components/analytics/identify-user";
 import { copy } from "@/lib/workspace/copy";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +31,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen flex-col bg-surface text-text-strong">
+      <IdentifyUser userId={user.id} email={user.email ?? undefined} locale={uiLanguage} />
       <AuthenticatedHeader
         email={user.email ?? ""}
         balanceSlot={balanceSlot}
