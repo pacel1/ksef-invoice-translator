@@ -66,8 +66,8 @@ PostHog persistence for everyone, logged-in users included.
 - **Identification is consent-independent**: `identifyAuthenticatedUser`
   (`lib/analytics/client.ts`) identifies logged-in users by their Supabase
   `user.id` regardless of the cookie choice. This is a legitimate-interest
-  measure, disclosed in the privacy policy (sub-processor list §9 and cookie
-  categories §10). It never changes persistence; under memory persistence the
+  measure, disclosed in the privacy policy (sub-processor list in §5, item 9,
+  and cookie categories in §10). It never changes persistence; under memory persistence the
   identity simply re-links on each page load. `resetAnalyticsIdentity` runs on
   sign-out and returns to the consent-derived persistence.
 
