@@ -45,7 +45,7 @@ describe("getPrivacySections", () => {
 
   it("lists all actual processors and recipients", () => {
     const all = getPrivacySections("pl").map((s) => s.content).join("\n");
-    for (const name of ["Supabase", "Vercel", "OpenAI", "Stripe", "Resend", "iFirma", "Cloudflare"]) {
+    for (const name of ["Supabase", "Vercel", "OpenAI", "Stripe", "Resend", "iFirma", "Cloudflare", "Google"]) {
       expect(all).toContain(name);
     }
   });
@@ -65,10 +65,18 @@ describe("getPrivacySections", () => {
     expect(all).toMatch(/podmiot(em)? przetwarzając/i);
   });
 
-  it("describes cookies honestly (essential only, no analytics)", () => {
+  it("describes the cookie categories, consent banner and withdrawal path", () => {
     const all = getPrivacySections("pl").map((s) => `${s.title}\n${s.content}`).join("\n");
     expect(all).toMatch(/cookies/i);
     expect(all).toMatch(/sesj/i);
+    expect(all).toMatch(/niezbędne/i);
+    expect(all).toMatch(/analityczn/i);
+    expect(all).toMatch(/marketingow/i);
+    expect(all).toContain("Google Ads");
+    expect(all).toMatch(/baner/i);
+    expect(all).toMatch(/art\. 6 ust\. 1 lit\. a/i);
+    expect(all).toContain("Ustawienia cookies");
+    expect(all).toMatch(/wycofa/i);
   });
 
   it("notes in the EN version that the Polish text prevails", () => {

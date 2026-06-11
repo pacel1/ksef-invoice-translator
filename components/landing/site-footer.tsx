@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CookieSettingsButton } from "@/components/consent/cookie-settings-button";
 import { landingCopy, type LandingLocale } from "@/lib/landing/copy";
 
 export interface SiteFooterProps {
@@ -46,7 +47,10 @@ export function SiteFooter({ locale }: SiteFooterProps) {
         </div>
         <div className="mt-12 flex flex-col gap-2 border-t border-white/10 pt-6 font-dm text-[13px] text-white/55 sm:flex-row sm:items-center sm:justify-between">
           <span>{t.legalNote}</span>
-          <span>© {year} TłumaczKSeF. {t.rights}</span>
+          <span className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
+            <CookieSettingsButton locale={locale} className={`${linkClass} text-left text-[13px]`} />
+            <span>© {year} TłumaczKSeF. {t.rights}</span>
+          </span>
         </div>
       </div>
     </footer>
