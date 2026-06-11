@@ -124,7 +124,7 @@ export function UploadStep({
               ref={inputRef}
               type="file"
               multiple
-              accept=".xml,application/xml,text/xml,.pdf,application/pdf"
+              accept=".xml,application/xml,text/xml"
               className="sr-only"
               onChange={onInputChange}
             />
@@ -166,7 +166,7 @@ export function UploadStep({
                 ref={inputRef}
                 type="file"
                 multiple
-                accept=".xml,application/xml,text/xml,.pdf,application/pdf"
+                accept=".xml,application/xml,text/xml"
                 className="sr-only"
                 onChange={onInputChange}
               />

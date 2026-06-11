@@ -141,6 +141,36 @@ describe("<UploadStep>", () => {
     expect(onClearAll).toHaveBeenCalledTimes(1);
   });
 
+  it("accepts only XML files in the hero drop zone input", () => {
+    const { container } = render(
+      <UploadStep
+        files={[]}
+        copy={t}
+        onAddFiles={vi.fn()}
+        onRemoveFile={vi.fn()}
+        onClearAll={vi.fn()}
+        onNext={vi.fn()}
+      />
+    );
+    const input = container.querySelector('input[type="file"]');
+    expect(input).toHaveAttribute("accept", ".xml,application/xml,text/xml");
+  });
+
+  it("accepts only XML files in the add-more input", () => {
+    const { container } = render(
+      <UploadStep
+        files={[makeSlot()]}
+        copy={t}
+        onAddFiles={vi.fn()}
+        onRemoveFile={vi.fn()}
+        onClearAll={vi.fn()}
+        onNext={vi.fn()}
+      />
+    );
+    const input = container.querySelector('input[type="file"]');
+    expect(input).toHaveAttribute("accept", ".xml,application/xml,text/xml");
+  });
+
   it("calls onAddFiles when the user drops files onto the drop zone", () => {
     const onAddFiles = vi.fn();
     render(

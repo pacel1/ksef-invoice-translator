@@ -10,7 +10,7 @@ test("free credit is consumed on the first new upload", async ({ page, testUser 
   await expect(page.getByText(/1 (darmowy kredyt|free credit)/i).first()).toBeVisible();
 
   const chooserPromise = page.waitForEvent("filechooser");
-  await page.getByText(/Wgraj KSeF FA\(3\) XML lub PDF/i).click();
+  await page.getByText(/Wgraj KSeF FA\(3\) XML/i).click();
   const chooser = await chooserPromise;
   const [uploadResponse] = await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/upload") && r.request().method() === "POST"),
@@ -44,7 +44,7 @@ test("dedupe re-upload does not consume a credit", async ({ page, testUser }) =>
 
   // First upload — consumes one paid credit.
   let chooserPromise = page.waitForEvent("filechooser");
-  await page.getByText(/Wgraj KSeF FA\(3\) XML lub PDF/i).click();
+  await page.getByText(/Wgraj KSeF FA\(3\) XML/i).click();
   let chooser = await chooserPromise;
   await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/upload") && r.request().method() === "POST"),
@@ -56,7 +56,7 @@ test("dedupe re-upload does not consume a credit", async ({ page, testUser }) =>
 
   // Second upload of the same bytes — dedupe hit, no credit consumed.
   chooserPromise = page.waitForEvent("filechooser");
-  await page.getByText(/Wgraj KSeF FA\(3\) XML lub PDF/i).click();
+  await page.getByText(/Wgraj KSeF FA\(3\) XML/i).click();
   chooser = await chooserPromise;
   const [secondResponse] = await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/upload") && r.request().method() === "POST"),
@@ -88,7 +88,7 @@ test("upload at zero balance returns 402 and shows the modal", async ({ page, te
   await page.reload();
 
   const chooserPromise = page.waitForEvent("filechooser");
-  await page.getByText(/Wgraj KSeF FA\(3\) XML lub PDF/i).click();
+  await page.getByText(/Wgraj KSeF FA\(3\) XML/i).click();
   const chooser = await chooserPromise;
   const [response] = await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/upload") && r.request().method() === "POST"),

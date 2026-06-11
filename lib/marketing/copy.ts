@@ -109,7 +109,7 @@ export const marketingCopy = {
         dataHeader: "Typ danych",
         retentionHeader: "Czas przechowywania",
         rows: [
-          { data: "Źródłowy XML/PDF faktury", retention: "30 dni od uploadu" },
+          { data: "Źródłowy XML faktury", retention: "30 dni od uploadu" },
           { data: "Tłumaczenia faktury", retention: "30 dni od wykonania" },
           { data: "Bilans kredytów", retention: "Na zawsze, dopóki istnieje konto" },
           { data: "Token magic-link", retention: "60 minut od wygenerowania" },
@@ -321,7 +321,7 @@ export const marketingCopy = {
         dataHeader: "Data type",
         retentionHeader: "Retention period",
         rows: [
-          { data: "Source XML/PDF invoice", retention: "30 days from upload" },
+          { data: "Source XML invoice", retention: "30 days from upload" },
           { data: "Invoice translations", retention: "30 days from creation" },
           { data: "Credit balance", retention: "Forever, while the account exists" },
           { data: "Magic-link tokens", retention: "60 minutes from generation" },

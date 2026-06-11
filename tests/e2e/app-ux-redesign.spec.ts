@@ -31,7 +31,7 @@ test("clicking a language pill switches the active language and caches it", asyn
 
   // Upload first.
   const chooserPromise = page.waitForEvent("filechooser");
-  await page.getByText(/Wgraj KSeF FA\(3\) XML lub PDF/i).click();
+  await page.getByText(/Wgraj KSeF FA\(3\) XML/i).click();
   const chooser = await chooserPromise;
   const [uploadResponse] = await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/upload") && r.request().method() === "POST"),
@@ -80,7 +80,7 @@ test("clicking 'New invoice' resets the workspace to the empty state", async ({ 
   await signIn(page, testUser.email);
 
   const chooserPromise = page.waitForEvent("filechooser");
-  await page.getByText(/Wgraj KSeF FA\(3\) XML lub PDF/i).click();
+  await page.getByText(/Wgraj KSeF FA\(3\) XML/i).click();
   const chooser = await chooserPromise;
   await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/upload") && r.request().method() === "POST"),
@@ -94,5 +94,5 @@ test("clicking 'New invoice' resets the workspace to the empty state", async ({ 
   await page.getByRole("button", { name: /Nowa faktura|New invoice/i }).click();
 
   // Drop zone is back.
-  await expect(page.getByText(/Wgraj KSeF FA\(3\) XML lub PDF/i)).toBeVisible();
+  await expect(page.getByText(/Wgraj KSeF FA\(3\) XML/i)).toBeVisible();
 });

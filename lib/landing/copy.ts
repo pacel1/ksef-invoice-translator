@@ -69,7 +69,7 @@ export const landingCopy = {
       eyebrow: "Jak to działa",
       heading: "Trzy kroki i faktura jest gotowa do wysłania.",
       steps: [
-        { title: "Wgraj fakturę z KSeF.", body: "Plik XML albo PDF. Nie łączymy się z KSeF i nie logujemy Cię do Ministerstwa Finansów." },
+        { title: "Wgraj fakturę z KSeF.", body: "Plik XML z KSeF. Nie łączymy się z KSeF i nie logujemy Cię do Ministerstwa Finansów." },
         { title: "Wybierz język klienta.", body: "Angielski, niemiecki, francuski i kilkanaście innych. Możesz też zrobić wersję dwujęzyczną." },
         { title: "Pobierz gotowy plik.", body: "Profesjonalna wizualizacja faktury, gotowa, żeby wysłać ją mailem." }
       ],
@@ -122,7 +122,7 @@ export const landingCopy = {
         { q: "Czy tłumaczenie zastępuje fakturę z KSeF?", a: "Nie. Fakturą jest dokument w KSeF. To, co tworzymy, to jej czytelna wersja w języku klienta. Oryginał zostaje nienaruszony." },
         { q: "Czy faktura z KSeF może być po angielsku albo niemiecku?", a: "Tak. Klient dostaje wersję w swoim języku, a oryginał dalej żyje w KSeF po polsku." },
         { q: "Co z kodem QR?", a: "Zostaje. Dzięki niemu wizualizację da się powiązać z fakturą źródłową i zweryfikować." },
-        { q: "Muszę coś instalować albo integrować się z KSeF?", a: "Nie. Wgrywasz plik XML lub PDF i tyle. Nie łączymy się z KSeF i nie logujemy Cię do Ministerstwa Finansów." },
+        { q: "Muszę coś instalować albo integrować się z KSeF?", a: "Nie. Wgrywasz plik XML i tyle. Nie łączymy się z KSeF i nie logujemy Cię do Ministerstwa Finansów." },
         { q: "Czy dostanę fakturę VAT za zakup?", a: "Tak. Po każdym zakupie pakietu wysyłamy fakturę VAT mailem." },
         { q: "Czy moje dane są bezpieczne?", a: "Pliki trzymamy w UE (Frankfurt) i kasujemy po 30 dniach. Nie używamy ich do trenowania modeli." }
       ]
@@ -219,7 +219,7 @@ export const landingCopy = {
       eyebrow: "How it works",
       heading: "Three steps and the invoice is ready to send.",
       steps: [
-        { title: "Upload your KSeF invoice.", body: "An XML or PDF file. We never connect to KSeF and never log you into the Ministry of Finance." },
+        { title: "Upload your KSeF invoice.", body: "An XML file from KSeF. We never connect to KSeF and never log you into the Ministry of Finance." },
         { title: "Choose your client's language.", body: "English, German, French and a dozen more. You can also make a bilingual version." },
         { title: "Download the finished file.", body: "A professional rendering of the invoice, ready to send by email." }
       ],
@@ -272,7 +272,7 @@ export const landingCopy = {
         { q: "Does the translation replace the KSeF invoice?", a: "No. The invoice is the document in KSeF. What we create is a readable version in your client's language. The original stays untouched." },
         { q: "Can a KSeF invoice be in English or German?", a: "Yes. Your client gets a version in their language, while the original still lives in KSeF in Polish." },
         { q: "What about the QR code?", a: "It stays. It lets the rendering be linked back to the source invoice and verified." },
-        { q: "Do I need to install anything or integrate with KSeF?", a: "No. You upload an XML or PDF file and that is it. We never connect to KSeF and never log you into the Ministry of Finance." },
+        { q: "Do I need to install anything or integrate with KSeF?", a: "No. You upload an XML file and that is it. We never connect to KSeF and never log you into the Ministry of Finance." },
         { q: "Will I get a VAT invoice for my purchase?", a: "Yes. After every pack purchase we email you a VAT invoice." },
         { q: "Is my data safe?", a: "We store files in the EU (Frankfurt) and delete them after 30 days. We do not use them to train models." }
       ]

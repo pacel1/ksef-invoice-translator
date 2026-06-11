@@ -10,17 +10,16 @@ const dmSans = DM_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500",
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "KSeF Invoice Translator | Tłumacz faktur KSeF FA(3) XML i PDF",
+    default: "KSeF Invoice Translator | Tłumacz faktur KSeF FA(3) XML",
     template: "%s | KSeF Invoice Translator"
   },
   description:
-    "Polskojęzyczne narzędzie SaaS dla firm: tłumacz faktury KSeF FA(3) XML i PDF, generuj czytelny podgląd oraz profesjonalny PDF dla zagranicznych kontrahentów.",
+    "Polskojęzyczne narzędzie SaaS dla firm: tłumacz faktury KSeF FA(3) XML, generuj czytelny podgląd oraz profesjonalny PDF dla zagranicznych kontrahentów.",
   keywords: [
     "tłumacz faktur KSeF",
     "tłumaczenie faktury KSeF",
     "faktura KSeF po angielsku",
     "FA(3) viewer",
-    "KSeF PDF translator",
     "KSeF invoice translator",
     "XML invoice to PDF",
     "Translate KSeF invoice",
@@ -34,9 +33,9 @@ export const metadata: Metadata = {
   creator: "KSeF Invoice Translator",
   publisher: "KSeF Invoice Translator",
   openGraph: {
-    title: "KSeF Invoice Translator | Tłumacz faktur KSeF FA(3) XML i PDF",
+    title: "KSeF Invoice Translator | Tłumacz faktur KSeF FA(3) XML",
     description:
-      "Zamień polskie faktury KSeF XML lub PDF w profesjonalne tłumaczenia i eksporty PDF dla zagranicznych kontrahentów.",
+      "Zamień polskie faktury KSeF XML w profesjonalne tłumaczenia i eksporty PDF dla zagranicznych kontrahentów.",
     url: "/",
     siteName: "KSeF Invoice Translator",
     locale: "pl_PL",
@@ -45,7 +44,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "KSeF Invoice Translator",
-    description: "Tłumacz faktury KSeF FA(3) XML i PDF dla zagranicznych kontrahentów."
+    description: "Tłumacz faktury KSeF FA(3) XML dla zagranicznych kontrahentów."
   },
   robots: {
     index: true,
