@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk, DM_Sans } from "next/font/google";
 import { SITE_URL } from "@/lib/seo/site-url";
+import { ConsentPrompt } from "@/components/analytics/consent-prompt";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-inter" });
@@ -55,7 +56,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pl" className={`${inter.variable} ${spaceGrotesk.variable} ${dmSans.variable}`}>
-      <body className="bg-surface text-text-strong">{children}</body>
+      <body className="bg-surface text-text-strong">
+        {children}
+        <ConsentPrompt />
+      </body>
     </html>
   );
 }
