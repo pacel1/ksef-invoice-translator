@@ -24,6 +24,12 @@ export class MissingTaxRateError extends Error {
   }
 }
 
+// Stripe's default session lifetime is 24h; we shorten it to 1h (Stripe
+// minimum is 30min). Keep in sync with the pending-session window in
+// abuse-caps: an abandoned session must be dead on Stripe's side by the
+// time it stops counting toward ABUSE_CAP_PENDING_SESSIONS_1H.
+export const CHECKOUT_SESSION_TTL_SECONDS = 60 * 60;
+
 export function buildCheckoutSessionParams(
   input: CheckoutSessionInput
 ): Stripe.Checkout.SessionCreateParams {
@@ -41,6 +47,7 @@ export function buildCheckoutSessionParams(
   return {
     mode: "payment",
     currency: quote.currency,
+    expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_SESSION_TTL_SECONDS,
     line_items: [
       {
         quantity: quote.packageSize,

@@ -57,6 +57,9 @@ export async function POST(request: NextRequest) {
     } else if (event.type === "checkout.session.async_payment_failed") {
       const session = event.data.object as Stripe.Checkout.Session;
       await handleAsyncPaymentFailed(admin, session);
+    } else if (event.type === "checkout.session.expired") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      await handleCheckoutExpired(admin, session);
     } else if (event.type === "charge.refunded") {
       const charge = event.data.object as Stripe.Charge;
       await handleChargeRefunded(admin, charge);
@@ -481,6 +484,32 @@ async function handleAsyncPaymentFailed(
         purchase_id: purchase.data.id
       }
     });
+  }
+}
+
+/**
+ * The customer opened checkout and walked away; Stripe expired the session
+ * (sessions get a 1h expires_at). Flip the pending row to a terminal
+ * 'expired' so abandoned sessions are distinguishable from live attempts
+ * and from rejected payments. The pending-only guard keeps a late or
+ * duplicate expiry event from clobbering a purchase that succeeded.
+ */
+async function handleCheckoutExpired(
+  admin: ReturnType<typeof getSupabaseAdminClient>,
+  session: Stripe.Checkout.Session
+): Promise<void> {
+  const purchase = await admin
+    .from("stripe_purchases")
+    .update({ status: "expired" })
+    .eq("stripe_checkout_session_id", session.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (purchase.data) {
+    console.warn(
+      `[webhook] checkout session ${session.id} expired — purchase ${purchase.data.id} marked expired`
+    );
   }
 }
 
