@@ -380,6 +380,72 @@ describe("POST /api/stripe/webhook", () => {
     expect(bal?.paid_credits ?? 0).toBe(0);
   });
 
+  it("marks an abandoned purchase expired on checkout.session.expired", async () => {
+    const { sessionId } = await setupPurchase();
+    const payload = JSON.stringify({
+      id: `evt_${Date.now()}`,
+      type: "checkout.session.expired",
+      data: {
+        object: {
+          id: sessionId,
+          object: "checkout.session",
+          payment_status: "unpaid"
+        }
+      }
+    });
+    const sig = signStripePayload(payload, process.env.STRIPE_WEBHOOK_SECRET!);
+
+    const res = await fetch(`${APP}/api/stripe/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "stripe-signature": sig },
+      body: payload
+    });
+    expect(res.status).toBe(200);
+
+    const { data: row } = await admin
+      .from("stripe_purchases")
+      .select("status, credits_granted")
+      .eq("stripe_checkout_session_id", sessionId)
+      .single();
+    expect(row?.status).toBe("expired");
+    expect(row?.credits_granted).toBe(0);
+  });
+
+  it("does not clobber a paid purchase with a late checkout.session.expired", async () => {
+    const { sessionId } = await setupPurchase();
+    await admin
+      .from("stripe_purchases")
+      .update({ status: "paid" })
+      .eq("stripe_checkout_session_id", sessionId);
+
+    const payload = JSON.stringify({
+      id: `evt_${Date.now()}`,
+      type: "checkout.session.expired",
+      data: {
+        object: {
+          id: sessionId,
+          object: "checkout.session",
+          payment_status: "unpaid"
+        }
+      }
+    });
+    const sig = signStripePayload(payload, process.env.STRIPE_WEBHOOK_SECRET!);
+
+    const res = await fetch(`${APP}/api/stripe/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "stripe-signature": sig },
+      body: payload
+    });
+    expect(res.status).toBe(200);
+
+    const { data: row } = await admin
+      .from("stripe_purchases")
+      .select("status")
+      .eq("stripe_checkout_session_id", sessionId)
+      .single();
+    expect(row?.status).toBe("paid");
+  });
+
   it("is idempotent — replaying the same event does not double-grant", async () => {
     const { userId, sessionId, size } = await setupPurchase();
     const payload = JSON.stringify({

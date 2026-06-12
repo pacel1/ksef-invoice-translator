@@ -74,6 +74,17 @@ describe("buildCheckoutSessionParams", () => {
     expect(params.cancel_url).toBe("https://app.example.test/billing?status=cancelled");
   });
 
+  it("expires the session one hour out so abandoned checkouts terminate quickly", () => {
+    const before = Math.floor(Date.now() / 1000);
+    const params = buildCheckoutSessionParams(makeInput());
+    const after = Math.floor(Date.now() / 1000);
+    // Stripe allows 30min–24h; 1h matches the pending-session spam window
+    // in abuse-caps so an abandoned session is dead by the time it stops
+    // counting against the cap.
+    expect(params.expires_at).toBeGreaterThanOrEqual(before + 3600);
+    expect(params.expires_at).toBeLessThanOrEqual(after + 3600);
+  });
+
   it("throws MissingTaxRateError when the tax rate id is blank", () => {
     expect(() => buildCheckoutSessionParams(makeInput({ taxRateId: "" }))).toThrow(
       MissingTaxRateError
