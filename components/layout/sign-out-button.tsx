@@ -1,6 +1,6 @@
 "use client";
 
-import { resetAnalyticsIdentity } from "@/lib/analytics/client";
+import { captureClient, resetAnalyticsIdentity } from "@/lib/analytics/client";
 
 /**
  * Submit button for the sign-out server-action form. Resets the analytics
@@ -15,7 +15,12 @@ export function SignOutButton({ label }: { label: string }) {
   return (
     <button
       type="submit"
-      onClick={() => resetAnalyticsIdentity()}
+      onClick={() => {
+        // Capture before reset: reset() drops the distinct id, so the event
+        // must fire first to carry the user's identity.
+        captureClient("signed_out", {});
+        resetAnalyticsIdentity();
+      }}
       className="rounded-md px-3 py-2 text-small text-text hover:bg-surface-muted"
     >
       {label}

@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 import { landingCopy, type LandingLocale } from "@/lib/landing/copy";
-import { Button } from "@/components/landing/ui/button";
+import { TrackedCtaLink } from "@/components/landing/ui/tracked-cta-link";
 
 export interface PricingTeaserProps {
   locale: LandingLocale;
@@ -59,7 +59,14 @@ export function PricingTeaser({ locale }: PricingTeaserProps) {
 
         <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[13px] text-copy-muted">{t.note}</p>
-          <Button href={t.ctaHref} variant="ghost">{t.cta}</Button>
+          <TrackedCtaLink
+            href={t.ctaHref}
+            ctaId="pricing_teaser"
+            locale={locale}
+            className="inline-flex items-center justify-center gap-2 rounded-[11px] font-dm font-semibold transition-colors duration-150 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-paper text-ink border border-line hover:bg-paper-soft h-11 px-5 text-[14px]"
+          >
+            {t.cta}
+          </TrackedCtaLink>
         </div>
       </div>
     </section>

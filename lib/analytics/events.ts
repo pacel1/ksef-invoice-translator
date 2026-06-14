@@ -65,6 +65,52 @@ export interface AnalyticsEventMap {
     used_ai: boolean;
     duration_ms: number;
   };
+
+  // ── Marketing / landing ───────────────────────────────────────────
+  landing_cta_clicked: {
+    cta_id:
+      | "hero_primary"
+      | "hero_secondary"
+      | "nav_login"
+      | "mobile_nav"
+      | "pricing_teaser"
+      | "final_cta";
+    locale: string;
+  };
+
+  // ── Demo funnel (anonymous, landing page) ─────────────────────────
+  demo_language_selected: { language: string; lane: "sample" | "upload" };
+  demo_file_uploaded: {
+    status: "success" | "invalid" | "rate_limited" | "error";
+    error_code?: string;
+  };
+  demo_translation_completed: { language: string; lane: "sample" | "upload" };
+  demo_translation_failed: {
+    language: string;
+    lane: "sample" | "upload";
+    error_code: string;
+  };
+  demo_download_gate_opened: {
+    trigger: "download" | "more_languages";
+    lane: "sample" | "upload";
+  };
+  demo_email_submitted: {
+    status: "success" | "rate_limited" | "error";
+    marketing_opt_in: boolean;
+    lane: "sample" | "upload";
+  };
+  demo_pdf_downloaded: { language: string; lane: "sample" | "upload" };
+
+  // ── Auth / onboarding ─────────────────────────────────────────────
+  signup_completed: {
+    method: "magic_link" | "google";
+    signup_source: "landing_demo" | "direct";
+  };
+  login_completed: { method: "magic_link" | "google" };
+  auth_failed: { reason: string };
+  onboarding_name_shown: Record<string, never>;
+  onboarding_name_completed: Record<string, never>;
+  signed_out: Record<string, never>;
 }
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
@@ -112,7 +158,21 @@ const EVENT_PROPERTY_WITNESS: {
     cache_hit: true,
     used_ai: true,
     duration_ms: true
-  }
+  },
+  landing_cta_clicked: { cta_id: true, locale: true },
+  demo_language_selected: { language: true, lane: true },
+  demo_file_uploaded: { status: true, error_code: true },
+  demo_translation_completed: { language: true, lane: true },
+  demo_translation_failed: { language: true, lane: true, error_code: true },
+  demo_download_gate_opened: { trigger: true, lane: true },
+  demo_email_submitted: { status: true, marketing_opt_in: true, lane: true },
+  demo_pdf_downloaded: { language: true, lane: true },
+  signup_completed: { method: true, signup_source: true },
+  login_completed: { method: true },
+  auth_failed: { reason: true },
+  onboarding_name_shown: {},
+  onboarding_name_completed: {},
+  signed_out: {}
 };
 
 export const EVENT_PROPERTY_KEYS = Object.freeze(

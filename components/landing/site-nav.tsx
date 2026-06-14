@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { landingCopy, type LandingLocale } from "@/lib/landing/copy";
 import { MobileNavSheet } from "@/components/landing/mobile-nav-sheet";
+import { TrackedCtaLink } from "@/components/landing/ui/tracked-cta-link";
 
 export interface SiteNavProps {
   locale: LandingLocale;
@@ -23,12 +24,13 @@ export function SiteNav({ locale }: SiteNavProps) {
               {l.label}
             </Link>
           ))}
-          <Link href="/login" className="ml-2 inline-flex h-10 items-center rounded-[9px] bg-brand px-4 font-dm text-[14px] font-semibold text-white hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+          <TrackedCtaLink href="/login" ctaId="nav_login" locale={locale} className="ml-2 inline-flex h-10 items-center rounded-[9px] bg-brand px-4 font-dm text-[14px] font-semibold text-white hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
             {t.cta}
-          </Link>
+          </TrackedCtaLink>
         </nav>
 
         <MobileNavSheet
+          locale={locale}
           links={t.links}
           ctaHref="/login"
           ctaLabel={t.cta}

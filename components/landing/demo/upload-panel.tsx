@@ -6,6 +6,8 @@ import type { Invoice } from "@/types/invoice";
 import type { DemoLang } from "@/lib/landing/demo-sample";
 import { DEMO_UPLOAD_ACCEPT, isDemoXmlUpload, maxXmlBytes } from "@/lib/demo/upload-limits";
 import { cn } from "@/lib/utils";
+import { captureClient } from "@/lib/analytics/client";
+import { demoErrorCodeFromStatus, isRateLimited } from "@/lib/analytics/demo-status";
 
 /** What Lane 2 hands to the stage and the download gate. Held only in client memory. */
 export interface DemoUpload {
@@ -60,6 +62,10 @@ export function UploadPanel({ lang, t, onResult }: UploadPanelProps) {
   const [errorKey, setErrorKey] = useState<ErrorKey | null>(null);
   const [token, setToken] = useState(siteKey ? "" : "dev");
   const [pendingLang, setPendingLang] = useState<DemoLang | null>(null);
+  // Preserves the "this is a real file selection" flag across the Turnstile
+  // token queue so demo_file_uploaded fires once even when the request is
+  // deferred until a fresh token lands.
+  const pendingCountAsUpload = useRef(false);
   const fileRef = useRef<File | null>(null);
   const translatedLangRef = useRef<DemoLang | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
@@ -72,7 +78,9 @@ export function UploadPanel({ lang, t, onResult }: UploadPanelProps) {
   // state and the file via a ref, so wider deps would double-fire the request.
   useEffect(() => {
     if (fileRef.current && translatedLangRef.current && translatedLangRef.current !== lang) {
-      void translate(fileRef.current, lang);
+      // Language-switch re-translate: counts as a translation outcome but not a
+      // new file upload, so demo_file_uploaded is not re-fired.
+      void translate(fileRef.current, lang, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
@@ -81,30 +89,38 @@ export function UploadPanel({ lang, t, onResult }: UploadPanelProps) {
     const file = list?.[0];
     if (!file) return;
     if (!isDemoXmlUpload(file.name, file.type)) {
+      captureClient("demo_file_uploaded", { status: "invalid", error_code: "unsupported" });
       setErrorKey("uploadErrUnsupported");
       return;
     }
     if (file.size > maxXmlBytes()) {
+      captureClient("demo_file_uploaded", { status: "invalid", error_code: "too_large" });
       setErrorKey("uploadErrTooLarge");
       return;
     }
     fileRef.current = file;
-    void translate(file, lang);
+    void translate(file, lang, true);
   }
 
-  async function translate(file: File, target: DemoLang) {
+  async function translate(file: File, target: DemoLang, countAsUpload: boolean) {
     if (siteKey && !token) {
       // Tokens are single use and the widget re-solves after each reset; queue
       // the request and let onToken fire it when a fresh token lands.
       setBusy(true);
       setErrorKey(null);
       setPendingLang(target);
+      pendingCountAsUpload.current = countAsUpload;
       return;
     }
-    await doTranslate(file, target, token);
+    await doTranslate(file, target, token, countAsUpload);
   }
 
-  async function doTranslate(file: File, target: DemoLang, turnstileToken: string) {
+  async function doTranslate(
+    file: File,
+    target: DemoLang,
+    turnstileToken: string,
+    countAsUpload: boolean
+  ) {
     if (siteKey) {
       turnstileRef.current?.reset();
       setToken("");
@@ -118,13 +134,29 @@ export function UploadPanel({ lang, t, onResult }: UploadPanelProps) {
       form.set("turnstileToken", turnstileToken);
       const res = await fetch("/api/demo/translate", { method: "POST", body: form });
       if (!res.ok) {
+        const error_code = demoErrorCodeFromStatus(res.status);
+        if (countAsUpload) {
+          captureClient("demo_file_uploaded", {
+            status: isRateLimited(res.status) ? "rate_limited" : "error",
+            error_code
+          });
+        }
+        captureClient("demo_translation_failed", { language: target, lane: "upload", error_code });
         setErrorKey(STATUS_ERRORS[res.status] ?? "uploadErrTranslate");
         return;
       }
       const data = (await res.json()) as { invoice: Invoice; sourceXml: string; uploadToken: string };
       translatedLangRef.current = target;
+      if (countAsUpload) {
+        captureClient("demo_file_uploaded", { status: "success" });
+      }
+      captureClient("demo_translation_completed", { language: target, lane: "upload" });
       onResult({ invoice: data.invoice, sourceXml: data.sourceXml, uploadToken: data.uploadToken, lang: target });
     } catch {
+      if (countAsUpload) {
+        captureClient("demo_file_uploaded", { status: "error", error_code: "network" });
+      }
+      captureClient("demo_translation_failed", { language: target, lane: "upload", error_code: "network" });
       setErrorKey("uploadErrTranslate");
     } finally {
       setBusy(false);
@@ -135,8 +167,10 @@ export function UploadPanel({ lang, t, onResult }: UploadPanelProps) {
     setToken(next);
     if (pendingLang && fileRef.current) {
       const target = pendingLang;
+      const countAsUpload = pendingCountAsUpload.current;
       setPendingLang(null);
-      void doTranslate(fileRef.current, target, next);
+      pendingCountAsUpload.current = false;
+      void doTranslate(fileRef.current, target, next, countAsUpload);
     }
   }
 
@@ -144,6 +178,7 @@ export function UploadPanel({ lang, t, onResult }: UploadPanelProps) {
     setToken("");
     if (pendingLang) {
       setPendingLang(null);
+      pendingCountAsUpload.current = false;
       setBusy(false);
       setErrorKey("uploadErrTurnstile");
     }

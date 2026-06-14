@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import type { NavLink } from "@/lib/landing/copy";
+import type { LandingLocale, NavLink } from "@/lib/landing/copy";
+import { captureClient } from "@/lib/analytics/client";
 import { cn } from "@/lib/utils";
 
 const SHEET_ID = "landing-mobile-nav";
 
 export interface MobileNavSheetProps {
+  locale: LandingLocale;
   links: ReadonlyArray<NavLink>;
   ctaHref: string;
   ctaLabel: string;
@@ -18,7 +20,7 @@ export interface MobileNavSheetProps {
   className?: string;
 }
 
-export function MobileNavSheet({ links, ctaHref, ctaLabel, openLabel, closeLabel, className }: MobileNavSheetProps) {
+export function MobileNavSheet({ locale, links, ctaHref, ctaLabel, openLabel, closeLabel, className }: MobileNavSheetProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -87,7 +89,10 @@ export function MobileNavSheet({ links, ctaHref, ctaLabel, openLabel, closeLabel
         ))}
         <Link
           href={ctaHref}
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            captureClient("landing_cta_clicked", { cta_id: "mobile_nav", locale });
+            setOpen(false);
+          }}
           className="mt-3 inline-flex h-12 w-full items-center justify-center rounded-[11px] bg-brand font-dm font-semibold text-white shadow-brand hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           {ctaLabel}

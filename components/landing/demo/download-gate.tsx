@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import type { DemoLang } from "@/lib/landing/demo-sample";
 import type { DemoUpload } from "@/components/landing/demo/upload-panel";
+import { captureClient } from "@/lib/analytics/client";
 
 export interface DownloadGateCopy {
   gateHeading: string;
@@ -47,6 +48,8 @@ export function DownloadGate({ lang, t, upload }: DownloadGateProps) {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!EMAIL_RE.test(email) || !token) return;
+    const lane = upload ? "upload" : "sample";
+    let emailEventSent = false;
     setStatus("submitting");
     try {
       const unlock = await fetch("/api/demo/unlock", {
@@ -60,8 +63,18 @@ export function DownloadGate({ lang, t, upload }: DownloadGateProps) {
           source: upload ? "upload" : "sample"
         })
       });
-      if (unlock.status === 429) return fail("rate_limited");
-      if (!unlock.ok) return fail("error");
+      if (unlock.status === 429) {
+        captureClient("demo_email_submitted", { status: "rate_limited", marketing_opt_in: marketingOptIn, lane });
+        emailEventSent = true;
+        return fail("rate_limited");
+      }
+      if (!unlock.ok) {
+        captureClient("demo_email_submitted", { status: "error", marketing_opt_in: marketingOptIn, lane });
+        emailEventSent = true;
+        return fail("error");
+      }
+      captureClient("demo_email_submitted", { status: "success", marketing_opt_in: marketingOptIn, lane });
+      emailEventSent = true;
       const { downloadToken } = (await unlock.json()) as { downloadToken: string };
 
       const pdf = await fetch("/api/demo/pdf", {
@@ -75,9 +88,13 @@ export function DownloadGate({ lang, t, upload }: DownloadGateProps) {
       });
       if (pdf.status === 429) return fail("rate_limited");
       if (!pdf.ok) return fail("pdf_failed");
+      captureClient("demo_pdf_downloaded", { language: upload ? upload.lang : lang, lane });
       triggerDownload(await pdf.blob(), `tlumaczksef-demo-${upload ? upload.lang : lang}.pdf`);
       setStatus("success");
     } catch {
+      if (!emailEventSent) {
+        captureClient("demo_email_submitted", { status: "error", marketing_opt_in: marketingOptIn, lane });
+      }
       fail("error");
     }
   }

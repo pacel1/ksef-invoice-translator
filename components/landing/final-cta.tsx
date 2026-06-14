@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { landingCopy, type LandingLocale } from "@/lib/landing/copy";
+import { TrackedCtaLink } from "@/components/landing/ui/tracked-cta-link";
 
 export interface FinalCtaProps {
   locale: LandingLocale;
@@ -18,12 +18,14 @@ export function FinalCta({ locale }: FinalCtaProps) {
         <h2 className="font-heading text-h2x text-white">{t.heading}</h2>
         <p className="mx-auto mt-4 max-w-xl font-dm text-[16px] leading-relaxed text-white/70">{t.sub}</p>
         <div className="mt-9">
-          <Link
+          <TrackedCtaLink
             href="/login"
+            ctaId="final_cta"
+            locale={locale}
             className="inline-flex h-[52px] items-center justify-center rounded-[11px] bg-white px-7 font-dm text-[15px] font-semibold text-ink hover:bg-paper-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
           >
             {t.cta}
-          </Link>
+          </TrackedCtaLink>
         </div>
       </div>
     </section>
