@@ -3,6 +3,12 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { DownloadGate } from "@/components/landing/demo/download-gate";
 import { buildDemoInvoice } from "@/lib/landing/demo-sample";
 
+const captureClientMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/analytics/client", () => ({
+  captureClient: captureClientMock,
+  captureClientError: vi.fn()
+}));
+
 // No NEXT_PUBLIC_TURNSTILE_SITE_KEY in tests -> widget is skipped, token defaults to "dev".
 const fetchMock = vi.fn();
 
@@ -112,5 +118,122 @@ describe("<DownloadGate>", () => {
     fireEvent.change(screen.getByLabelText("Adres e-mail"), { target: { value: "a@b.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Wyślij i pobierz" }));
     await waitFor(() => expect(screen.getByText("Błąd PDF.")).toBeInTheDocument());
+  });
+});
+
+describe("<DownloadGate> analytics", () => {
+  beforeEach(() => captureClientMock.mockClear());
+
+  it("captures email submitted=success and pdf_downloaded on the happy path (sample lane)", async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ downloadToken: "tok" }) })
+      .mockResolvedValueOnce({ ok: true, blob: async () => new Blob(["%PDF"]) });
+    render(<DownloadGate lang="en" t={copy()} />);
+    fireEvent.change(screen.getByLabelText("Adres e-mail"), { target: { value: "a@b.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Wyślij i pobierz" }));
+    await waitFor(() => expect(screen.getByText("Gotowe.")).toBeInTheDocument());
+    expect(captureClientMock).toHaveBeenCalledWith("demo_email_submitted", {
+      status: "success",
+      marketing_opt_in: false,
+      lane: "sample"
+    });
+    expect(captureClientMock).toHaveBeenCalledWith("demo_pdf_downloaded", {
+      language: "en",
+      lane: "sample"
+    });
+  });
+
+  it("uses lane=upload and the upload language for pdf_downloaded when an upload is present", async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ downloadToken: "tok" }) })
+      .mockResolvedValueOnce({ ok: true, blob: async () => new Blob(["%PDF"]) });
+    const upload = { invoice: buildDemoInvoice("de"), sourceXml: "<Faktura/>", uploadToken: "utok", lang: "de" as const };
+    render(<DownloadGate lang="en" t={copy()} upload={upload} />);
+    fireEvent.change(screen.getByLabelText("Adres e-mail"), { target: { value: "a@b.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Wyślij i pobierz" }));
+    await waitFor(() => expect(screen.getByText("Gotowe.")).toBeInTheDocument());
+    expect(captureClientMock).toHaveBeenCalledWith("demo_email_submitted", {
+      status: "success",
+      marketing_opt_in: false,
+      lane: "upload"
+    });
+    expect(captureClientMock).toHaveBeenCalledWith("demo_pdf_downloaded", {
+      language: "de",
+      lane: "upload"
+    });
+  });
+
+  it("captures marketing_opt_in=true when the checkbox is ticked", async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ downloadToken: "tok" }) })
+      .mockResolvedValueOnce({ ok: true, blob: async () => new Blob(["%PDF"]) });
+    render(<DownloadGate lang="en" t={copy()} />);
+    fireEvent.change(screen.getByLabelText("Adres e-mail"), { target: { value: "a@b.com" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Wyślij i pobierz" }));
+    await waitFor(() => expect(screen.getByText("Gotowe.")).toBeInTheDocument());
+    expect(captureClientMock).toHaveBeenCalledWith("demo_email_submitted", {
+      status: "success",
+      marketing_opt_in: true,
+      lane: "sample"
+    });
+  });
+
+  it("captures email submitted=rate_limited and no pdf_downloaded on unlock 429", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) });
+    render(<DownloadGate lang="en" t={copy()} />);
+    fireEvent.change(screen.getByLabelText("Adres e-mail"), { target: { value: "a@b.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Wyślij i pobierz" }));
+    await waitFor(() =>
+      expect(captureClientMock).toHaveBeenCalledWith(
+        "demo_email_submitted",
+        expect.objectContaining({ status: "rate_limited" })
+      )
+    );
+    expect(captureClientMock).not.toHaveBeenCalledWith("demo_pdf_downloaded", expect.anything());
+  });
+
+  it("captures email submitted=error when the unlock step fails", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 500 });
+    render(<DownloadGate lang="en" t={copy()} />);
+    fireEvent.change(screen.getByLabelText("Adres e-mail"), { target: { value: "a@b.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Wyślij i pobierz" }));
+    await waitFor(() =>
+      expect(captureClientMock).toHaveBeenCalledWith(
+        "demo_email_submitted",
+        expect.objectContaining({ status: "error" })
+      )
+    );
+    expect(captureClientMock).not.toHaveBeenCalledWith("demo_pdf_downloaded", expect.anything());
+  });
+
+  it("captures email submitted=error exactly once when the unlock fetch throws", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("boom"));
+    render(<DownloadGate lang="en" t={copy()} />);
+    fireEvent.change(screen.getByLabelText("Adres e-mail"), { target: { value: "a@b.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Wyślij i pobierz" }));
+    await waitFor(() =>
+      expect(captureClientMock).toHaveBeenCalledWith(
+        "demo_email_submitted",
+        expect.objectContaining({ status: "error" })
+      )
+    );
+    const emailCalls = captureClientMock.mock.calls.filter(([event]) => event === "demo_email_submitted");
+    expect(emailCalls).toHaveLength(1);
+  });
+
+  it("captures email submitted=success but no pdf_downloaded when the pdf step fails", async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ downloadToken: "tok" }) })
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) });
+    render(<DownloadGate lang="en" t={copy()} />);
+    fireEvent.change(screen.getByLabelText("Adres e-mail"), { target: { value: "a@b.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Wyślij i pobierz" }));
+    await waitFor(() => expect(screen.getByText("Błąd PDF.")).toBeInTheDocument());
+    expect(captureClientMock).toHaveBeenCalledWith(
+      "demo_email_submitted",
+      expect.objectContaining({ status: "success" })
+    );
+    expect(captureClientMock).not.toHaveBeenCalledWith("demo_pdf_downloaded", expect.anything());
   });
 });
