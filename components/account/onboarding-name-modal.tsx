@@ -5,6 +5,7 @@ import {
   NameCaptureModal,
   type NameCaptureModalLabels
 } from "@/components/account/name-capture-modal";
+import { captureClient } from "@/lib/analytics/client";
 
 const SEEN_KEY = "name-capture-onboarding-seen";
 
@@ -45,6 +46,7 @@ export function OnboardingNameModal({
       // (the hard-block still catches the case at Translate time).
       return;
     }
+    captureClient("onboarding_name_shown", {});
     setOpen(true);
   }, [missing]);
 
@@ -57,13 +59,18 @@ export function OnboardingNameModal({
     }
   }
 
+  function handleSaved() {
+    captureClient("onboarding_name_completed", {});
+    handleClose();
+  }
+
   return (
     <NameCaptureModal
       open={open}
       dismissible
       labels={labels}
       onClose={handleClose}
-      onSaved={handleClose}
+      onSaved={handleSaved}
     />
   );
 }
