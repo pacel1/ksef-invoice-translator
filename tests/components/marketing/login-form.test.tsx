@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+
+// LoginForm reads `?error` via useSearchParams on mount (auth_failed analytics).
+// Provide a router-free stub returning no error so these tests stay focused on
+// the email/Google flows.
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => ({ get: () => null })
+}));
+
 import { LoginForm } from "@/app/login/login-form";
 
 const baseCopy = {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { Loader2, MailCheck } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { GoogleIcon } from "@/components/auth/google-icon";
@@ -33,6 +34,19 @@ export function LoginForm({ copy }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus>("idle");
+  const searchParams = useSearchParams();
+
+  // The auth callback bounces failed sign-ins back here with `?error=<reason>`.
+  // Record the failure on the visitor's anonymous distinct id (the callback has
+  // no authenticated identity to attribute it to). Fire once on mount for the
+  // initial error param; cap the reason so a long Supabase message can't blow
+  // up event cardinality. Supabase auth messages are generic, not PII.
+  useEffect(() => {
+    const raw = searchParams.get("error");
+    if (!raw) return;
+    captureClient("auth_failed", { reason: raw.slice(0, 64) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function signInWithGoogle() {
     captureClient("google_signin_clicked", {});
