@@ -20,20 +20,34 @@ const FORBIDDEN_KEY_PATTERNS = [
 ];
 
 describe("analytics event catalog", () => {
-  it("defines the 14 wizard baseline events", () => {
+  it("defines the 28 catalog events", () => {
     expect(Object.keys(EVENT_PROPERTY_KEYS).sort()).toEqual(
       [
+        "auth_failed",
         "checkout_initiated",
         "checkout_session_created",
+        "demo_download_gate_opened",
+        "demo_email_submitted",
+        "demo_file_uploaded",
+        "demo_language_selected",
+        "demo_pdf_downloaded",
+        "demo_translation_completed",
+        "demo_translation_failed",
         "files_uploaded",
         "google_signin_clicked",
         "invoice_translated",
+        "landing_cta_clicked",
+        "login_completed",
         "login_email_sent",
         "login_submitted",
+        "onboarding_name_completed",
+        "onboarding_name_shown",
         "payment_completed",
         "payment_failed",
         "payment_refunded",
         "pdf_downloaded",
+        "signed_out",
+        "signup_completed",
         "translation_batch_cancelled",
         "translation_started",
         "zip_downloaded"
