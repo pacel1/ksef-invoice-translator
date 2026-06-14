@@ -7,6 +7,7 @@ import { LanguageChips } from "@/components/landing/demo/language-chips";
 import { InvoiceStage } from "@/components/landing/demo/invoice-stage";
 import { DownloadGate } from "@/components/landing/demo/download-gate";
 import { UploadPanel, type DemoUpload } from "@/components/landing/demo/upload-panel";
+import { captureClient } from "@/lib/analytics/client";
 
 export interface DemoSectionProps {
   locale: LandingLocale;
@@ -17,6 +18,14 @@ export function DemoSection({ locale }: DemoSectionProps) {
   const [lang, setLang] = useState<DemoLang>(DEMO_DEFAULT_LANG);
   const [gateOpen, setGateOpen] = useState(false);
   const [upload, setUpload] = useState<DemoUpload | null>(null);
+  const lane = upload ? "upload" : "sample";
+
+  function openGate(trigger: "download" | "more_languages") {
+    if (!gateOpen) {
+      captureClient("demo_download_gate_opened", { trigger, lane });
+    }
+    setGateOpen(true);
+  }
 
   return (
     <section id="demo" className="bg-ink">
@@ -28,10 +37,17 @@ export function DemoSection({ locale }: DemoSectionProps) {
         </div>
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-2">
-          <LanguageChips value={lang} onChange={setLang} label={t.languagesLabel} />
+          <LanguageChips
+            value={lang}
+            onChange={(code) => {
+              captureClient("demo_language_selected", { language: code, lane });
+              setLang(code);
+            }}
+            label={t.languagesLabel}
+          />
           <button
             type="button"
-            onClick={() => setGateOpen(true)}
+            onClick={() => openGate("more_languages")}
             aria-label={t.moreAria}
             className="rounded-full border border-white/10 bg-ink-panel px-3.5 py-1.5 text-[12px] font-semibold text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
           >
@@ -51,7 +67,7 @@ export function DemoSection({ locale }: DemoSectionProps) {
           ) : (
             <button
               type="button"
-              onClick={() => setGateOpen(true)}
+              onClick={() => openGate("download")}
               className="inline-flex items-center justify-center rounded-xl bg-brand px-6 py-3 text-[15px] font-semibold text-white shadow-brand transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
             >
               {t.download}
