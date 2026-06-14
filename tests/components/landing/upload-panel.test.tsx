@@ -4,6 +4,12 @@ import { UploadPanel } from "@/components/landing/demo/upload-panel";
 import { buildDemoInvoice } from "@/lib/landing/demo-sample";
 import { maxXmlBytes } from "@/lib/demo/upload-limits";
 
+const captureClientMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/analytics/client", () => ({
+  captureClient: captureClientMock,
+  captureClientError: vi.fn()
+}));
+
 const turnstileMock = vi.hoisted(() => ({ props: {} as Record<string, unknown> }));
 vi.mock("@marsidev/react-turnstile", async () => {
   const React = await import("react");
@@ -133,6 +139,123 @@ describe("<UploadPanel>", () => {
     const view = render(<UploadPanel lang="en" t={copy()} onResult={vi.fn()} />);
     view.rerender(<UploadPanel lang="de" t={copy()} onResult={vi.fn()} />);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("<UploadPanel> analytics", () => {
+  beforeEach(() => captureClientMock.mockClear());
+
+  it("captures demo_file_uploaded status=invalid for an unsupported file (no fetch)", () => {
+    render(<UploadPanel lang="en" t={copy()} onResult={vi.fn()} />);
+    openPanel();
+    selectFile(new File(["x"], "notes.txt", { type: "text/plain" }));
+    expect(captureClientMock).toHaveBeenCalledWith("demo_file_uploaded", {
+      status: "invalid",
+      error_code: "unsupported"
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("captures demo_file_uploaded status=invalid error_code=too_large for an oversized file", () => {
+    render(<UploadPanel lang="en" t={copy()} onResult={vi.fn()} />);
+    openPanel();
+    const big = new File([new Uint8Array(maxXmlBytes() + 1)], "faktura.xml", { type: "application/xml" });
+    selectFile(big);
+    expect(captureClientMock).toHaveBeenCalledWith("demo_file_uploaded", {
+      status: "invalid",
+      error_code: "too_large"
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("captures success + demo_translation_completed on a 200 upload", async () => {
+    fetchMock.mockResolvedValueOnce(okResponse());
+    render(<UploadPanel lang="en" t={copy()} onResult={vi.fn()} />);
+    openPanel();
+    selectFile(new File(["<Faktura/>"], "faktura.xml", { type: "application/xml" }));
+    await waitFor(() =>
+      expect(captureClientMock).toHaveBeenCalledWith("demo_file_uploaded", { status: "success" })
+    );
+    expect(captureClientMock).toHaveBeenCalledWith("demo_translation_completed", {
+      language: "en",
+      lane: "upload"
+    });
+  });
+
+  it("captures rate_limited + demo_translation_failed on a 429", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) });
+    render(<UploadPanel lang="en" t={copy()} onResult={vi.fn()} />);
+    openPanel();
+    selectFile(new File(["<x/>"], "faktura.xml", { type: "application/xml" }));
+    await waitFor(() =>
+      expect(captureClientMock).toHaveBeenCalledWith("demo_file_uploaded", {
+        status: "rate_limited",
+        error_code: "rate_limited"
+      })
+    );
+    expect(captureClientMock).toHaveBeenCalledWith("demo_translation_failed", {
+      language: "en",
+      lane: "upload",
+      error_code: "rate_limited"
+    });
+  });
+
+  it("captures error + demo_translation_failed on a 502", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 502, json: async () => ({}) });
+    render(<UploadPanel lang="en" t={copy()} onResult={vi.fn()} />);
+    openPanel();
+    selectFile(new File(["<x/>"], "faktura.xml", { type: "application/xml" }));
+    await waitFor(() =>
+      expect(captureClientMock).toHaveBeenCalledWith("demo_file_uploaded", {
+        status: "error",
+        error_code: "translate_failed"
+      })
+    );
+    expect(captureClientMock).toHaveBeenCalledWith("demo_translation_failed", {
+      language: "en",
+      lane: "upload",
+      error_code: "translate_failed"
+    });
+  });
+
+  it("captures error + demo_translation_failed with network code when fetch throws", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("boom"));
+    render(<UploadPanel lang="en" t={copy()} onResult={vi.fn()} />);
+    openPanel();
+    selectFile(new File(["<x/>"], "faktura.xml", { type: "application/xml" }));
+    await waitFor(() =>
+      expect(captureClientMock).toHaveBeenCalledWith("demo_file_uploaded", {
+        status: "error",
+        error_code: "network"
+      })
+    );
+    expect(captureClientMock).toHaveBeenCalledWith("demo_translation_failed", {
+      language: "en",
+      lane: "upload",
+      error_code: "network"
+    });
+  });
+
+  it("fires demo_file_uploaded exactly once across the upload and a language-change re-translate", async () => {
+    fetchMock.mockResolvedValue(okResponse());
+    const onResult = vi.fn();
+    const view = render(<UploadPanel lang="en" t={copy()} onResult={onResult} />);
+    openPanel();
+    selectFile(new File(["<Faktura/>"], "faktura.xml", { type: "application/xml" }));
+    await waitFor(() => expect(onResult).toHaveBeenCalledTimes(1));
+    view.rerender(<UploadPanel lang="de" t={copy()} onResult={onResult} />);
+    await waitFor(() => expect(onResult).toHaveBeenCalledTimes(2));
+
+    const fileUploadedCalls = captureClientMock.mock.calls.filter(
+      ([event]) => event === "demo_file_uploaded"
+    );
+    expect(fileUploadedCalls).toHaveLength(1);
+    // translation_completed fires on BOTH the upload and the re-translate
+    const completedCalls = captureClientMock.mock.calls.filter(
+      ([event]) => event === "demo_translation_completed"
+    );
+    expect(completedCalls).toHaveLength(2);
+    expect(completedCalls.map((c) => c[1].language)).toEqual(["en", "de"]);
   });
 });
 
