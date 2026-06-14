@@ -13,7 +13,7 @@ const links = [
   { href: "/pricing", label: "Cennik" },
   { href: "/security", label: "Bezpieczeństwo" }
 ];
-const baseProps = { links, ctaHref: "/login", ctaLabel: "Zacznij za darmo", openLabel: "Otwórz menu", closeLabel: "Zamknij menu" };
+const baseProps = { locale: "pl" as const, links, ctaHref: "/login", ctaLabel: "Zacznij za darmo", openLabel: "Otwórz menu", closeLabel: "Zamknij menu" };
 
 describe("<MobileNavSheet>", () => {
   it("is collapsed by default with no links shown", () => {

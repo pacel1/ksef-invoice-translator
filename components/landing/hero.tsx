@@ -1,6 +1,6 @@
 import { landingCopy, type LandingLocale } from "@/lib/landing/copy";
 import { Eyebrow } from "@/components/landing/ui/eyebrow";
-import { Button } from "@/components/landing/ui/button";
+import { TrackedCtaLink } from "@/components/landing/ui/tracked-cta-link";
 import { InvoiceShowcase } from "@/components/landing/invoice-showcase";
 
 export interface HeroProps {
@@ -26,8 +26,22 @@ export function Hero({ locale }: HeroProps) {
           </h1>
           <p className="mt-5 max-w-[34em] text-[clamp(0.95rem,1.4vw,1.05rem)] leading-relaxed text-copy">{t.subline}</p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Button href="#demo" size="lg">{t.ctaPrimary}</Button>
-            <Button href="#demo" size="lg" variant="ghost">{t.ctaSecondary}</Button>
+            <TrackedCtaLink
+              href="#demo"
+              ctaId="hero_primary"
+              locale={locale}
+              className="inline-flex items-center justify-center gap-2 rounded-[11px] font-dm font-semibold transition-colors duration-150 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-brand text-white shadow-brand hover:bg-brand-hover h-[52px] px-6 text-[15px]"
+            >
+              {t.ctaPrimary}
+            </TrackedCtaLink>
+            <TrackedCtaLink
+              href="#demo"
+              ctaId="hero_secondary"
+              locale={locale}
+              className="inline-flex items-center justify-center gap-2 rounded-[11px] font-dm font-semibold transition-colors duration-150 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-paper text-ink border border-line hover:bg-paper-soft h-[52px] px-6 text-[15px]"
+            >
+              {t.ctaSecondary}
+            </TrackedCtaLink>
           </div>
           <p className="mt-4 flex items-center gap-2 text-[13px] text-copy-muted">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-mint" aria-hidden="true" />
