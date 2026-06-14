@@ -24,7 +24,8 @@ Browser (posthog-js, cookieless by default)
 Server (posthog-node, captureServer)
   ├─ app/api/translate/route.ts       → invoice_translated
   ├─ app/api/stripe/checkout/route.ts → checkout_session_created
-  └─ app/api/stripe/webhook/route.ts  → payment_completed / payment_failed / payment_refunded
+  ├─ app/api/stripe/webhook/route.ts  → payment_completed / payment_failed / payment_refunded
+  └─ app/auth/callback/route.ts       → signup_completed / login_completed
 ```
 
 - **Client init** lives in `instrumentation-client.ts` (the Next 15.3+ pattern,
@@ -73,9 +74,10 @@ PostHog persistence for everyone, logged-in users included.
 
 ## 4. Event catalog
 
-The 14 events live after the foundation PR. `client` events fire from a client
-component through `captureClient`; `server` events fire from a route handler
-through `captureServer`.
+The catalog defines 28 events. `client` events fire from a client component
+through `captureClient`; `server` events fire from a route handler through
+`captureServer`. The foundation set is below; the acquisition set (PR2) follows
+in §4.1.
 
 | Event | Properties | Where it fires | Source |
 |---|---|---|---|
@@ -96,6 +98,51 @@ through `captureServer`.
 
 PostHog also captures `$pageview` / `$pageleave` automatically (UTM and referrer
 included), and `$exception` via `capture_exceptions`.
+
+### 4.1. Acquisition events (PR2)
+
+The acquisition funnel: landing → demo → email → signup → onboarding.
+
+**Demo funnel** (anonymous, landing page). `lane` is `"sample"` (built-in demo
+invoice) or `"upload"` (visitor XML). `demo_file_uploaded` fires once per real
+file selection; `demo_translation_completed` / `demo_translation_failed` fire on
+every (re)translate in the upload lane. `error_code` is derived from the demo
+API HTTP status (`lib/analytics/demo-status.ts`), never a localized copy key.
+
+| Event | Properties | Where it fires | Source |
+|---|---|---|---|
+| `demo_language_selected` | `language`, `lane` | client | `components/landing/demo/demo-section.tsx` |
+| `demo_file_uploaded` | `status` (`success`/`invalid`/`rate_limited`/`error`), `error_code?` | client | `components/landing/demo/upload-panel.tsx` |
+| `demo_translation_completed` | `language`, `lane` | client | `components/landing/demo/upload-panel.tsx` |
+| `demo_translation_failed` | `language`, `lane`, `error_code` | client | `components/landing/demo/upload-panel.tsx` |
+| `demo_download_gate_opened` | `trigger` (`download`/`more_languages`), `lane` | client | `components/landing/demo/demo-section.tsx` |
+| `demo_email_submitted` | `status` (`success`/`rate_limited`/`error`), `marketing_opt_in`, `lane` | client | `components/landing/demo/download-gate.tsx` |
+| `demo_pdf_downloaded` | `language`, `lane` | client | `components/landing/demo/download-gate.tsx` |
+
+**Auth / onboarding.** `signup_completed` vs `login_completed` is decided by
+whether the Supabase user's `created_at` is within 5 minutes of the callback
+(`signup_source` comes from `user_metadata.source`, seeded by the landing-demo
+OTP). `auth_failed` is captured **client-side** from the `?error` param on
+`/login` (the server callback has no authenticated distinct id and, as a
+top-level redirect, no session header — client capture keeps it on the visitor's
+session).
+
+| Event | Properties | Where it fires | Source |
+|---|---|---|---|
+| `signup_completed` | `method` (`magic_link`/`google`), `signup_source` (`landing_demo`/`direct`) | server | `app/auth/callback/route.ts` |
+| `login_completed` | `method` (`magic_link`/`google`) | server | `app/auth/callback/route.ts` |
+| `auth_failed` | `reason` (capped to 64 chars) | client | `app/login/login-form.tsx` |
+| `onboarding_name_shown` | (none) | client | `components/account/onboarding-name-modal.tsx` |
+| `onboarding_name_completed` | (none) | client | `components/account/onboarding-name-modal.tsx` |
+| `signed_out` | (none) | client | `components/layout/sign-out-button.tsx` |
+
+**Landing CTA.** Fired through the `TrackedCtaLink` client wrapper
+(`components/landing/ui/tracked-cta-link.tsx`) because 4 of the 6 CTA hosts are
+server components.
+
+| Event | Properties | Where it fires | Source |
+|---|---|---|---|
+| `landing_cta_clicked` | `cta_id` (`hero_primary`/`hero_secondary`/`nav_login`/`mobile_nav`/`pricing_teaser`/`final_cta`), `locale` | client | `components/landing/{hero,site-nav,pricing-teaser,final-cta,mobile-nav-sheet}.tsx` |
 
 ## 5. How to add an event
 
@@ -153,18 +200,34 @@ region; data stays in the EU (Frankfurt).
 
 ## 9. Roadmap
 
-Two follow-up PRs build on this foundation (event lists pinned in spec §5,
-dashboards in spec §7). Sequential off `main`, PR N+1 after PR N merges.
+- **PR 2, acquisition funnel — shipped.** Demo funnel events, landing CTA
+  clicks, server-side auth-completion events (`signup_completed`,
+  `login_completed`) plus client-side `auth_failed`, and onboarding/sign-out
+  events. See §4.1. Two deviations from the original spec §5, both deliberate:
+  `auth_failed` is captured client-side (no distinct id / session header on the
+  callback redirect), and `landing_cta_clicked` uses the `TrackedCtaLink` client
+  wrapper (its CTA hosts are server components). `contact_form_submitted` was
+  deferred (no verified contact-form integration point).
+- **PR 3, product depth — pending**: `paywall_hit`, wizard
+  language/bilingual/retry events, editor and reopen events, billing edges
+  (`credit_drawer_opened`, `checkout_cancelled`), account events plus PostHog
+  person erasure on account deletion. Dashboards: paywall conversion.
 
-- **PR 2, acquisition funnel**: demo, landing, and contact events; server-side
-  auth-completion events (`signup_completed`, `login_completed`, `auth_failed`)
-  in the auth callback; onboarding events. Dashboards: demo funnel, activation
-  funnel.
-- **PR 3, product depth**: `paywall_hit`, wizard language/bilingual/retry
-  events, editor and reopen events, billing edges (`credit_drawer_opened`,
-  `checkout_cancelled`), account events plus PostHog person erasure on account
-  deletion. Dashboards: paywall conversion, quality monitor.
+### Dashboards
 
-Dashboards still to build (spec §7): demo funnel, activation funnel (7-day),
-paywall conversion, quality monitor (failure rates by `error_code`), and
-engagement (retention, language popularity, bilingual share, cache-hit rate).
+Planned (PostHog UI, project 199578) — built once this PR deploys and the PR2
+events begin flowing (the query tools validate against live events):
+
+- **Acquisition / Demo** — demo conversion funnel, landing CTA clicks by
+  `cta_id`, demo upload quality (`demo_file_uploaded` by `status`,
+  `demo_translation_failed` by `error_code`).
+- **Activation** — signup→activation funnel (7-day), signups by `method` /
+  `signup_source`, login mix (`login_completed` / `google_signin_clicked` /
+  `login_submitted`).
+- **Quality & Engagement** — `auth_failed` by `reason`, demo completed vs failed,
+  weekly retention on `invoice_translated`.
+
+Kept as-is: the wizard "Analytics basics" dashboard
+(https://eu.posthog.com/project/199578/dashboard/740875).
+
+Still to build (PR3, spec §7): paywall conversion funnel.
