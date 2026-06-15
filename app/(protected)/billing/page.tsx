@@ -2,6 +2,7 @@ import { CheckCircle2 } from "lucide-react";
 import { CreditSlider } from "@/components/billing/credit-slider";
 import { PurchaseHistory } from "@/components/billing/purchase-history";
 import { BillingStatusToast } from "@/components/billing/billing-status-toast";
+import { PurchaseConversion } from "@/components/billing/purchase-conversion";
 import { CreditBalanceBand } from "@/components/billing/credit-balance-band";
 import { requireUser } from "@/lib/auth/require-user";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
@@ -17,7 +18,7 @@ function nextFreeRefreshDate(): string {
 export default async function BillingPage({
   searchParams
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; session_id?: string }>;
 }) {
   const user = await requireUser();
   const { uiLanguage } = await getCurrentProfile(user.id);
@@ -89,6 +90,8 @@ export default async function BillingPage({
           cancelledBody={String(t.paymentCancelledBody)}
         />
       ) : null}
+
+      {status === "paid" ? <PurchaseConversion sessionId={params.session_id} /> : null}
 
       <PurchaseHistory userId={user.id} uiLanguage={uiLanguage} />
 

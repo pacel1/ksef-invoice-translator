@@ -7,7 +7,7 @@ import type { ConsentState } from "@/lib/consent/types";
 
 /**
  * Applies the cookie banner's analytics decision to PostHog. Mounted inside
- * ConsentProvider next to GoogleAdsTag. On decline or revoke, reset() runs
+ * ConsentProvider next to GoogleTagManager. On decline or revoke, reset() runs
  * while the old persistence is still active so prior ph_* storage residue
  * is cleared before dropping to cookieless memory mode.
  */

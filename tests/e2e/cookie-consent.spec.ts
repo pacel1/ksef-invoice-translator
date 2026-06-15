@@ -46,6 +46,10 @@ test("reject all declines optional categories and loads no Google scripts", asyn
     marketing: false
   });
 
+  // No googletagmanager scripts load here because the test env leaves
+  // NEXT_PUBLIC_GTM_ID unset, so GtmNoScript / GoogleTagManager render nothing.
+  // In production GTM loads on every visit and consent is enforced via Consent
+  // Mode v2 (signals default to denied), NOT by withholding the script.
   const googleScripts = await page.evaluate(
     () => document.querySelectorAll("script[src*='googletagmanager']").length
   );
