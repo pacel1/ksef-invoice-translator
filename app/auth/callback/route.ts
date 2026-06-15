@@ -14,14 +14,15 @@ const emailOtpTypeSchema = z.enum(["signup", "invite", "magiclink", "recovery", 
 // auth, so any completion shortly after counts as the signup event.
 const NEW_USER_WINDOW_MS = 5 * 60 * 1000;
 
-// Emits the right auth-completion event from a freshly authenticated user.
-// New users (created moments ago) record `signup_completed`; everyone else
-// records `login_completed`. `signup_source` is seeded into user_metadata by
-// the landing demo magic-link flow (lib/demo/send-demo-otp.ts).
+// Emits the right auth-completion event from a freshly authenticated user and
+// reports whether this was a fresh signup. New users (created moments ago)
+// record `signup_completed`; everyone else records `login_completed`.
+// `signup_source` is seeded into user_metadata by the landing demo magic-link
+// flow (lib/demo/send-demo-otp.ts).
 function captureAuthCompletion(
   user: { id: string; created_at?: string; user_metadata?: Record<string, unknown> },
   method: AnalyticsEventMap["login_completed"]["method"]
-): void {
+): boolean {
   const createdAt = user.created_at ? new Date(user.created_at).getTime() : 0;
   const isNew = createdAt > 0 && Date.now() - createdAt < NEW_USER_WINDOW_MS;
   if (isNew) {
@@ -32,13 +33,22 @@ function captureAuthCompletion(
       event: "signup_completed",
       properties: { method, signup_source: signupSource }
     });
-    return;
+    return true;
   }
   captureServer({
     distinctId: user.id,
     event: "login_completed",
     properties: { method }
   });
+  return false;
+}
+
+// New signups carry a `signup=1` flag on the post-auth redirect so a client
+// component can fire the Google Ads registration conversion exactly once.
+function redirectAfterAuth(request: NextRequest, redirectTo: string, isNew: boolean): NextResponse {
+  const destination = new URL(redirectTo, request.url);
+  if (isNew) destination.searchParams.set("signup", "1");
+  return NextResponse.redirect(destination);
 }
 
 export async function GET(request: NextRequest) {
@@ -58,10 +68,8 @@ export async function GET(request: NextRequest) {
     if (error) {
       return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url));
     }
-    if (data.user) {
-      captureAuthCompletion(data.user, "google");
-    }
-    return NextResponse.redirect(new URL(redirectTo, request.url));
+    const isNew = data.user ? captureAuthCompletion(data.user, "google") : false;
+    return redirectAfterAuth(request, redirectTo, isNew);
   }
 
   if (tokenHash && rawType) {
@@ -77,10 +85,8 @@ export async function GET(request: NextRequest) {
     if (error) {
       return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url));
     }
-    if (data.user) {
-      captureAuthCompletion(data.user, "magic_link");
-    }
-    return NextResponse.redirect(new URL(redirectTo, request.url));
+    const isNew = data.user ? captureAuthCompletion(data.user, "magic_link") : false;
+    return redirectAfterAuth(request, redirectTo, isNew);
   }
 
   return NextResponse.redirect(new URL("/login?error=missing_code", request.url));

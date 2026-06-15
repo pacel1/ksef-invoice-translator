@@ -41,6 +41,24 @@ describe("auth callback analytics", () => {
     );
   });
 
+  it("redirects a brand-new user with signup=1 so the client can fire the registration conversion", async () => {
+    exchangeMock.mockResolvedValue({
+      data: { user: { id: "u1", created_at: new Date().toISOString(), user_metadata: {} } },
+      error: null
+    });
+    const res = await GET(req("https://app.test/auth/callback?code=abc"));
+    expect(res.headers.get("location")).toContain("signup=1");
+  });
+
+  it("does NOT add signup=1 for an existing (returning) user", async () => {
+    exchangeMock.mockResolvedValue({
+      data: { user: { id: "u4", created_at: "2019-05-05T00:00:00Z", user_metadata: {} } },
+      error: null
+    });
+    const res = await GET(req("https://app.test/auth/callback?code=abc"));
+    expect(res.headers.get("location")).not.toContain("signup=1");
+  });
+
   it("captures signup_completed source=landing_demo for a new magic-link user from the demo", async () => {
     verifyMock.mockResolvedValue({
       data: {

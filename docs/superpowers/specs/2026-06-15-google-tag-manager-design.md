@@ -57,9 +57,12 @@ real event (with a `transaction_id` for dedup) instead of a bare URL match.
    so ordering is guaranteed. This is mandatory for EU compliance — without
    it GTM tags could set ad/analytics cookies before consent.
 4. **Add a `purchase` dataLayer event** on the success page carrying
-   `transaction_id` = the Stripe `session_id` from the URL, so the Ads
-   conversion can dedup on refresh. No server fetch required. Value/currency
-   deferred to a later iteration.
+   `transaction_id` = the Stripe `session_id`, plus the order `value` (net,
+   ex-VAT) and `currency`, all carried through the Stripe `success_url`. The
+   Ads conversion dedups on refresh via `transaction_id` and reports real
+   revenue via `value`/`currency`. No server fetch required. Net is used
+   because VAT is remitted, not earned; a one-line change in
+   checkout-session-params switches to gross.
 5. **`lib/consent/gtag.ts` is unchanged.** GTM reads the same `dataLayer`, so
    `pushConsentUpdate` keeps working as-is.
 6. **`NEXT_PUBLIC_GOOGLE_ADS_ID` is removed from code.** The conversion ID now
@@ -117,18 +120,33 @@ Client component. Mirrors the structure of the removed `google-ads-tag.tsx`.
 
 ### 5. Purchase conversion event
 
-- `app/(protected)/billing/page.tsx`: extend the `searchParams` type to also
-  read `session_id`. When `status === 'paid'`, render a small client
-  component with the `session_id`.
+- `lib/billing/checkout-session-params.ts`: the Stripe `success_url` carries
+  `value` (net, ex-VAT, from `quote.totalAmountCents`) and `currency` alongside
+  `status` and `session_id`.
+- `app/(protected)/billing/page.tsx`: parse `session_id`, `value`, `currency`
+  from `searchParams`. When `status === 'paid'`, render `PurchaseConversion`.
 - `components/billing/purchase-conversion.tsx` (new): client component that,
   once on mount, pushes
-  `window.dataLayer.push({ event: 'purchase', transaction_id: <session_id> })`.
-  Guards: only push when a non-empty `session_id` is present; initialise
+  `{ event: 'purchase', transaction_id: <session_id>, value, currency }`.
+  Guards: only push when a non-empty `session_id` is present; include
+  `value`/`currency` only when `value` is a positive finite number; initialise
   `window.dataLayer` if absent; push once per mount. It renders no DOM.
 
   The push is harmless on its own; whether the Ads conversion actually fires
   is decided by the tag-level consent settings inside GTM (requires
   `ad_storage`). `transaction_id` is the Stripe `cs_…` session id, not PII.
+
+### 6. Registration (sign-up) conversion event
+
+- `app/auth/callback/route.ts`: `captureAuthCompletion` returns whether the
+  auth was a fresh signup (created within `NEW_USER_WINDOW_MS`). New signups
+  redirect with a `signup=1` flag (`redirectAfterAuth`).
+- `components/analytics/signup-conversion.tsx` (new): client component mounted
+  globally in `app/layout.tsx`. On mount, if `?signup=1` is present, pushes
+  `{ event: 'sign_up' }` once, then strips the flag from the URL
+  (`history.replaceState`) so a refresh does not re-fire. Renders no DOM.
+- The Google Ads registration conversion is triggered in GTM off the `sign_up`
+  custom event (set Count: One; there is no transaction_id for sign-ups).
 
 ## Environment variables
 
@@ -196,9 +214,8 @@ Coverage target: 80%+ (project policy). All new code is unit-tested.
 - Creating/configuring the Google Ads conversion tag inside the GTM container
   UI (manual, done by the user in GTM).
 - GA4 or any other tag (configured in GTM UI later).
-- Revenue/value on the purchase event (later iteration).
 - Server-side / offline conversion import keyed off the Stripe webhook (a
-  separate, later job for exact async-payment accuracy).
+  separate, later job for exact async-payment accuracy and tamper-proof value).
 - CSP `script-src`/`connect-src` tightening (not currently present; if added
   later it must allow `https://www.googletagmanager.com`).
 
