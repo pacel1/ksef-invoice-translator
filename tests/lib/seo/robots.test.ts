@@ -19,15 +19,28 @@ describe("robots", () => {
     const disallow = wildcard?.disallow ?? [];
 
     for (const path of [
-      "/api/",
-      "/app/",
-      "/account/",
-      "/billing/",
-      "/translate/",
-      "/tlumaczenie/",
-      "/auth/"
+      "/api",
+      "/app",
+      "/account",
+      "/billing",
+      "/translate",
+      "/tlumaczenie",
+      "/auth"
     ]) {
       expect(disallow).toContain(path);
+    }
+  });
+
+  it("uses bare prefixes so the bare redirecting routes are also blocked", () => {
+    // A trailing slash (e.g. "/app/") matches "/app/history" but NOT the bare
+    // "/app", which 3xx-redirects to /translate. Google reported those bare
+    // redirecting URLs as "Page contains redirect". Bare prefixes cover both.
+    const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
+    const disallow = rules.find((r) => r?.userAgent === "*")?.disallow ?? [];
+    const list = Array.isArray(disallow) ? disallow : [disallow];
+
+    for (const path of list) {
+      expect(path.endsWith("/")).toBe(false);
     }
   });
 
