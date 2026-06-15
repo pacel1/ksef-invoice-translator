@@ -18,6 +18,29 @@ describe("<PurchaseConversion>", () => {
     expect(dataLayer()).toContainEqual({ event: "purchase", transaction_id: "cs_test_123" });
   });
 
+  it("includes value and currency when provided", () => {
+    render(<PurchaseConversion sessionId="cs_test_123" value={124.75} currency="PLN" />);
+    expect(dataLayer()).toContainEqual({
+      event: "purchase",
+      transaction_id: "cs_test_123",
+      value: 124.75,
+      currency: "PLN"
+    });
+  });
+
+  it("omits value/currency when value is absent", () => {
+    render(<PurchaseConversion sessionId="cs_test_123" />);
+    expect(dataLayer()).toContainEqual({ event: "purchase", transaction_id: "cs_test_123" });
+  });
+
+  it("ignores a non-positive or non-finite value but still records the conversion", () => {
+    render(<PurchaseConversion sessionId="cs_test_123" value={0} currency="PLN" />);
+    render(<PurchaseConversion sessionId="cs_test_456" value={Number.NaN} currency="PLN" />);
+    expect(dataLayer()).toContainEqual({ event: "purchase", transaction_id: "cs_test_123" });
+    expect(dataLayer()).toContainEqual({ event: "purchase", transaction_id: "cs_test_456" });
+    expect(dataLayer().some((e) => "value" in e)).toBe(false);
+  });
+
   it("renders no DOM", () => {
     const { container } = render(<PurchaseConversion sessionId="cs_test_123" />);
     expect(container.firstChild).toBeNull();

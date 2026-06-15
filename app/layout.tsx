@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk, DM_Sans } from "next/font/google";
 import { ConsentProvider } from "@/components/consent/consent-provider";
 import { GtmNoScript } from "@/components/consent/gtm-noscript";
+import { SignupConversion } from "@/components/analytics/signup-conversion";
 import { SITE_URL } from "@/lib/seo/site-url";
 import "./globals.css";
 
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pl" className={`${inter.variable} ${spaceGrotesk.variable} ${dmSans.variable}`}>
       <body className="bg-surface text-text-strong">
         <GtmNoScript />
+        <SignupConversion />
         <ConsentProvider>{children}</ConsentProvider>
       </body>
     </html>

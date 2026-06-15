@@ -68,8 +68,10 @@ describe("buildCheckoutSessionParams", () => {
       package_size: "25"
     });
     expect(params.customer_email).toBe("buyer@example.test");
+    // quote = priceForPackage(25): 499 grosze * 25 = 12475 = 124.75 PLN net.
+    // value (ex-VAT) + currency ride along for the Google Ads purchase conversion.
     expect(params.success_url).toBe(
-      "https://app.example.test/billing?status=paid&session_id={CHECKOUT_SESSION_ID}"
+      "https://app.example.test/billing?status=paid&session_id={CHECKOUT_SESSION_ID}&value=124.75&currency=PLN"
     );
     expect(params.cancel_url).toBe("https://app.example.test/billing?status=cancelled");
   });
