@@ -67,15 +67,6 @@ afterEach(() => {
   delete (window as { dataLayer?: unknown }).dataLayer;
 });
 
-/** Executes the inline bootstrap the way a browser would and returns dataLayer commands. */
-function runBootstrap(container: HTMLElement): unknown[][] {
-  const bootstrap = container.querySelector("script[data-testid='google-ads-bootstrap']");
-  expect(bootstrap?.textContent).toBeTruthy();
-  new Function(bootstrap!.textContent!)();
-  const dataLayer = (window as { dataLayer?: unknown[] }).dataLayer ?? [];
-  return dataLayer.map((entry) => Array.from(entry as ArrayLike<unknown>));
-}
-
 describe("<ConsentProvider> banner visibility", () => {
   it("shows the banner in Polish on first visit", () => {
     renderProvider();
@@ -161,99 +152,19 @@ describe("<ConsentProvider> decisions", () => {
   });
 });
 
-describe("<ConsentProvider> Google Ads tag gating", () => {
-  it("renders no Google scripts without the env var even after consent", () => {
-    vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_ID", "");
+describe("<ConsentProvider> Google Tag Manager gating", () => {
+  it("renders no GTM container without the env var even after consent", () => {
+    vi.stubEnv("NEXT_PUBLIC_GTM_ID", "");
     setConsentCookie(true, true);
     const { container } = renderProvider();
-    expect(container.querySelector("script[src*='googletagmanager']")).toBeNull();
+    expect(container.querySelector("script[data-testid='gtm-init']")).toBeNull();
   });
 
-  it("loads gtag.js before any consent decision with every signal denied (advanced consent mode)", () => {
-    vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_ID", "AW-18231110784");
+  it("mounts the GTM container script when NEXT_PUBLIC_GTM_ID is set", () => {
+    vi.stubEnv("NEXT_PUBLIC_GTM_ID", "GTM-MGZXZ4PD");
     const { container } = renderProvider();
-    expect(container.querySelector("script[src*='googletagmanager']")).not.toBeNull();
-    const commands = runBootstrap(container);
-    expect(commands).toContainEqual([
-      "consent",
-      "default",
-      {
-        ad_storage: "denied",
-        ad_user_data: "denied",
-        ad_personalization: "denied",
-        analytics_storage: "denied"
-      }
-    ]);
-    expect(commands.filter((c) => c[0] === "consent" && c[1] === "update")).toEqual([]);
-    expect(commands).toContainEqual(["set", "ads_data_redaction", true]);
-    expect(commands).toContainEqual(["config", "AW-18231110784"]);
-  });
-
-  it("loads gtag.js once marketing is granted; bootstrap defaults to denied then grants from the cookie", () => {
-    vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_ID", "AW-18231110784");
-    const { container } = renderProvider();
-    fireEvent.click(screen.getByRole("button", { name: "Akceptuję wszystkie" }));
-    const loader = container.querySelector("script[src*='googletagmanager']");
-    expect(loader).not.toBeNull();
-    expect(loader?.getAttribute("src")).toContain("AW-18231110784");
-
-    const commands = runBootstrap(container);
-    expect(commands).toContainEqual([
-      "consent",
-      "default",
-      {
-        ad_storage: "denied",
-        ad_user_data: "denied",
-        ad_personalization: "denied",
-        analytics_storage: "denied"
-      }
-    ]);
-    expect(commands).toContainEqual([
-      "consent",
-      "update",
-      {
-        ad_storage: "granted",
-        ad_user_data: "granted",
-        ad_personalization: "granted",
-        analytics_storage: "granted"
-      }
-    ]);
-    expect(commands).toContainEqual(["config", "AW-18231110784"]);
-  });
-
-  it("keeps analytics_storage denied when only marketing was granted", () => {
-    vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_ID", "AW-18231110784");
-    setConsentCookie(false, true);
-    const { container } = renderProvider();
-    const commands = runBootstrap(container);
-    expect(commands).toContainEqual([
-      "consent",
-      "update",
-      {
-        ad_storage: "granted",
-        ad_user_data: "granted",
-        ad_personalization: "granted",
-        analytics_storage: "denied"
-      }
-    ]);
-  });
-
-  it("honours a revocation that lands before the bootstrap executes (race safety)", () => {
-    vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_ID", "AW-18231110784");
-    const { container } = renderProvider();
-    fireEvent.click(screen.getByRole("button", { name: "Akceptuję wszystkie" }));
-    const bootstrapText = container.querySelector("script[data-testid='google-ads-bootstrap']")?.textContent;
-    expect(bootstrapText).toBeTruthy();
-
-    // User revokes before the injected script has run: the cookie now says denied.
-    fireEvent(window, new Event(OPEN_COOKIE_SETTINGS_EVENT));
-    fireEvent.click(screen.getByRole("button", { name: "Odrzucam wszystkie" }));
-
-    // The stale bootstrap executes afterwards; it must read the live cookie, not render-time state.
-    new Function(bootstrapText!)();
-    const dataLayer = (window as { dataLayer?: unknown[] }).dataLayer ?? [];
-    const commands = dataLayer.map((entry) => Array.from(entry as ArrayLike<unknown>));
-    const lastConsentCommand = commands.filter((c) => c[0] === "consent").pop();
-    expect(lastConsentCommand?.[2]).toMatchObject({ ad_storage: "denied", analytics_storage: "denied" });
+    const init = container.querySelector("script[data-testid='gtm-init']");
+    expect(init?.textContent).toContain("GTM-MGZXZ4PD");
+    expect(init?.textContent).toContain("googletagmanager.com/gtm.js?id=");
   });
 });

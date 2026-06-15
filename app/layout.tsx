@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk, DM_Sans } from "next/font/google";
 import { ConsentProvider } from "@/components/consent/consent-provider";
+import { GtmNoScript } from "@/components/consent/gtm-noscript";
 import { SITE_URL } from "@/lib/seo/site-url";
 import "./globals.css";
 
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pl" className={`${inter.variable} ${spaceGrotesk.variable} ${dmSans.variable}`}>
       <body className="bg-surface text-text-strong">
+        <GtmNoScript />
         <ConsentProvider>{children}</ConsentProvider>
       </body>
     </html>
