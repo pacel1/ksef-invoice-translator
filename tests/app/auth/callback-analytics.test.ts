@@ -47,7 +47,11 @@ describe("auth callback analytics", () => {
       error: null
     });
     const res = await GET(req("https://app.test/auth/callback?code=abc"));
-    expect(res.headers.get("location")).toContain("signup=1");
+    const location = new URL(res.headers.get("location") ?? "");
+    expect(location.searchParams.get("signup")).toBe("1");
+    // Must land on a page that does NOT redirect again (e.g. /app -> /translate
+    // drops the query string), otherwise the client never sees signup=1.
+    expect(location.pathname).toBe("/translate");
   });
 
   it("does NOT add signup=1 for an existing (returning) user", async () => {

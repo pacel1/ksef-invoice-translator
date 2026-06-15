@@ -1,4 +1,9 @@
-const DEFAULT_REDIRECT = "/app";
+// Post-auth landing page. Must be a real, non-redirecting route: `/app` only
+// `permanentRedirect`s to `/translate` and Next drops the query string on that
+// hop, which would strip the `signup=1` flag the callback appends for new
+// signups (breaking the Google Ads registration conversion). Point straight at
+// the canonical page so the flag survives and we save a redirect.
+const DEFAULT_REDIRECT = "/translate";
 
 /**
  * Returns `raw` only when it is a safe same-origin *relative* path, otherwise the

@@ -24,8 +24,8 @@ describe("safeRedirectPath", () => {
     ["null", null],
     ["undefined", undefined],
     ["bare word", "evil.com"]
-  ])("falls back to /app for %s", (_label, value) => {
-    expect(safeRedirectPath(value as string | null | undefined)).toBe("/app");
+  ])("falls back to the default /translate for %s", (_label, value) => {
+    expect(safeRedirectPath(value as string | null | undefined)).toBe("/translate");
   });
 
   it("honours a custom fallback", () => {
