@@ -18,7 +18,7 @@ function nextFreeRefreshDate(): string {
 export default async function BillingPage({
   searchParams
 }: {
-  searchParams: Promise<{ status?: string; session_id?: string }>;
+  searchParams: Promise<{ status?: string; session_id?: string; value?: string; currency?: string }>;
 }) {
   const user = await requireUser();
   const { uiLanguage } = await getCurrentProfile(user.id);
@@ -91,7 +91,13 @@ export default async function BillingPage({
         />
       ) : null}
 
-      {status === "paid" ? <PurchaseConversion sessionId={params.session_id} /> : null}
+      {status === "paid" ? (
+        <PurchaseConversion
+          sessionId={params.session_id}
+          value={params.value !== undefined ? Number(params.value) : undefined}
+          currency={params.currency}
+        />
+      ) : null}
 
       <PurchaseHistory userId={user.id} uiLanguage={uiLanguage} />
 

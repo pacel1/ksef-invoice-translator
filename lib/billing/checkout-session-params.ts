@@ -81,7 +81,11 @@ export function buildCheckoutSessionParams(
     // fee (0.4%) and avoids confusing the customer with two PDFs.
     customer_email: userEmail,
     client_reference_id: purchaseId,
-    success_url: `${appUrl}/billing?status=paid&session_id={CHECKOUT_SESSION_ID}`,
+    // value (net, ex-VAT major units) + currency ride along so the success
+    // page can emit a Google Ads purchase conversion with real revenue. Net is
+    // the revenue the business keeps; VAT is remitted, not earned. Switch to
+    // gross by multiplying by the VAT factor here if value-incl-VAT is wanted.
+    success_url: `${appUrl}/billing?status=paid&session_id={CHECKOUT_SESSION_ID}&value=${(quote.totalAmountCents / 100).toFixed(2)}&currency=${quote.currency.toUpperCase()}`,
     cancel_url: `${appUrl}/billing?status=cancelled`,
     metadata: {
       purchase_id: purchaseId,
