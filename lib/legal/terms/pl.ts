@@ -83,7 +83,7 @@ c) aktywny adres e-mail.
   {
     id: "charakter-tlumaczen",
     title: "§ 8. Charakter Tłumaczeń i zastrzeżenia",
-    content: `1. Tłumaczenia są wykonywane automatycznie, z wykorzystaniem modeli sztucznej inteligencji dostarczanych przez OpenAI, oraz słowników pojęć zgodnych ze schematem FA(3).
+    content: `1. Tłumaczenia są wykonywane automatycznie, z wykorzystaniem modeli sztucznej inteligencji dostarczanych przez OpenAI, oraz słowników pojęć zgodnych ze schematem FA(3). Modele sztucznej inteligencji przetwarzają wyłącznie opisowe pola tekstowe (nazwy pozycji, jednostki, opisy, notatki, stopkę). Kwoty, numery rachunków bankowych, numery NIP i REGON, nazwy i adresy stron, numery faktur, daty, waluty oraz stawki VAT nie są przekazywane do modeli sztucznej inteligencji i są przenoszone bez tłumaczenia.
 2. Tłumaczenie jest dokumentem pomocniczym o charakterze informacyjnym. Tłumaczenie nie jest tłumaczeniem przysięgłym ani uwierzytelnionym i nie zastępuje go tam, gdzie przepisy wymagają tłumaczenia przysięgłego.
 3. Tłumaczenie nie modyfikuje Faktury źródłowej wystawionej w KSeF. Dokumentem księgowym pozostaje wyłącznie oryginalna faktura ustrukturyzowana w KSeF.
 4. Usługa nie stanowi doradztwa podatkowego, prawnego ani księgowego.
@@ -158,6 +158,6 @@ c) aktywny adres e-mail.
 3. Konsument może skorzystać z pozasądowych sposobów rozpatrywania reklamacji i dochodzenia roszczeń, w tym z pomocy powiatowego (miejskiego) rzecznika konsumentów lub wojewódzkiego inspektora Inspekcji Handlowej. Szczegółowe informacje dostępne są na stronie internetowej Urzędu Ochrony Konkurencji i Konsumentów: uokik.gov.pl.
 4. Jeżeli poszczególne postanowienia Regulaminu okażą się nieważne lub bezskuteczne, pozostałe postanowienia pozostają w mocy.
 5. Regulamin sporządzono w języku polskim. Angielskie tłumaczenie Regulaminu udostępniane w Serwisie ma charakter pomocniczy; wiążąca jest wersja polska.
-6. Regulamin obowiązuje od dnia 2026-06-11.`
+6. Regulamin obowiązuje od dnia 2026-06-17.`
   }
 ];

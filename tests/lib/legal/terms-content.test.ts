@@ -54,6 +54,16 @@ describe("getTermsSections", () => {
     expect(all).toMatch(/kredyt/i);
   });
 
+  it("clarifies that AI processes only descriptive fields, not amounts or identifiers", () => {
+    const pl = getTermsSections("pl").map((s) => s.content).join("\n");
+    expect(pl).toMatch(/opisowe pola tekstowe/i);
+    expect(pl).toMatch(/nie są przekazywane do modeli sztucznej inteligencji/i);
+
+    const en = getTermsSections("en").map((s) => s.content).join("\n");
+    expect(en).toMatch(/descriptive text fields/i);
+    expect(en).toMatch(/not sent to artificial intelligence models/i);
+  });
+
   it("includes a data-processing entrustment clause referencing sub-processors (PL)", () => {
     const all = getTermsSections("pl").map((s) => `${s.title}\n${s.content}`).join("\n");
     expect(all).toMatch(/powierz/i);

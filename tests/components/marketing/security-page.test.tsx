@@ -34,6 +34,21 @@ describe("<SecurityPage>", () => {
     expect(screen.getByText("OpenAI")).toBeInTheDocument();
   });
 
+  it("narrows the OpenAI sub-processor role to descriptive fields (PL)", () => {
+    render(<SecurityPage locale="pl" />);
+    expect(screen.getByText(/Tłumaczenie opisowych pól faktury/i)).toBeInTheDocument();
+  });
+
+  it("discloses that amounts and identifiers are not sent to AI (PL)", () => {
+    render(<SecurityPage locale="pl" />);
+    expect(screen.getByText(/Nie wysyłamy do AI kwot/i)).toBeInTheDocument();
+  });
+
+  it("discloses that amounts and identifiers are not sent to AI (EN)", () => {
+    render(<SecurityPage locale="en" />);
+    expect(screen.getByText(/never send amounts/i)).toBeInTheDocument();
+  });
+
   it("does not render a founder section", () => {
     render(<SecurityPage locale="pl" />);
     expect(screen.queryByRole("heading", { name: /Stoi za tym konkretny człowiek/i })).not.toBeInTheDocument();

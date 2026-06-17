@@ -28,14 +28,14 @@ export function SecurityPage({ locale }: SecurityPageProps) {
   const flowLabelsPl = [
     "Twój komputer",
     "Supabase Frankfurt",
-    "Tłumaczenie OpenAI",
+    "Tłumaczenie opisów (OpenAI)",
     "Dostarczenie PDF",
     "Kasowanie po 30 dniach"
   ];
   const flowLabelsEn = [
     "Your computer",
     "Supabase Frankfurt",
-    "OpenAI translation",
+    "Description translation (OpenAI)",
     "PDF delivery",
     "Deleted after 30 days"
   ];

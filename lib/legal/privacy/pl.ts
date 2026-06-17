@@ -41,7 +41,8 @@ Nie wysyłamy komunikacji marketingowej bez odrębnej zgody. Wiadomości e-mail 
     id: "powierzenie",
     title: "4. Dane z faktur: rola podmiotu przetwarzającego",
     content: `Przesyłane do Serwisu faktury mogą zawierać dane osobowe osób trzecich, w szczególności kontrahentów użytkownika. W odniesieniu do tych danych administratorem jest użytkownik, a my działamy jako podmiot przetwarzający w rozumieniu art. 28 RODO, na podstawie powierzenia opisanego w § 14 Regulaminu.
-Dane z faktur przetwarzamy wyłącznie w celu wykonania tłumaczenia i wygenerowania dokumentu PDF, przez okres wskazany w sekcji 7. Nie wykorzystujemy treści faktur ani tłumaczeń do trenowania modeli sztucznej inteligencji ani do żadnych własnych celów.`
+Dane z faktur przetwarzamy wyłącznie w celu wykonania tłumaczenia i wygenerowania dokumentu PDF, przez okres wskazany w sekcji 7. Nie wykorzystujemy treści faktur ani tłumaczeń do trenowania modeli sztucznej inteligencji ani do żadnych własnych celów.
+Do dostawcy tłumaczeń opartego na sztucznej inteligencji (OpenAI) przekazujemy wyłącznie opisowe pola tekstowe faktury: nazwy pozycji, jednostki miary, dodatkowe opisy, powody rozliczeń, notatki oraz stopkę. Kwoty, numery rachunków bankowych, numery NIP i REGON, nazwy oraz adresy sprzedawcy i nabywcy, a także numery faktur i daty nie są przekazywane do modeli sztucznej inteligencji i pozostają przepisane bez zmian.`
   },
   {
     id: "odbiorcy",
@@ -49,7 +50,7 @@ Dane z faktur przetwarzamy wyłącznie w celu wykonania tłumaczenia i wygenerow
     content: `Korzystamy z usług następujących podmiotów przetwarzających dane w naszym imieniu:
 1. Supabase: baza danych, przechowywanie plików i uwierzytelnianie; dane przechowywane we Frankfurcie (region AWS eu-central-1, Unia Europejska).
 2. Vercel: hosting aplikacji i infrastruktura serwerowa.
-3. OpenAI: automatyczne tłumaczenie treści faktur; siedziba w USA, zawarta umowa powierzenia przetwarzania.
+3. OpenAI: automatyczne tłumaczenie opisowych pól tekstowych faktury (nazwy pozycji, jednostki, opisy, notatki, stopka), bez kwot, numerów rachunków, NIP oraz nazw i adresów stron; siedziba w USA, zawarta umowa powierzenia przetwarzania.
 4. Stripe (Stripe Payments Europe, Ltd., Irlandia): obsługa płatności.
 5. Resend: wysyłka wiadomości transakcyjnych (linki logowania, potwierdzenia); siedziba w USA, zawarta umowa powierzenia przetwarzania.
 6. iFirma: wystawianie faktur VAT za zakupy w Serwisie i przesyłanie ich do Krajowego Systemu e-Faktur; siedziba w Polsce.
@@ -63,7 +64,7 @@ Ponadto dane mogą być udostępniane organom publicznym, gdy obowiązek taki wy
     title: "6. Przekazywanie danych poza EOG",
     content: `Część naszych dostawców (OpenAI, Resend, Cloudflare, a w razie zgody na cookies marketingowe także Google) ma siedzibę w Stanach Zjednoczonych lub korzysta z infrastruktury w USA, co może wiązać się z przekazaniem danych poza Europejski Obszar Gospodarczy (EOG).
 Przekazania odbywają się na podstawie decyzji wykonawczej Komisji Europejskiej dotyczącej ram ochrony danych UE-USA (EU-US Data Privacy Framework) w odniesieniu do podmiotów certyfikowanych, a w pozostałym zakresie na podstawie standardowych klauzul umownych zatwierdzonych przez Komisję Europejską, wraz z dodatkowymi środkami ochrony.
-Kopię stosowanych zabezpieczeń można uzyskać, kontaktując się z nami pod adresem wskazanym w sekcji 1. Pliki faktur i tłumaczenia są przechowywane wyłącznie na serwerach w Unii Europejskiej; do OpenAI przekazywana jest treść faktury na czas wykonania tłumaczenia.`
+Kopię stosowanych zabezpieczeń można uzyskać, kontaktując się z nami pod adresem wskazanym w sekcji 1. Pliki faktur i tłumaczenia są przechowywane wyłącznie na serwerach w Unii Europejskiej; do OpenAI przekazywane są wyłącznie opisowe pola tekstowe faktury na czas wykonania tłumaczenia, natomiast kwoty, numery rachunków, NIP oraz dane stron pozostają poza tym zakresem.`
   },
   {
     id: "okresy-przechowywania",
@@ -133,6 +134,6 @@ Automatyczne tłumaczenie dotyczy treści dokumentów i nie służy ocenie osób
     title: "13. Zmiany polityki prywatności",
     content: `Polityka prywatności może być aktualizowana, w szczególności w razie zmiany zakresu usług, listy podwykonawców lub przepisów prawa.
 O istotnych zmianach informujemy użytkowników posiadających Konto wiadomością e-mail oraz publikując nową wersję w Serwisie wraz z datą ostatniej aktualizacji.
-Polityka sporządzona jest w języku polskim; angielskie tłumaczenie ma charakter pomocniczy, a wiążąca jest wersja polska. Niniejsza wersja obowiązuje od dnia 2026-06-11.`
+Polityka sporządzona jest w języku polskim; angielskie tłumaczenie ma charakter pomocniczy, a wiążąca jest wersja polska. Niniejsza wersja obowiązuje od dnia 2026-06-17.`
   }
 ];

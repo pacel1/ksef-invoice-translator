@@ -113,6 +113,7 @@ export const marketingCopy = {
         "Wszystkie dane w UE — Supabase Frankfurt (AWS eu-central-1)",
         "Szyfrowanie w trakcie transferu i w spoczynku",
         "Faktury kasowane po 30 dniach od uploadu",
+        "AI tłumaczy tylko pola opisowe — kwoty, numery rachunków i NIP nie trafiają do AI",
         "RODO-compliant — pełna kontrola nad twoimi danymi"
       ],
       dataFlowHeading: "Jak płyną twoje dane",
@@ -133,6 +134,7 @@ export const marketingCopy = {
       },
       notHeading: "Czego NIE robimy",
       notItems: [
+        "Nie wysyłamy do AI kwot, numerów rachunków, NIP/REGON ani nazw i adresów stron — AI tłumaczy tylko pola opisowe",
         "Nie używamy twoich treści do trenowania modeli AI",
         "Nie sprzedajemy twoich danych",
         "Nie udostępniamy danych stronom trzecim poza wymienionymi sub-procesorami"
@@ -145,7 +147,7 @@ export const marketingCopy = {
         locationHeader: "Lokalizacja",
         rows: [
           { name: "Supabase", role: "Storage + Auth", location: "Frankfurt 🇩🇪 (AWS eu-central-1)" },
-          { name: "OpenAI", role: "Tłumaczenie treści faktur", location: "USA (data processing agreement zawarte)" },
+          { name: "OpenAI", role: "Tłumaczenie opisowych pól faktury (bez kwot, NIP, numerów rachunków)", location: "USA (data processing agreement zawarte)" },
           { name: "Stripe", role: "Płatności", location: "Irlandia 🇮🇪 (Stripe Payments Europe)" },
           { name: "Resend", role: "Magic-link i transakcyjne e-maile", location: "USA (data processing agreement zawarte)" }
         ]
@@ -344,6 +346,7 @@ export const marketingCopy = {
         "All data in the EU — Supabase Frankfurt (AWS eu-central-1)",
         "Encryption in transit and at rest",
         "Invoices deleted 30 days after upload",
+        "AI translates only descriptive fields — amounts, account numbers and tax IDs never go to AI",
         "GDPR-compliant — full control over your data"
       ],
       dataFlowHeading: "How your data flows",
@@ -364,6 +367,7 @@ export const marketingCopy = {
       },
       notHeading: "What we DO NOT do",
       notItems: [
+        "We never send amounts, account numbers, tax IDs (NIP/REGON), or party names and addresses to AI — AI translates only descriptive fields",
         "We do not use your content to train AI models",
         "We do not sell your data",
         "We do not share data with third parties beyond the listed sub-processors"
@@ -376,7 +380,7 @@ export const marketingCopy = {
         locationHeader: "Location",
         rows: [
           { name: "Supabase", role: "Storage + Auth", location: "Frankfurt 🇩🇪 (AWS eu-central-1)" },
-          { name: "OpenAI", role: "Invoice content translation", location: "USA (data processing agreement in place)" },
+          { name: "OpenAI", role: "Description-field translation (no amounts, tax IDs, account numbers)", location: "USA (data processing agreement in place)" },
           { name: "Stripe", role: "Payments", location: "Ireland 🇮🇪 (Stripe Payments Europe)" },
           { name: "Resend", role: "Magic-link and transactional emails", location: "USA (data processing agreement in place)" }
         ]
