@@ -5,7 +5,7 @@ import { DataFlowDiagram } from "@/components/marketing/data-flow-diagram";
 const stepsPl = [
   { icon: "computer", label: "Twój komputer" },
   { icon: "shield", label: "Supabase Frankfurt" },
-  { icon: "translate", label: "Tłumaczenie OpenAI" },
+  { icon: "translate", label: "Tłumaczenie opisów (OpenAI)" },
   { icon: "pdf", label: "Dostarczenie PDF" },
   { icon: "trash", label: "Kasowanie po 30 dniach" }
 ] as const;
@@ -15,7 +15,7 @@ describe("<DataFlowDiagram>", () => {
     render(<DataFlowDiagram steps={stepsPl} />);
     expect(screen.getByText("Twój komputer")).toBeInTheDocument();
     expect(screen.getByText("Supabase Frankfurt")).toBeInTheDocument();
-    expect(screen.getByText("Tłumaczenie OpenAI")).toBeInTheDocument();
+    expect(screen.getByText("Tłumaczenie opisów (OpenAI)")).toBeInTheDocument();
     expect(screen.getByText("Dostarczenie PDF")).toBeInTheDocument();
     expect(screen.getByText("Kasowanie po 30 dniach")).toBeInTheDocument();
   });

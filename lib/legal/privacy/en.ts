@@ -39,7 +39,8 @@ We do not send marketing communications without separate consent. Emails sent by
     id: "powierzenie",
     title: "4. Invoice data: our role as processor",
     content: `Invoices uploaded to the Service may contain personal data of third parties, in particular the user's counterparties. For this data the user is the controller and we act as a processor within the meaning of art. 28 GDPR, under the entrustment described in § 14 of the Terms of Service.
-We process invoice data solely to perform the translation and generate the PDF document, for the period indicated in section 7. We do not use invoice content or translations to train artificial intelligence models or for any purposes of our own.`
+We process invoice data solely to perform the translation and generate the PDF document, for the period indicated in section 7. We do not use invoice content or translations to train artificial intelligence models or for any purposes of our own.
+We send only the invoice's descriptive text fields to the artificial intelligence translation provider (OpenAI): item names, units of measure, additional descriptions, settlement reasons, notes, and footer text. Amounts, bank account numbers, tax identification numbers (NIP and REGON), seller and buyer names and addresses, as well as invoice numbers and dates, are not sent to artificial intelligence models and are copied unchanged.`
   },
   {
     id: "odbiorcy",
@@ -47,7 +48,7 @@ We process invoice data solely to perform the translation and generate the PDF d
     content: `We use the following entities that process data on our behalf:
 1. Supabase: database, file storage, and authentication; data stored in Frankfurt (AWS region eu-central-1, European Union).
 2. Vercel: application hosting and server infrastructure.
-3. OpenAI: automatic translation of invoice content; based in the USA, data processing agreement in place.
+3. OpenAI: automatic translation of the invoice's descriptive text fields (item names, units, descriptions, notes, footer), excluding amounts, account numbers, tax IDs, and party names and addresses; based in the USA, data processing agreement in place.
 4. Stripe (Stripe Payments Europe, Ltd., Ireland): payment processing.
 5. Resend: transactional email delivery (sign-in links, confirmations); based in the USA, data processing agreement in place.
 6. iFirma: issuing VAT invoices for purchases in the Service and submitting them to the National e-Invoicing System; based in Poland.
@@ -61,7 +62,7 @@ Data may also be disclosed to public authorities where required by law, and to t
     title: "6. Transfers outside the EEA",
     content: `Some of our providers (OpenAI, Resend, Cloudflare, and, if you consent to marketing cookies, Google) are based in the United States or use infrastructure there, which may involve transferring data outside the European Economic Area (EEA).
 Transfers take place on the basis of the European Commission's adequacy decision concerning the EU-US Data Privacy Framework for certified entities, and otherwise on the basis of standard contractual clauses approved by the European Commission, together with supplementary safeguards.
-A copy of the safeguards can be obtained by contacting us at the address indicated in section 1. Invoice files and translations are stored exclusively on servers in the European Union; invoice content is passed to OpenAI only for the time needed to perform the translation.`
+A copy of the safeguards can be obtained by contacting us at the address indicated in section 1. Invoice files and translations are stored exclusively on servers in the European Union; only the invoice's descriptive text fields are passed to OpenAI for the time needed to perform the translation, while amounts, account numbers, tax IDs, and party data remain outside that scope.`
   },
   {
     id: "okresy-przechowywania",
@@ -131,6 +132,6 @@ Automatic translation concerns the content of documents and is not used to evalu
     title: "13. Changes to this policy",
     content: `This privacy policy may be updated, in particular when the scope of services, the list of sub-processors, or the law changes.
 We notify users with an Account of material changes by email and by publishing the new version on the Service together with the last-updated date.
-The policy is drawn up in Polish; this English translation is provided for convenience and the Polish language version prevails. This version applies from 2026-06-11.`
+The policy is drawn up in Polish; this English translation is provided for convenience and the Polish language version prevails. This version applies from 2026-06-17.`
   }
 ];

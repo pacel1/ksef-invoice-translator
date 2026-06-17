@@ -83,7 +83,7 @@ c) an active email address.
   {
     id: "charakter-tlumaczen",
     title: "§ 8. Nature of Translations and disclaimers",
-    content: `1. Translations are performed automatically, using artificial intelligence models provided by OpenAI and terminology dictionaries aligned with the FA(3) schema.
+    content: `1. Translations are performed automatically, using artificial intelligence models provided by OpenAI and terminology dictionaries aligned with the FA(3) schema. Artificial intelligence models process only descriptive text fields (item names, units, descriptions, notes, footer). Amounts, bank account numbers, tax identification numbers (NIP and REGON), party names and addresses, invoice numbers, dates, currencies, and VAT rates are not sent to artificial intelligence models and are carried over without translation.
 2. A Translation is an auxiliary, informational document. It is not a sworn or certified translation and does not replace one where the law requires a sworn translation.
 3. A Translation does not modify the Source invoice issued in KSeF. The only accounting document remains the original structured invoice in KSeF.
 4. The service does not constitute tax, legal, or accounting advice.
@@ -158,6 +158,6 @@ c) an active email address.
 3. A Consumer may use out-of-court complaint and redress procedures, including the assistance of a district (municipal) consumer ombudsman or a voivodeship inspector of the Trade Inspection. Details are available on the website of the Polish Office of Competition and Consumer Protection: uokik.gov.pl.
 4. Should individual provisions of the Terms prove invalid or ineffective, the remaining provisions remain in force.
 5. The Terms were drawn up in Polish. This English translation is provided for convenience; the Polish language version prevails.
-6. The Terms apply from 2026-06-11.`
+6. The Terms apply from 2026-06-17.`
   }
 ];

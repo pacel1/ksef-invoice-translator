@@ -65,6 +65,19 @@ describe("getPrivacySections", () => {
     expect(all).toMatch(/60 minut/);
   });
 
+  it("discloses the exact scope of invoice data sent to the AI provider in both locales", () => {
+    const pl = getPrivacySections("pl").map((s) => s.content).join("\n");
+    expect(pl).toMatch(/opisowe pola tekstowe/i);
+    expect(pl).toMatch(/nie są przekazywane do modeli sztucznej inteligencji/i);
+    expect(pl).toMatch(/numer(y|ów)? rachunk/i);
+    expect(pl).toMatch(/NIP/);
+
+    const en = getPrivacySections("en").map((s) => s.content).join("\n");
+    expect(en).toMatch(/descriptive text fields/i);
+    expect(en).toMatch(/not sent to artificial intelligence models/i);
+    expect(en).toMatch(/account numbers/i);
+  });
+
   it("covers transfers outside the EEA and the processor role for invoice data", () => {
     const all = getPrivacySections("pl").map((s) => `${s.title}\n${s.content}`).join("\n");
     expect(all).toMatch(/EOG/);
